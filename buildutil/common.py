@@ -15,52 +15,26 @@
 # 3. This notice may not be removed or altered from any source distribution.
 #
 
-"""Build utilities for use in automated build scripts and tools.
+"""Common BuildEnvironment sub-module.
 
-This module is a set of functions that can be used to help implement tools
-to perform typical build tasks. The main focus is to enable turnkey building
-both for users and also for continuous integration builds and tests.
-
-Simple usage example:
-
-  import buildutils
-
-  def main():
-    env = buildutils.BuildEnvironment(buildutils.build_defaults())
-
-    env.run_make()
-    env.make_archive(['bin', 'lib', 'include'], 'output.zip')
-
-
-Please see build_linux.py for a more comprehensive use case.
+This is the base implementation for target-specific build environments. Common
+utility functions are collected here as well.
 
 Optional environment variables:
 
-CMAKE_PATH = Path to CMake binary. Required if cmake is not in $PATH,
-or not passed on command line.
+GIT_PATH = Path to git binary.
 MAKE_PATH = Path to make binary. Required if make is not in $PATH,
 or not passed on command line.
-ANT_PATH = Path to ant binary. Required if ant is not in $PATH,
-or not passed on command line.
-CMAKE_FLAGS = String to override the default CMake flags with.
 MAKE_FLAGS = String to override the default make flags with.
-ANDROID_SDK_HOME = Path to the Android SDK. Required if it is not passed on the
-command line.
-NDK_HOME = Path to the Android NDK. Required if it is not in passed on the
-command line.
 """
 
 import datetime
 import distutils.spawn
-import errno
 import multiprocessing
 import os
-import random
 import shlex
 import shutil
-import stat
 import subprocess
-import xml.etree.ElementTree
 import zipfile
 
 _PROJECT_DIR = 'project_dir'
@@ -68,14 +42,13 @@ _MAKE_PATH_ENV_VAR = 'MAKE_PATH'
 _GIT_PATH_ENV_VAR = 'GIT_PATH'
 _MAKE_FLAGS_ENV_VAR = 'MAKE_FLAGS'
 _CPU_COUNT = 'cpu_count'
-_CMAKE_PATH = 'cmake_path'
-_CMAKE_FLAGS = 'cmake_flags'
 _MAKE_PATH = 'make_path'
 _GIT_PATH = 'git_path'
 _MAKE_FLAGS = 'make_flags'
 _GIT_CLEAN = 'git_clean'
 _VERBOSE = 'verbose'
 _OUTPUT_DIR = 'output_dir'
+
 
 class Error(Exception):
 
@@ -176,114 +149,6 @@ class ConfigurationError(Error):
     self._error_code = ConfigurationError.CODE
 
 
-def _find_path_from_binary(name, levels):
-  """Search $PATH for name and find parent directory n levels above it.
-
-  Return the directory at 'levels' levels above the named binary if it is found
-  in $PATH.
-
-  Example, if 'android' is in joebob's $PATH at
-
-    /home/joebob/android-sdk-linux/tools/android
-
-  then calling this function with ('android', 2) would return
-
-    /home/joebob/android-sdk-linux
-
-  Args:
-    name: Binary name to search for in $PATH.
-    levels: The number of parent directory levels above it to return.
-
-  Returns:
-    Path to binary nth parent directory, or None if not found or invalid.
-  """
-  path = distutils.spawn.find_executable(name)
-
-  if path:
-    directories = path.split(os.path.sep)
-    if levels < len(directories):
-      directories = directories[0:-levels]
-      path = os.path.join(os.path.sep, *directories)
-    else:
-      path = None
-
-  return path
-
-
-def build_defaults():
-  """Helper function to set build defaults.
-
-  Returns:
-    A dict containing appropriate defaults for a build.
-  """
-  args = {}
-  args[_PROJECT_DIR] = os.getcwd()
-  args[_GIT_CLEAN] = False
-  args[_MAKE_PATH] = (os.getenv(_MAKE_PATH_ENV_VAR) or
-                      distutils.spawn.find_executable('make'))
-  args[_GIT_PATH] = (os.getenv(_GIT_PATH_ENV_VAR) or
-                     distutils.spawn.find_executable('git'))
-  args[_MAKE_FLAGS] = os.getenv(_MAKE_FLAGS_ENV_VAR)
-  args[_CPU_COUNT] = str(multiprocessing.cpu_count())
-  args[_VERBOSE] = False
-  args[_OUTPUT_DIR] = args[_PROJECT_DIR]
-
-  return args
-
-
-def add_arguments(parser):
-  """Add module-specific command line arguments to an argparse parser.
-
-  This will take an argument parser and add arguments appropriate for this
-  module. It will also set appropriate default values.
-
-  Args:
-    parser: The argparse.ArgumentParser instance to use.
-  """
-  defaults = build_defaults()
-
-  parser.add_argument('-C', '--' + _PROJECT_DIR,
-                      help='Set project top level directory', dest=_PROJECT_DIR,
-                      default=defaults[_PROJECT_DIR])
-  parser.add_argument(
-      '-j', '--' + _CPU_COUNT, help='Processor cores to use when building',
-      dest=_CPU_COUNT, default=defaults[_CPU_COUNT])
-  parser.add_argument('-m', '--' + _MAKE_PATH,
-                      help='Path to make binary', dest=_MAKE_PATH,
-                      default=defaults[_MAKE_PATH])
-  parser.add_argument('-g', '--' + _GIT_PATH,
-                      help='Path to git binary', dest=_GIT_PATH,
-                      default=defaults[_GIT_PATH])
-  parser.add_argument(
-      '-f', '--' + _MAKE_FLAGS, help='Flags to use to override makeflags',
-      dest=_MAKE_FLAGS, default=defaults[_MAKE_FLAGS])
-  parser.add_argument(
-      '-w', '--' + _GIT_CLEAN,
-      help='Enable git_clean to reset project directory to last git commit',
-      dest=_GIT_CLEAN, action='store_true', default=defaults[_GIT_CLEAN])
-  parser.add_argument(
-      '-v', '--' + _VERBOSE,
-      help='Enable verbose output', dest=_VERBOSE, action='store_true',
-      default=defaults[_VERBOSE])
-  parser.add_argument('-o', '--' + _OUTPUT_DIR,
-                      help='Set build artifact output top-level directory',
-                      dest=_OUTPUT_DIR, default=None)
-
-
-def _check_binary(name, path):
-  """Helper function to verify a binary resides at a path.
-
-  Args:
-    name: The binary name we are checking.
-    path: The path to check.
-
-  Raises:
-    ToolPathError: Binary is not at the specified path.
-  """
-  if not path or not os.path.exists(path):
-    raise ToolPathError(name, path)
-
-
 class BuildEnvironment(object):
 
   """Class representing the build environment we will be building in.
@@ -291,14 +156,13 @@ class BuildEnvironment(object):
   This class resolves and exposes various build parameters as properties,
   which can be customized by users before building. It also provides methods
   to accomplish common build tasks such as executing build tools and archiving
-  the resulting build artifacts.
+  the resulting build artifacts. It is subclassed to provide platform-specific
+  build tasks.
 
   Attributes:
     project_directory: The top-level project directory to build.
     output_directory: The top level directory to copy the build archive to.
     enable_git_clean: Boolean value to enable cleaning for git-based projects.
-    cmake_path: Path to the cmake binary, for cmake-based projects.
-    cmake_flags: Flags to pass to cmake, for cmake-based projects.
     make_path: Path to the make binary, for make-based projects.
     make_flags: Flags to pass to make, for make-based projects.
     git_path: Path to the git binary, for projects based on git.
@@ -306,15 +170,6 @@ class BuildEnvironment(object):
     verbose: Boolean to enable verbose message output.
     host_os_name: Lowercased name of host operating system.
     host_architecture: Lowercased name of host machine architecture.
-    ndk_home: Path to the Android NDK, if found.
-    sdk_home: Path to the Android SDK, if found.
-    ant_path: Path to the ant binary, if found.
-    ant_flags: Flags to pass to the ant binary, if used.
-    ant_target: Ant build target name.
-    sign_apk: Enable signing of Android APKs.
-    apk_keystore: Keystore file path to use when signing an APK.
-    apk_keyalias: Alias of key to use when signing an APK.
-    apk_passfile: Path to file containing a password to use when signing an APK.
   """
 
   def __init__(self, arguments):
@@ -356,6 +211,114 @@ class BuildEnvironment(object):
 
     if self.verbose:
       print 'Build environment set up from: %s' % str(args)
+
+  @staticmethod
+  def _find_path_from_binary(name, levels):
+    """Search $PATH for name and find parent directory n levels above it.
+
+    Return the directory at 'levels' levels above the named binary if it is
+    found in $PATH.
+
+    Example, if 'android' is in joebob's $PATH at
+
+      /home/joebob/android-sdk-linux/tools/android
+
+    then calling this function with ('android', 2) would return
+
+      /home/joebob/android-sdk-linux
+
+    Args:
+      name: Binary name to search for in $PATH.
+      levels: The number of parent directory levels above it to return.
+
+    Returns:
+      Path to binary nth parent directory, or None if not found or invalid.
+    """
+    path = distutils.spawn.find_executable(name)
+    if path and (levels > 0):
+      directories = path.split(os.path.sep)
+
+      if levels < len(directories):
+        directories = directories[0:-levels]
+        path = os.path.join(os.path.sep, *directories)
+      else:
+        path = None
+
+    return path
+
+  @staticmethod
+  def build_defaults():
+    """Helper function to set build defaults.
+
+    Returns:
+      A dict containing appropriate defaults for a build.
+    """
+    args = {}
+    args[_PROJECT_DIR] = os.getcwd()
+    args[_GIT_CLEAN] = False
+    args[_MAKE_PATH] = (os.getenv(_MAKE_PATH_ENV_VAR) or
+                        distutils.spawn.find_executable('make'))
+    args[_GIT_PATH] = (os.getenv(_GIT_PATH_ENV_VAR) or
+                       distutils.spawn.find_executable('git'))
+    args[_MAKE_FLAGS] = os.getenv(_MAKE_FLAGS_ENV_VAR)
+    args[_CPU_COUNT] = str(multiprocessing.cpu_count())
+    args[_VERBOSE] = False
+    args[_OUTPUT_DIR] = args[_PROJECT_DIR]
+
+    return args
+
+  @staticmethod
+  def add_arguments(parser):
+    """Add module-specific command line arguments to an argparse parser.
+
+    This will take an argument parser and add arguments appropriate for this
+    module. It will also set appropriate default values.
+
+    Args:
+      parser: The argparse.ArgumentParser instance to use.
+    """
+    defaults = BuildEnvironment.build_defaults()
+
+    parser.add_argument('-C', '--' + _PROJECT_DIR,
+                        help='Set project top level directory',
+                        dest=_PROJECT_DIR, default=defaults[_PROJECT_DIR])
+    parser.add_argument(
+        '-j', '--' + _CPU_COUNT, help='Processor cores to use when building',
+        dest=_CPU_COUNT, default=defaults[_CPU_COUNT])
+    parser.add_argument('-m', '--' + _MAKE_PATH,
+                        help='Path to make binary', dest=_MAKE_PATH,
+                        default=defaults[_MAKE_PATH])
+    parser.add_argument('-g', '--' + _GIT_PATH,
+                        help='Path to git binary', dest=_GIT_PATH,
+                        default=defaults[_GIT_PATH])
+    parser.add_argument(
+        '-f', '--' + _MAKE_FLAGS, help='Flags to use to override makeflags',
+        dest=_MAKE_FLAGS, default=defaults[_MAKE_FLAGS])
+    parser.add_argument(
+        '-w', '--' + _GIT_CLEAN,
+        help='Enable git_clean to reset project directory to last git commit',
+        dest=_GIT_CLEAN, action='store_true', default=defaults[_GIT_CLEAN])
+    parser.add_argument(
+        '-v', '--' + _VERBOSE,
+        help='Enable verbose output', dest=_VERBOSE, action='store_true',
+        default=defaults[_VERBOSE])
+    parser.add_argument('-o', '--' + _OUTPUT_DIR,
+                        help='Set build artifact output top-level directory',
+                        dest=_OUTPUT_DIR, default=None)
+
+  @staticmethod
+  def _check_binary(name, path):
+    """Helper function to verify a binary resides at a path.
+
+    Args:
+      name: The binary name we are checking.
+      path: The path to check.
+
+    Raises:
+      ToolPathError: Binary is not at the specified path.
+    """
+    if not path or not os.path.exists(path):
+      raise ToolPathError(name, path)
 
   def run_subprocess(self, argv, capture=False, cwd=None):
     """Run a subprocess as specified by the given argument list.
@@ -410,7 +373,7 @@ class BuildEnvironment(object):
       ToolPathError: Make not found in configured build environment or $PATH.
     """
 
-    _check_binary('make', self.make_path)
+    BuildEnvironment._check_binary('make', self.make_path)
 
     args = [self.make_path, '-j', self.cpu_count, '-C', self.project_directory]
     if self.make_flags:
@@ -524,7 +487,7 @@ class BuildEnvironment(object):
         print 'Not cleaning, %s is not a git repo base' % gitdir
       return
 
-    _check_binary('git', self.git_path)
+    BuildEnvironment._check_binary('git', self.git_path)
 
     # Need to use git clean to take care of build output files.
     self.run_subprocess([self.git_path, '-C', self.project_directory, 'clean',
@@ -533,4 +496,3 @@ class BuildEnvironment(object):
     # may also be checked in.
     self.run_subprocess([self.git_path, '-C', self.project_directory, 'reset',
                          '--hard'])
-

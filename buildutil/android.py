@@ -15,6 +15,27 @@
 # 3. This notice may not be removed or altered from any source distribution.
 #
 
+"""Android-specific BuildEnvironment sub-module.
+
+Optional environment variables:
+
+ANT_PATH = Path to ant binary. Required if ant is not in $PATH,
+or not passed on command line.
+ANDROID_SDK_HOME = Path to the Android SDK. Required if it is not passed on the
+command line.
+NDK_HOME = Path to the Android NDK. Required if it is not in passed on the
+command line.
+"""
+
+import distutils.spawn
+import errno
+import os
+import random
+import shlex
+import shutil
+import stat
+import xml.etree.ElementTree
+import buildutil.common as common
 
 _SDK_HOME_ENV_VAR = 'ANDROID_SDK_HOME'
 _NDK_HOME_ENV_VAR = 'NDK_HOME'
@@ -29,18 +50,55 @@ _APK_PASSFILE = 'apk_passfile'
 _APK_KEYALIAS = 'apk_keyalias'
 _SIGN_APK = 'sign_apk'
 
+class XMLFile(object):
+  """XML file base class factored for testability.
 
-class AndroidManifest(object):
+  Subclasses implement process(self, etree) to process the parsed XML.
+  On error, they should raise common.ConfigurationError.
+
+  Attributes:
+    path: Path to XML file as set in initializer.
+  """
+  def __init__(self, path):
+    """Constructs the XMLFile for a specified path.
+
+    Args:
+      path: The absolute path to the manifest file.
+
+    Raises:
+      ConfigurationError: Manifest file missing.
+    """
+    if path and not os.path.exists(path):
+      raise common.ConfigurationError(path, os.strerror(errno.ENOENT))
+
+    self.path = path
+
+  def parse(self):
+    """Parse the XML file and extract useful information.
+
+    Raises:
+      ConfigurationError: Elements were missing or incorrect in the file.
+      IOError: Could not open XML file.
+    """
+    with open(self.path, 'r') as xmlfile:
+      self._parse(xmlfile)
+
+  def _parse(self, xmlfile):
+    try:
+      etree = xml.etree.ElementTree.parse(xmlfile)
+      self.process(etree)
+    except xml.etree.ElementTree.ParseError as pe:
+      raise common.ConfigurationError(self.path, 'XML parse error: ' + str(pe))
+
+
+class AndroidManifest(XMLFile):
 
   """Class that extracts build information from an AndroidManifest.xml.
 
   Attributes:
-    path: Path to manifest file as set in initializer.
     min_sdk: Minimum SDK version from the uses-sdk element.
     target_sdk: Target SDK version from the uses-sdk element, or min_sdk if it
       is not set.
-    app_name: Name taken from the android:label attribute of the application
-      element.
   """
 
   def __init__(self, path):
@@ -52,32 +110,26 @@ class AndroidManifest(object):
     Raises:
       ConfigurationError: Manifest file missing.
     """
-    if not os.path.exists(path):
-      raise ConfigurationError(path, os.strerror(errno.ENOENT))
+    super(AndroidManifest, self).__init__(path)
 
-    self.path = path
     self.min_sdk = 0
     self.target_sdk = 0
-    self.app_name = None
 
-  def parse(self):
-    """Parse the Android manifest file and extract useful information.
+  def process(self, etree):
+    """Process the parsed AndroidManifest to extract SDK version info.
+
+    Args:
+      etree: An xml.etree.ElementTree object of the parsed XML file.
 
     Raises:
-      ConfigurationError: Elements were missing or incorrect in the manifest.
+      ConfigurationError: Required elements were missing or incorrect.
     """
-    etree = None
-    try:
-      etree = xml.etree.ElementTree.parse(self.path)
-    except xml.etree.ElementTree.ParseError as pe:
-      raise ConfigurationError(self.path, 'XML parse error: ' + str(pe))
-
     root = etree.getroot()
 
     sdk_element = root.find('uses-sdk')
 
     if sdk_element is None:
-      raise ConfigurationError(self.path, 'uses-sdk element missing')
+      raise common.ConfigurationError(self.path, 'uses-sdk element missing')
 
     min_sdk_version = sdk_element.get(
         '{http://schemas.android.com/apk/res/android}minSdkVersion')
@@ -85,89 +137,73 @@ class AndroidManifest(object):
         '{http://schemas.android.com/apk/res/android}targetSdkVersion')
 
     if not min_sdk_version:
-      raise ConfigurationError(self.path, 'minSdkVersion missing')
+      raise common.ConfigurationError(self.path, 'minSdkVersion missing')
     if not target_sdk_version:
       target_sdk_version = min_sdk_version
 
     self.min_sdk = int(min_sdk_version)
     self.target_sdk = int(target_sdk_version)
 
-    app_element = root.find('application')
 
-    if app_element is None:
-      raise ConfigurationError(self.path, 'application element missing')
+class BuildXml(XMLFile):
 
-    self.app_name = app_element.get(
-        '{http://schemas.android.com/apk/res/android}label')
+  """Class that extracts build information from an ant build.xml.
 
-    if not self.app_name:
-      raise ConfigurationError(self.path, 'application tag label missing')
-
-
-def build_defaults():
-  """Helper function to set build defaults.
-
-  Returns:
-    A dict containing appropriate defaults for a build.
+  Attributes:
+    project_name: The name of the project, used by ant to name output files.
   """
-  args[_SDK_HOME] = (os.getenv(_SDK_HOME_ENV_VAR) or
-                     _find_path_from_binary('android', 2))
-  args[_NDK_HOME] = (os.getenv(_NDK_HOME_ENV_VAR) or
-                     _find_path_from_binary('ndk-build', 1))
-  args[_ANT_PATH] = (os.getenv(_ANT_PATH_ENV_VAR) or
-                     distutils.spawn.find_executable('ant'))
-  args[_ANT_FLAGS] = '-quiet'
-  args[_ANT_TARGET] = 'release'
-  args[_APK_KEYSTORE] = None
-  args[_APK_KEYALIAS] = None
-  args[_APK_PASSFILE] = None
-  args[_SIGN_APK] = False
 
-  return args
+  def __init__(self, path):
+    """Constructs the BuildXml for a specified path.
+
+    Args:
+      path: The absolute path to the build.xml file.
+
+    Raises:
+      ConfigurationError: build.xml file missing.
+    """
+    super(BuildXml, self).__init__(path)
+
+    self.project_name = None
+
+  def process(self, etree):
+    """Process the parsed build.xml to extract project info.
+
+    Args:
+      etree: An xml.etree.ElementTree object of the parsed XML file.
+
+    Raises:
+      ConfigurationError: Required elements were missing or incorrect.
+    """
+    project_element = etree.getroot()
+
+    if project_element.tag != 'project':
+      raise common.ConfigurationError(self.path, 'project element missing')
+
+    self.project_name = project_element.get('name')
+
+    if not self.project_name:
+      raise common.ConfigurationError(self.path, 'project name missing')
 
 
-def add_arguments(parser):
-  """Add module-specific command line arguments to an argparse parser.
+class BuildEnvironment(common.BuildEnvironment):
 
-  This will take an argument parser and add arguments appropriate for this
-  module. It will also set appropriate default values.
+  """Class representing an Android build environment.
 
-  Args:
-    parser: The argparse.ArgumentParser instance to use.
+  This class adds Android-specific functionality to the common
+  BuildEnvironment.
+
+  Attributes:
+    ndk_home: Path to the Android NDK, if found.
+    sdk_home: Path to the Android SDK, if found.
+    ant_path: Path to the ant binary, if found.
+    ant_flags: Flags to pass to the ant binary, if used.
+    ant_target: Ant build target name.
+    sign_apk: Enable signing of Android APKs.
+    apk_keystore: Keystore file path to use when signing an APK.
+    apk_keyalias: Alias of key to use when signing an APK.
+    apk_passfile: Path to file containing a password to use when signing an APK.
   """
-  defaults = build_defaults()
-
-  parser.add_argument('-n', '--' + _NDK_HOME,
-                      help='Path to Android NDK', dest=_NDK_HOME,
-                      default=defaults[_NDK_HOME])
-  parser.add_argument('-s', '--' + _SDK_HOME,
-                      help='Path to Android SDK', dest=_SDK_HOME,
-                      default=defaults[_SDK_HOME])
-  parser.add_argument('-a', '--' + _ANT_PATH,
-                      help='Path to ant binary', dest=_ANT_PATH,
-                      default=defaults[_ANT_PATH])
-  parser.add_argument('-A', '--' + _ANT_FLAGS,
-                      help='Flags to use to override ant flags',
-                      dest=_ANT_FLAGS, default=defaults[_ANT_FLAGS])
-  parser.add_argument('-T', '--' + _ANT_TARGET,
-                      help='Target to use for ant build',
-                      dest=_ANT_TARGET, default=defaults[_ANT_TARGET])
-  parser.add_argument('-k', '--' + _APK_KEYSTORE,
-                      help='Path to keystore to use when signing an APK',
-                      dest=_APK_KEYSTORE, default=defaults[_APK_KEYSTORE])
-  parser.add_argument('-K', '--' + _APK_KEYALIAS,
-                      help='Key alias to use when signing an APK',
-                      dest=_APK_KEYALIAS, default=defaults[_APK_KEYALIAS])
-  parser.add_argument('-P', '--' + _APK_PASSFILE,
-                      help='Path to file containing signing keystore password',
-                      dest=_APK_PASSFILE, default=defaults[_APK_PASSFILE])
-  parser.add_argument(
-      '-S', '--' + _SIGN_APK,
-      help='Enable signing of Android APKs',
-      dest=_SIGN_APK, action='store_true', default=defaults[_SIGN_APK])
-
-
-class BuildEnvironment(object):
 
   def __init__(self, arguments):
     """Constructs the BuildEnvironment with basic information needed to build.
@@ -177,12 +213,14 @@ class BuildEnvironment(object):
 
     It is required to call this function with a valid arguments object,
     obtained either by calling argparse.ArgumentParser.parse_args() after
-    adding this modules arguments via buildutils.add_arguments(), or by passing
-    in an object returned from buildutils.build_defaults().
+    adding this modules arguments via BuildEnvironment.add_arguments(), or
+    by passing in an object returned from BuildEnvironment.build_defaults().
 
     Args:
       arguments: The argument object returned from ArgumentParser.parse_args().
     """
+
+    super(BuildEnvironment, self).__init__(arguments)
 
     if type(arguments) is dict:
       args = arguments
@@ -198,6 +236,75 @@ class BuildEnvironment(object):
     self.apk_keystore = args[_APK_KEYSTORE]
     self.apk_keyalias = args[_APK_KEYALIAS]
     self.apk_passfile = args[_APK_PASSFILE]
+
+  @staticmethod
+  def build_defaults():
+    """Helper function to set build defaults.
+
+    Returns:
+      A dict containing appropriate defaults for a build.
+    """
+    args = common.BuildEnvironment.build_defaults()
+
+    args[_SDK_HOME] = (os.getenv(_SDK_HOME_ENV_VAR) or
+                       common.BuildEnvironment._find_path_from_binary(
+                           'android', 2))
+    args[_NDK_HOME] = (os.getenv(_NDK_HOME_ENV_VAR) or
+                       common.BuildEnvironment._find_path_from_binary(
+                           'ndk-build', 1))
+    args[_ANT_PATH] = (os.getenv(_ANT_PATH_ENV_VAR) or
+                       distutils.spawn.find_executable('ant'))
+    args[_ANT_FLAGS] = '-quiet'
+    args[_ANT_TARGET] = 'release'
+    args[_APK_KEYSTORE] = None
+    args[_APK_KEYALIAS] = None
+    args[_APK_PASSFILE] = None
+    args[_SIGN_APK] = False
+
+    return args
+
+  @staticmethod
+  def add_arguments(parser):
+    """Add module-specific command line arguments to an argparse parser.
+
+    This will take an argument parser and add arguments appropriate for this
+    module. It will also set appropriate default values.
+
+    Args:
+      parser: The argparse.ArgumentParser instance to use.
+    """
+    defaults = BuildEnvironment.build_defaults()
+
+    common.BuildEnvironment.add_arguments(parser)
+
+    parser.add_argument('-n', '--' + _NDK_HOME,
+                        help='Path to Android NDK', dest=_NDK_HOME,
+                        default=defaults[_NDK_HOME])
+    parser.add_argument('-s', '--' + _SDK_HOME,
+                        help='Path to Android SDK', dest=_SDK_HOME,
+                        default=defaults[_SDK_HOME])
+    parser.add_argument('-a', '--' + _ANT_PATH,
+                        help='Path to ant binary', dest=_ANT_PATH,
+                        default=defaults[_ANT_PATH])
+    parser.add_argument('-A', '--' + _ANT_FLAGS,
+                        help='Flags to use to override ant flags',
+                        dest=_ANT_FLAGS, default=defaults[_ANT_FLAGS])
+    parser.add_argument('-T', '--' + _ANT_TARGET,
+                        help='Target to use for ant build',
+                        dest=_ANT_TARGET, default=defaults[_ANT_TARGET])
+    parser.add_argument('-k', '--' + _APK_KEYSTORE,
+                        help='Path to keystore to use when signing an APK',
+                        dest=_APK_KEYSTORE, default=defaults[_APK_KEYSTORE])
+    parser.add_argument('-K', '--' + _APK_KEYALIAS,
+                        help='Key alias to use when signing an APK',
+                        dest=_APK_KEYALIAS, default=defaults[_APK_KEYALIAS])
+    parser.add_argument('-P', '--' + _APK_PASSFILE,
+                        help='Path to file containing keystore password',
+                        dest=_APK_PASSFILE, default=defaults[_APK_PASSFILE])
+    parser.add_argument(
+        '-S', '--' + _SIGN_APK,
+        help='Enable signing of Android APKs',
+        dest=_SIGN_APK, action='store_true', default=defaults[_SIGN_APK])
 
   def build_android_libraries(self, subprojects, output=None):
     """Build list of Android library projects.
@@ -218,7 +325,7 @@ class BuildEnvironment(object):
     ndk_build = None
     if self.ndk_home:
       ndk_build = os.path.join(self.ndk_home, 'ndk-build')
-    _check_binary('ndk-build', ndk_build)
+    common.BuildEnvironment._check_binary('ndk-build', ndk_build)
 
     for p in subprojects:
       args = [ndk_build, '-B', '-j', self.cpu_count,
@@ -244,6 +351,10 @@ class BuildEnvironment(object):
     level installed that is greater than the specified minsdk, up to the
     target sdk level. Return it as an API level string.
 
+    Otherwise, if the minimum installed SDK is greater than the
+    targetSdkVersion, return the maximum installed SDK version, or raise a
+    ConfigurationError if no installed SDK meets the min SDK.
+
     Args:
       android: Path to android tool binary.
       minsdk: Integer minimum SDK level.
@@ -260,11 +371,12 @@ class BuildEnvironment(object):
           in an unrecoverable way.
     """
     acmd = [android, 'list', 'target', '--compact']
-    (stdout, unused_stderr) = self.run_subprocess(acmd, True)
+    (stdout, unused_stderr) = self.run_subprocess(acmd, capture=True)
 
     if self.verbose:
       print 'android list target returned: {%s}' % (stdout)
-    # Find the highest installed SDK <= targetSdkVersion.
+    # Find the highest installed SDK <= targetSdkVersion, if possible.
+    #
     # 'android list target --compact' will output lines like:
     #
     # android-1
@@ -278,7 +390,7 @@ class BuildEnvironment(object):
       if l.startswith('android-'):
         nstr = l.split('-')[1]
         n = (int(nstr))
-        if n > installed and n <= target:
+        if n > installed:
           if self.verbose:
             print 'sdk api level %d found' % (n)
           installed = n
@@ -286,10 +398,10 @@ class BuildEnvironment(object):
           break
 
     if installed < minsdk:
-      raise ConfigurationError(self.sdk_home,
-                               ('Project requires Android SDK %d, '
-                                'but only found up to %d' %
-                                (minsdk, installed)))
+      raise common.ConfigurationError(self.sdk_home,
+                                      ('Project requires Android SDK %d, '
+                                       'but only found up to %d' %
+                                       (minsdk, installed)))
 
     apitarget = 'android-%d' % (installed)
     return apitarget
@@ -319,10 +431,10 @@ class BuildEnvironment(object):
       IOError: An error occurred writing or copying the APK.
     """
     ant = self.ant_path
-    _check_binary('ant', ant)
+    common.BuildEnvironment._check_binary('ant', ant)
 
     android = os.path.join(self.sdk_home, 'tools', 'android')
-    _check_binary('android', android)
+    common.BuildEnvironment._check_binary('android', android)
 
     self.build_android_libraries([path])
 
@@ -333,12 +445,25 @@ class BuildEnvironment(object):
     manifest = AndroidManifest(manifest_path)
     manifest.parse()
 
-    if not os.path.exists(os.path.join(project, 'build.xml')):
+    buildxml_path = os.path.join(project, 'build.xml')
+
+    app_name = ''
+
+    # If no build.xml exists, create one for the project in the directory
+    # we are currently building.
+    if not os.path.exists(buildxml_path):
+      app_name = os.path.basename(project) + '_app'
       apitarget = self._find_best_android_sdk(android, manifest.min_sdk,
                                               manifest.target_sdk)
       acmd = [android, 'update', 'project', '--path', project,
-              '--target', apitarget, '--name', manifest.app_name]
+              '--target', apitarget, '--name', app_name]
       self.run_subprocess(acmd)
+
+    buildxml = BuildXml(buildxml_path)
+    buildxml.parse()
+
+    # Set to value in build.xml, which may have just been updated
+    app_name = buildxml.project_name
 
     acmd = [ant, self.ant_target]
 
@@ -348,12 +473,12 @@ class BuildEnvironment(object):
     self.run_subprocess(acmd, cwd=path)
 
     # ant outputs to $PWD/bin. The APK will have a name as constructed below.
-    apkname = '%s-%s-unsigned.apk' % (manifest.app_name, self.ant_target)
+    apkname = '%s-%s-unsigned.apk' % (app_name, self.ant_target)
     apkpath = os.path.join(project, 'bin', apkname)
     source_apkpath = apkpath
 
     if self.sign_apk:
-      signed_apkname = '%s.apk' % manifest.app_name
+      signed_apkname = '%s.apk' % app_name
       signed_apkpath = os.path.join(project, 'bin', signed_apkname)
       source_apkpath = signed_apkpath
       self._sign_apk(apkpath, signed_apkpath)
@@ -401,17 +526,17 @@ class BuildEnvironment(object):
         # If the user specifies any of these, they need to specify them all,
         # otherwise we may overwrite one of them.
         if keystore:
-          raise ConfigurationError(keystore,
-                                   ('Must specify all of keystore, '
-                                    'password file, and alias'))
+          raise common.ConfigurationError(keystore,
+                                          ('Must specify all of keystore, '
+                                           'password file, and alias'))
         if passfile:
-          raise ConfigurationError(passfile,
-                                   ('Must specify all of keystore, '
-                                    'password file, and alias'))
+          raise common.ConfigurationError(passfile,
+                                          ('Must specify all of keystore, '
+                                           'password file, and alias'))
         if alias:
-          raise ConfigurationError(alias,
-                                   ('Must specify all of keystore, '
-                                    'password file, and alias'))
+          raise common.ConfigurationError(alias,
+                                          ('Must specify all of keystore, '
+                                           'password file, and alias'))
         ephemeral = True
         keystore = source + '.keystore'
         passfile = source + '.password'
@@ -420,11 +545,11 @@ class BuildEnvironment(object):
                  (keystore, passfile))
         with open(passfile, 'w') as pf:
           os.fchmod(pf.fileno(), stat.S_IRUSR | stat.S_IWUSR)
-          pf.write('%08x' % (random.random() * 16**8))
+          pf.write('%08x' % (random.random() * 16 ** 8))
 
         alias = os.path.basename(source).split('.')[0]
         keytool = distutils.spawn.find_executable('keytool')
-        _check_binary('keytool', keytool)
+        common.BuildEnvironment._check_binary('keytool', keytool)
         acmd = ['keytool', '-genkey', '-v', '-dname',
                 'cn=, ou=%s, o=fpl' % (alias), '-storepass:file', passfile,
                 '-keypass:file', passfile, '-keystore', keystore, '-alias',
@@ -448,7 +573,7 @@ class BuildEnvironment(object):
       # See:
       # http://developer.android.com/tools/help/zipalign.html
       zipalign = os.path.join(self.sdk_home, 'tools', 'zipalign')
-      _check_binary('zipalign', zipalign)
+      BuildEnvironment._check_binary('zipalign', zipalign)
 
       acmd = [zipalign, '-f']
       if self.verbose:
