@@ -15,12 +15,14 @@
 * misrepresented as being the original software.
 * 3. This notice may not be removed or altered from any source distribution.
 */
-#include "AndroidMainWrapper.h"
-#include <jni.h>
-#include "AndroidLogPrint.h"
-#include <pthread.h>
+#include <android_native_app_glue.h>
+#include <android/log.h>
 #include <assert.h>
+#include <jni.h>
+#include <pthread.h>
 #include <unistd.h>
+#include <stdio.h>
+#include "fplutil/main.h"
 
 // See android.app.Activity.
 enum AndroidAppActivityResults {
@@ -29,16 +31,15 @@ enum AndroidAppActivityResults {
   ANDROID_APP_ACTIVITY_RESULT_OK = -1,
 };
 
-struct android_app* gApp = 0;
-pthread_t gMainTID;
+static struct android_app* gApp = 0;
+static pthread_t gMainTID;
 
 //
 // Wait for and process any pending Android events from NativeActivity.
 //
-void IdleAndroid(int msec)
+void ProcessAndroidEvents(int msec)
 {
-#ifdef USE_NATIVE_APP_GLUE
-  if (pthread_main_np()) {
+  if (pthread_equal(pthread_self(), gMainTID)) {
     struct android_poll_source* source = NULL;
     int events;
     int looperId = ALooper_pollAll(msec, NULL, &events, (void**)&source);
@@ -47,23 +48,10 @@ void IdleAndroid(int msec)
         source->process(gApp, source);
     }
   } else {
-    ANDROID_LOG_ERROR("ERROR - idle attempt on non-main thread...");
+    __android_log_print(ANDROID_LOG_ERROR, "fplutil",
+        "Attempted to call ProcessAndroidEvents() from non-main thread");
     assert(0);
   }
-#else  // USE_NATIVE_APP_GLUE
-  while (msec < 0) {
-    pause();
-  }
-#endif // USE_NATIVE_APP_GLUE
-}
-
-
-
-#ifdef USE_NATIVE_APP_GLUE
-
-int pthread_main_np()
-{
-  return pthread_equal(pthread_self(), gMainTID);
 }
 
 // Android native activity entry point.
@@ -71,12 +59,14 @@ void android_main(struct android_app* state) {
   // Make sure android native glue isn't stripped.
   app_dummy();
 
+  // Set state variables for ProcessAndroidEvents().
   gApp = state;
   gMainTID = pthread_self();
 
-  static const char * const argv[] = {ANDROID_LOG_PRINT_TAG_STRING};
+  static char *argv[] = {"AndroidApp"};
   int result = main(1, argv);
 
+  // Pass the return code from main back to the Activity.
   ANativeActivity * const activity = state->activity;
   {
     jobject nativeActivityObject = activity->clazz;
@@ -95,6 +85,7 @@ void android_main(struct android_app* state) {
     (*javaVm)->DetachCurrentThread(javaVm);
   }
 
+  // Finish the activity and exit the app.
   for ( ; ; ) {
     struct android_poll_source* source = NULL;
     int looperId;
@@ -126,4 +117,3 @@ void android_main(struct android_app* state) {
   }
 }
 
-#endif // USE_NATIVE_APP_GLUE

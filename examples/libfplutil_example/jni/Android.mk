@@ -15,18 +15,15 @@
 # 3. This notice may not be removed or altered from any source distribution.
 LOCAL_PATH:=$(call my-dir)/..
 
+# --- project ---
 include $(CLEAR_VARS)
-LOCAL_MODULE:=libandroid_util
-LOCAL_SRC_FILES:=\
-	$(LOCAL_PATH)/src/AndroidLogPrint.c \
-	$(LOCAL_PATH)/src/AndroidMainWrapper.c
-LOCAL_C_INCLUDES:=\
-	$(LOCAL_PATH)/include \
-	$(NDK_ROOT)/sources/android/native_app_glue
-LOCAL_EXPORT_C_INCLUDES:=$(LOCAL_PATH)/include
-LOCAL_CFLAGS:=-fPIC -std=c99 -Wall -Wextra -W -pedantic -Wno-unused-parameter
+LOCAL_MODULE:=LibFPLUtilExample
+LOCAL_SRC_FILES:=$(LOCAL_PATH)/main.c
+LOCAL_WHOLE_STATIC_LIBRARIES:=android_native_app_glue libfplutil_main \
+	libfplutil_print
+LOCAL_LDLIBS:=-llog -landroid
 LOCAL_ARM_MODE:=arm
-LOCAL_STATIC_LIBRARIES:=android_native_app_glue
-include $(BUILD_STATIC_LIBRARY)
+include $(BUILD_SHARED_LIBRARY)
 
-$(call import-module, native_app_glue)
+$(call import-module,native_app_glue)
+$(call import-module,libfplutil/jni)

@@ -23,9 +23,11 @@ Run 'build.py --help' for options.
 """
 
 import argparse
+import os
 import sys
 
-sys.path.append('../../..')
+# sys.path[0] points to the script directory, when available.
+sys.path.append(os.path.join(sys.path[0], '..', '..', '..'))
 
 import buildutil.common
 import buildutil.linux
