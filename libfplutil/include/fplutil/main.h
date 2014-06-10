@@ -15,66 +15,53 @@
 * misrepresented as being the original software.
 * 3. This notice may not be removed or altered from any source distribution.
 */
-#ifndef ANDROID_MAIN_WRAPPER_H
-#define ANDROID_MAIN_WRAPPER_H
+#ifndef FPLUTIL_MAIN_H
+#define FPLUTIL_MAIN_H
 
-// This includes functionality to calls a standard C main() from the
-// Android's NativeActivity entry point android_main().
+// Linking this library adds functionality to call a standard C main() from
+// Android's NativeActivity NDK entry point, android_main(). This helps
+// you by by making it very easy to resuse existing programs with a C main()
+// entry point.
 //
-// For example:
+// For example, this code:
 //
-// #include "AndroidMainWrapper.h"
+// #include "fplutil/main.h"
 //
 // int main(int argc, char **argv) {
 //   ... do stuff ...
 //   return 0;
 // }
 //
-// Will "do stuff" and exit the NativeActivity on return from main().
+// will launch, "do stuff", and exit the NativeActivity on return from main().
+// The android_main() is implemented inside this library for you.
+//
+// If "do stuff" requires nontrivial amounts of time, such as entering a main
+// loop and looping forever, then it is advisable to add a call the
+// ProcessAndroidEvents() function below periodically, which will minimally
+// service events on the native activity looper.
+//
 // For more information see ndk/sources/android/native_app_glue.
 
 #if defined(ANDROID) || defined(__ANDROID__)
-#include <android_native_app_glue.h>
 
 #if defined(__cplusplus)
 extern "C" {
 #endif  // defined(__cplusplus)
 
-#if !defined(USE_NATIVE_APP_GLUE)
-#define USE_NATIVE_APP_GLUE 1
-#endif // !defined(USE_NATIVE_APP_GLUE)
-
-#if USE_NATIVE_APP_GLUE
 // This should be implemented by the application including this header.
 extern int main(int argc, char** argv);
-// Nonportable pthread function available on some platforms that returns nonzero
-// if the calling thread is the main thread.  This is used in
-// libdispatch/queue.c.  It is optional.
-int pthread_main_np();
-// Avoid redefining this as it has been set in config.h to the platform default.
-#undef HAVE_PTHREAD_MAIN_NP
-#define HAVE_PTHREAD_MAIN_NP 1
-#endif // USE_NATIVE_APP_GLUE
 
-// Service android events on the main NativeActivity thread ALooper.
-//
-// If the application was compiled using native_app_glue's android_main()
-// support, we need to poll the thread's ALooper periodically to process
-// events from Android event sources.
+// Process android events on the main NativeActivity thread ALooper.
 //
 // This waits for and processes any pending events from the Android SDK being
 // passed into the NDK. The call will block up to maxWait milliseconds for
 // pending Android events.  0 returns immediately, -1 blocks indefinitely until
 // an event arrives.
-//
-// If the application was compiled to NOT use the android_main() glue, then
-// this call returns immediately for maxWait >= 0, and blocks forever if
-// maxWait < 0.
-void IdleAndroid(int maxWait);
+void ProcessAndroidEvents(int maxWait);
 
 #if defined(__cplusplus)
 }
 #endif  // defined(__cplusplus)
 
 #endif // defined(ANDROID) || defined(__ANDROID__)
-#endif // ANDROID_MAIN_WRAPPER_H
+#endif // FPLUTIL_MAIN_H

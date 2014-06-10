@@ -17,7 +17,7 @@
 
 """Android automated build script.
 
-This script may be used for turnkey android builds of xdispatch.
+This script may be used for turnkey android builds of fplutil.
 
 Optional environment variables:
 
@@ -34,25 +34,41 @@ import argparse
 import os
 import sys
 
-sys.path.append(os.getcwd())
+# sys.path[0] points to the script directory, when available.
+sys.path.append(os.path.join(sys.path[0], '..'))
+
 import buildutil.android
 import buildutil.common
 
+GOOGLETEST_DEFAULT_PATH = os.path.abspath('..')
 
 def main():
   parser = argparse.ArgumentParser()
   buildutil.android.BuildEnvironment.add_arguments(parser)
+
+  parser.add_argument('-G', '--gtest_path',
+                        help='Path to Google Test', dest='gtest_path',
+                        default=GOOGLETEST_DEFAULT_PATH)
+
   args = parser.parse_args()
 
   retval = -1
 
   env = buildutil.android.BuildEnvironment(args)
 
+  gtest_arg = 'GOOGLETEST_PATH="%s"' % args.gtest_path
+  if env.make_flags:
+    env.make_flags = '%s %s' % (env.make_flags, gtest_arg)
+  else:
+    env.make_flags = gtest_arg
+
   try:
     env.git_clean()
-    env.build_android_libraries(['libandroid_util'], output='libs')
-    env.make_archive(['libs', 'libandroid_util/include'], 'output.zip',
-      exclude=['objs', 'objs-debug'])
+    env.build_android_libraries(['libfplutil'], output='libs')
+    env.build_android_apk(path='examples/libfplutil_example', output='apks')
+    env.build_android_apk(path='libfplutil/tests', output='apks')
+    env.make_archive(['libs', 'apks', 'libfplutil/include',
+      'libfplutil/jni'], 'output.zip', exclude=['objs', 'objs-debug'])
     retval = 0
 
   except buildutil.common.Error as e:
