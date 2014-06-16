@@ -248,7 +248,9 @@ def run_perf_remotely(adb_device, apk_directory, perf_args, output_file):
   """
   android_perf = find_binary('perf')
   android_perf_remote = '/data/local/tmp/perf'
-  perf_command = perf_args[0]
+  perf_command = ''
+  if len(perf_args) > 0:
+    perf_command = perf_args[0]
 
   process = subprocess.Popen(
       'adb %s push %s %s' % (adb_device, android_perf, android_perf_remote),
@@ -258,6 +260,12 @@ def run_perf_remotely(adb_device, apk_directory, perf_args, output_file):
   name = MANIFEST_NAME
   if apk_directory:
     name = apk_directory + '/' + MANIFEST_NAME
+  if not os.path.isfile(name):
+    print >> sys.stderr, (
+        'Cannot find Manifest %s, please specify the directory where the '
+        'manifest is located with --apk-directory.') % name
+    return 1
+
   package_name = get_package_name_from_manifest(name)
 
   # Deal with starting the package and retrieving the data
@@ -356,7 +364,9 @@ def main():
   parser.add_argument('-o', '--output-file')
 
   args, perf_args = parser.parse_known_args()
-  perf_command = perf_args[0]
+  perf_command = ''
+  if len(perf_args) > 0:
+    perf_command = perf_args[0]
   # Define the adb device string that is needed for passing to adb shell
   adb_device = ''
   if args.adb_device:
