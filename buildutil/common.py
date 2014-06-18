@@ -147,6 +147,23 @@ class ConfigurationError(Error):
     self._error_code = ConfigurationError.CODE
 
 
+class AdbError(Error):
+
+  """Exception class related to missing or broken adb connections."""
+
+  CODE = 4
+
+  def __init__(self, error):
+    """Initializes exception with error message.
+
+    Args:
+      error: The specific error to report.
+    """
+    super(ConfigurationError, self).__init__()
+    self._error_message = 'Error with adb connection: %s' % (error)
+    self._error_code = ConfigurationError.CODE
+
+
 class BuildEnvironment(object):
 
   """Class representing the build environment we will be building in.
@@ -318,7 +335,7 @@ class BuildEnvironment(object):
     if not path or not os.path.exists(path):
       raise ToolPathError(name, path)
 
-  def run_subprocess(self, argv, capture=False, cwd=None):
+  def run_subprocess(self, argv, capture=False, cwd=None, shell=False):
     """Run a subprocess as specified by the given argument list.
 
     Runs a process via popen().
@@ -329,6 +346,7 @@ class BuildEnvironment(object):
       capture: Boolean to control if output is captured or not.
       cwd: Optional path relative to the project directory to run process in
         for commands that do not allow specifying this, such as ant.
+      shell: Optional argument to tell subprocess to allow for shell features.
     Returns:
       A tuple of (stdout, stderr), or (None, None) if capture=False.
 
@@ -346,10 +364,10 @@ class BuildEnvironment(object):
     stderr = None
     if capture:
       process = subprocess.Popen(args=argv, bufsize=-1, stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, cwd=cwd)
+                                 stderr=subprocess.PIPE, shell=shell, cwd=cwd)
       (stdout, stderr) = process.communicate()
     else:
-      process = subprocess.Popen(argv, cwd=cwd)
+      process = subprocess.Popen(argv, shell=shell, cwd=cwd)
       process.wait()
 
     if process.returncode or self.verbose:

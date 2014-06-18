@@ -34,6 +34,7 @@ import shutil
 import stat
 import xml.etree.ElementTree
 import buildutil.common as common
+import re
 
 _SDK_HOME_ENV_VAR = 'ANDROID_SDK_HOME'
 _NDK_HOME_ENV_VAR = 'NDK_HOME'
@@ -49,6 +50,8 @@ _APK_KEYALIAS = 'apk_keyalias'
 _SIGN_APK = 'sign_apk'
 _MANIFEST_FILE = 'AndroidManifest.xml'
 _NDK_MAKEFILE = 'Android.mk'
+
+_MATCH_DEVICES = re.compile(r'^(List of devices attached\s*\n)|(\n)$')
 
 
 class XMLFile(object):
@@ -101,6 +104,8 @@ class AndroidManifest(XMLFile):
     min_sdk: Minimum SDK version from the uses-sdk element.
     target_sdk: Target SDK version from the uses-sdk element, or min_sdk if it
       is not set.
+    package_name: Name of the package.
+    activity_name: Name of the activity from the android:name element.
   """
 
   def __init__(self, path):
@@ -116,6 +121,8 @@ class AndroidManifest(XMLFile):
 
     self.min_sdk = 0
     self.target_sdk = 0
+    self.package_name = ''
+    self.activity_name = ''
 
   def process(self, etree):
     """Process the parsed AndroidManifest to extract SDK version info.
@@ -128,6 +135,8 @@ class AndroidManifest(XMLFile):
     """
     root = etree.getroot()
 
+    self.package_name = root.get('package')
+
     sdk_element = root.find('uses-sdk')
 
     if sdk_element is None:
@@ -138,10 +147,20 @@ class AndroidManifest(XMLFile):
     target_sdk_version = sdk_element.get(
         '{http://schemas.android.com/apk/res/android}targetSdkVersion')
 
+    app_element = root.find('application')
+    activity_element = app_element.find('activity')
+
+    self.activity_name = activity_element.get(
+        '{http://schemas.android.com/apk/res/android}name')
+
     if not min_sdk_version:
       raise common.ConfigurationError(self.path, 'minSdkVersion missing')
     if not target_sdk_version:
       target_sdk_version = min_sdk_version
+    if not self.package_name:
+      raise common.ConfigurationError(self.path, 'package missing')
+    if not self.activity_name:
+      raise common.ConfigurationError(self.path, 'activity android:name missing')
 
     self.min_sdk = int(min_sdk_version)
     self.target_sdk = int(target_sdk_version)
@@ -667,3 +686,62 @@ class BuildEnvironment(common.BuildEnvironment):
 
     return (retval, errmsg)
 
+  def _check_adb_devices(self):
+    """Verifies that only one device is connected.
+
+    Raises:
+      AdbError: Incorrect number of connected devices.
+    """
+    out = self.run_subprocess('adb devices -l', capture=True, shell=True)[0]
+
+    number_of_devices = len(_MATCH_DEVICES.sub(r'', out).splitlines())
+
+    if number_of_devices == 0:
+      raise AdbError('No Android devices are connected to this host.');
+
+    if number_of_devices > 1:
+      raise AdbError(
+        'Multiple Android devices are connected to this host. '
+        'Please specify a device using --adb-device <serial>. '
+        'The devices connected are: %s' % (os.linesep + out))
+
+  def run_android_apk(self, adb_device=None, wait=True):
+    """Run an android apk on the given device.
+
+    Args:
+      adb_device: The device to run the apk on. If none it will use the only
+        device connected.
+      wait: Optional argument to tell the function to wait until the process
+        completes and dump the output.
+    """
+    project = os.path.abspath(self.project_directory)
+    manifest_path = os.path.join(project, 'AndroidManifest.xml')
+
+    manifest = AndroidManifest(manifest_path)
+    manifest.parse()
+
+    full_name = "%s/%s" % (manifest.package_name, manifest.activity_name)
+    if not adb_device:
+      self._check_adb_devices()
+      adb_device = ''
+
+    self.run_subprocess('adb %s logcat -c' % adb_device, shell=True)
+
+    self.run_subprocess(
+      ('adb %s shell am start -S -n %s' % (adb_device, full_name)), shell=True)
+
+    end_match = re.compile((r'.*(Displayed|Activity destroy timeout).*%s.*' %
+                            full_name))
+
+    while wait:
+      # Use logcat -d so that it can be parsed easily in order to determine when
+      # the process ends. An alternative is to read the stream as it gets
+      # written but this leads to delays in reading the stream and is difficult
+      # to get working propery on windows.
+      out, err = self.run_subprocess( ('adb %s logcat -d' % adb_device),
+                                     capture=True, shell=True)
+
+      for line in out.splitlines():
+        if end_match.match(line):
+          print out
+          wait = False
