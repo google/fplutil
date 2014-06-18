@@ -49,6 +49,8 @@ _APK_KEYSTORE = 'apk_keystore'
 _APK_PASSFILE = 'apk_passfile'
 _APK_KEYALIAS = 'apk_keyalias'
 _SIGN_APK = 'sign_apk'
+_MANIFEST_FILE = 'AndroidManifest.xml'
+_NDK_MAKEFILE = 'Android.mk'
 
 class XMLFile(object):
   """XML file base class factored for testability.
@@ -440,7 +442,7 @@ class BuildEnvironment(common.BuildEnvironment):
 
     project = os.path.abspath(os.path.join(self.project_directory, path))
 
-    manifest_path = os.path.join(project, 'AndroidManifest.xml')
+    manifest_path = os.path.join(project, _MANIFEST_FILE)
 
     manifest = AndroidManifest(manifest_path)
     manifest.parse()
@@ -589,3 +591,78 @@ class BuildEnvironment(common.BuildEnvironment):
           os.unlink(keystore)
         if os.path.exists(passfile):
           os.unlink(passfile)
+
+  def build_all(self, path='.', apk_output='apks', lib_output='libs',
+                exclude_dirs=None):
+    """Locate and build all Android sub-projects as appropriate.
+
+    This function will recursively scan a directory tree for Android library
+    and application projects and build them with the current build defaults.
+    This will not work for projects which only wish for subsets to be built
+    or have complicated external manipulation of makefiles and manifests, but
+    it should handle the majority of projects as a reasonable default build.
+
+    Args:
+      path: Optional path to start the search in, defaults to '.'.
+      apk_output: Optional path to apk output directory, default is 'apks'.
+      lib_output: Optional path to library output directory, default is 'libs'.
+      exclude_dirs: Optional list of directory names to exclude from project
+                    detection in addition to:
+                    [apk_output, lib_output, 'bin', 'obj', 'res'],
+                    which are always excluded.
+    Returns:
+      (retval, errmsg) tuple of an integer return value suitable for returning
+      to the invoking shell, and an error string (if any) or None (on success).
+    """
+
+    retval = 0
+    errmsg = None
+    project = os.path.abspath(os.path.join(self.project_directory, path))
+
+    apk_dir_set = set()
+    module_dir_set = set()
+
+    # Exclude paths where buildutil or ndk-build may generate or copy files.
+    exclude = [apk_output, lib_output, 'bin', 'obj', 'res']
+
+    if type(exclude_dirs) is list:
+      exclude += exclude_dirs
+
+    for root, dirs, files in os.walk(project):
+      for ex in exclude:
+        if ex in dirs:
+          dirs.remove(ex)
+      if _MANIFEST_FILE in files:
+        apk_dir_set.add(root)
+      if _NDK_MAKEFILE in files:
+        p = root
+        # Handle the use or nonuse of the jni subdir.
+        if os.path.basename(p) == 'jni':
+          p = os.path.dirname(p)
+        module_dir_set.add(p)
+
+    # Set difference, remove anything in apks from libs.
+    module_dir_set = module_dir_set.difference(apk_dir_set)
+
+    apk_dirs = list(apk_dir_set)
+    lib_dirs = list(module_dir_set)
+
+    if self.verbose:
+      print 'Found APK projects in: %s' % str(apk_dirs)
+      print 'Found library projects in: %s' % str(lib_dirs)
+
+    try:
+      self.build_android_libraries(lib_dirs, output=lib_output)
+      for apk in apk_dirs:
+        self.build_android_apk(path=apk, output=apk_output)
+      retval = 0
+
+    except common.Error as e:
+      errmsg = 'Caught buildutil error: %s' % e.error_message
+      retval = e.error_code
+
+    except IOError as e:
+      errmsg = 'Caught IOError for file %s: %s' % (e.filename, e.strerror)
+      retval = -1
+
+    return (retval, errmsg)

@@ -39,34 +39,23 @@ def main():
   buildutil.android.BuildEnvironment.add_arguments(parser)
   args = parser.parse_args()
 
-  retval = -1
-
   env = buildutil.android.BuildEnvironment(args)
 
-  try:
-    env.git_clean()
+  env.git_clean()
 
-    # Copy one of the NDK samples here and build it
-    samplename = 'native-plasma'
-    samplepath = os.path.join(env.ndk_home, 'samples', samplename)
-    shutil.rmtree(samplename, True)
-    shutil.copytree(samplepath, samplename)
+  # Copy one of the NDK samples here and build it
+  samplename = 'native-plasma'
+  samplepath = os.path.join(env.ndk_home, 'samples', samplename)
+  shutil.rmtree(samplename, True)
+  shutil.copytree(samplepath, samplename)
 
-    env.build_android_apk(path=samplename, output='apk')
-    env.make_archive(['apk'], 'output.zip', exclude=['objs', 'objs-debug'])
+  (rc, errmsg) = env.build_all()
+  if (rc == 0):
+    env.make_archive(['apks'], 'output.zip', exclude=['objs', 'objs-debug'])
+  else:
+    print >> sys.stderr, errmsg
 
-    retval = 0
-
-  except buildutil.common.Error as e:
-    print >> sys.stderr, 'Caught buildutil error: %s' % e.error_message
-    retval = e.error_code
-
-  except IOError as e:
-    print >> sys.stderr, 'Caught IOError for file %s: %s' % (e.filename,
-                                                             e.strerror)
-    retval = -1
-
-  return retval
+  return rc
 
 if __name__ == '__main__':
   sys.exit(main())

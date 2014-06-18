@@ -15,19 +15,13 @@
 # misrepresented as being the original software.
 # 3. This notice may not be removed or altered from any source distribution.
 
-"""Android automated build script.
+"""Simple Android build script that builds everything recursively.
 
-This script may be used for turnkey android builds of fplutil.
+This script will build all Android projects and libraries under the current
+directory with the build settings specified on the command line, or the defaults
+for those not specified.
 
-Optional environment variables:
-
-ANDROID_SDK_HOME = Path to the Android SDK. Required if it is not passed on the
-command line.
-NDK_HOME = Path to the Android NDK. Required if it is not in passed on the
-command line.
-MAKE_FLAGS = String to override the default make flags with for ndk-build.
-ANT_PATH = Path to ant executable. Required if it is not in $PATH or passed on
-the command line.
+Run 'build_all_android.py --help' for options.
 """
 
 import argparse
@@ -40,32 +34,16 @@ sys.path.append(os.path.join(sys.path[0], '..'))
 import buildutil.android
 import buildutil.common
 
-GOOGLETEST_DEFAULT_PATH = os.path.abspath('..')
 
 def main():
   parser = argparse.ArgumentParser()
   buildutil.android.BuildEnvironment.add_arguments(parser)
-
-  parser.add_argument('-G', '--gtest_path',
-                        help='Path to Google Test', dest='gtest_path',
-                        default=GOOGLETEST_DEFAULT_PATH)
-
   args = parser.parse_args()
 
   env = buildutil.android.BuildEnvironment(args)
 
-  gtest_arg = 'GOOGLETEST_PATH="%s"' % args.gtest_path
-  if env.make_flags:
-    env.make_flags = '%s %s' % (env.make_flags, gtest_arg)
-  else:
-    env.make_flags = gtest_arg
-
-  env.git_clean()
   (rc, errmsg) = env.build_all()
-  if (rc == 0):
-    env.make_archive(['libs', 'apks', 'libfplutil/include',
-      'libfplutil/jni'], 'output.zip', exclude=['objs', 'objs-debug'])
-  else:
+  if (rc != 0):
     print >> sys.stderr, errmsg
 
   return rc

@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # Copyright 2014 Google Inc. All Rights Reserved.
 #
 # This software is provided 'as-is', without any express or implied
@@ -24,6 +25,7 @@ import buildutil.android as android
 import buildutil.common as common
 import buildutil.linux as linux
 
+_saved_walk = os.walk
 
 class FileMock(object):
 
@@ -63,8 +65,95 @@ class RunCommandMock(object):
       return (self.stdout, self.stderr)
 
 
+class BuildAndroidLibrariesMock(object):
+
+  def __init__(self, test):
+    self.test = test
+    self.subprojects = []
+    self.output = None
+
+  def verify(self, subprojects, output=None):
+    self.test.assertEqual(self.output, output)
+    self.test.assertListEqual(sorted(self.subprojects), sorted(subprojects))
+
+  def expect(self, subprojects, output='libs'):
+    self.subprojects = subprojects
+    self.output = output
+
+
+class BuildAndroidAPKMock(object):
+
+  def __init__(self, test):
+    self.test = test
+    self.path = None
+    self.output = None
+    self.fail_if_called = False
+
+  def fail(self, fail=True):
+    self.fail_if_called = fail
+
+  def verify(self, path='.', output=None):
+    self.test.assertFalse(self.fail_if_called)
+    self.test.assertEqual(self.output, output)
+    self.test.assertEqual(self.path, path)
+
+  def expect(self, path, output='apks'):
+    self.path = path
+    self.output = output
+
+
+class FileNode(object):
+
+  def __init__(self, name, parent=None):
+    self.name = name
+    self.parent = parent
+    if parent:
+      self.name = os.path.join(parent.name, name)
+
+    self.files = []
+    self.dirs = []
+
+  def add_files(self, namelist):
+    self.files += namelist
+
+  def add_subdir(self, name):
+    node = FileNode(name, self)
+    self.dirs.append(node)
+    return node
+
+
+class OsWalkMock(object):
+
+  def __init__(self, test):
+    self.root = None
+    self.test = test
+    self.project = None
+
+  def expect(self, path):
+    self.project = path
+
+  def set_root(self, root):
+    self.root = root
+
+  def walk(self, path):
+    self.test.assertEqual(self.project, path)
+    # Perform a BFS traversal as a generator to mimic how topdown os.walk works.
+    nodes = [self.root]
+    while len(nodes):
+      n = nodes.pop(0)
+      rc = (n.name, [os.path.basename(m.name) for m in n.dirs], n.files)
+      yield rc
+      # Pick up changes to the dirlist, per how os.walk works in real life.
+      name, dirs, unused_files = rc
+      nodes += [d for d in n.dirs if os.path.basename(d.name) in dirs]
+
+
 class AndroidBuildUtilTest(unittest.TestCase):
   """Android-specific unit tests."""
+
+  def tearDown(self):
+    # Undo mocks.
+    os.walk = _saved_walk
 
   def test_build_defaults(self):
     d = android.BuildEnvironment.build_defaults()
@@ -315,9 +404,103 @@ class AndroidBuildUtilTest(unittest.TestCase):
     got = b._find_best_android_sdk('android', 5, 15)
     self.assertEqual(got, 'android-15')
 
+  def _build_all_test_setup(self):
+    d = android.BuildEnvironment.build_defaults()
+    b = android.BuildEnvironment(d)
+    apk_mock = BuildAndroidAPKMock(self)
+    lib_mock = BuildAndroidLibrariesMock(self)
+    b.build_android_libraries = lib_mock.verify
+    b.build_android_apk = apk_mock.verify
+    walk_mock = OsWalkMock(self)
+    os.walk = walk_mock.walk
+    return (b, apk_mock, lib_mock, walk_mock)
+
+  def test_build_all_trivial(self):
+    (b, apk_mock, lib_mock, walk_mock) = self._build_all_test_setup()
+    project = b.project_directory
+    tree = FileNode(project)
+    jni = tree.add_subdir('jni')
+    jni.add_files(['Android.mk', 'Application.mk'])
+    walk_mock.expect(project)
+    walk_mock.set_root(tree)
+    lib_mock.expect([tree.name])
+    apk_mock.fail()  # should not be called
+    b.build_all()
+
+  def test_build_all_exclude(self):
+    (b, apk_mock, lib_mock, walk_mock) = self._build_all_test_setup()
+    project = b.project_directory
+    tree = FileNode(project)
+    jni = tree.add_subdir('jni')
+    jni.add_files(['Android.mk', 'Application.mk'])
+    fooz = tree.add_subdir('fooz')
+    fooz.add_files(['Android.mk', 'Application.mk'])
+    walk_mock.expect(project)
+    walk_mock.set_root(tree)
+    lib_mock.expect([tree.name])  # should not pass fooz
+    apk_mock.fail()  # should not be called
+    b.build_all(exclude_dirs=['fooz'])
+
+  def test_build_all_exclude_defaults(self):
+    (b, apk_mock, lib_mock, walk_mock) = self._build_all_test_setup()
+    project = b.project_directory
+    tree = FileNode(project)
+    jni = tree.add_subdir('jni')
+    jni.add_files(['Android.mk', 'Application.mk'])
+    for name in ['apks', 'libs', 'bin', 'obj', 'res']:
+      n = tree.add_subdir(name)
+      n.add_files(['Android.mk', 'Application.mk'])
+    walk_mock.expect(project)
+    walk_mock.set_root(tree)
+    lib_mock.expect([tree.name])  # should not pass any of the default excludes
+    apk_mock.fail()  # should not be called
+    b.build_all()
+
+  def test_build_all_even_more_trivial(self):
+    (b, apk_mock, lib_mock, walk_mock) = self._build_all_test_setup()
+    project = b.project_directory
+    tree = FileNode(project)
+    tree.add_files(['Android.mk'])  # test handling top level Android.mk
+    walk_mock.expect(project)
+    walk_mock.set_root(tree)
+    lib_mock.expect([tree.name])
+    apk_mock.fail()  # should not be called
+    b.build_all()
+
+  def test_build_all_app(self):
+    (b, apk_mock, lib_mock, walk_mock) = self._build_all_test_setup()
+    project = b.project_directory
+    tree = FileNode(project)
+    tree.add_files(['AndroidManifest.xml'])
+    jni = tree.add_subdir('jni')
+    jni.add_files(['Android.mk', 'Application.mk'])
+    walk_mock.expect(project)
+    walk_mock.set_root(tree)
+    lib_mock.expect([])
+    apk_mock.expect(tree.name)
+    b.build_all()
+
+  def test_build_all_both(self):
+    (b, apk_mock, lib_mock, walk_mock) = self._build_all_test_setup()
+    project = b.project_directory
+    tree = FileNode(project)
+    app = tree.add_subdir('app')
+    app.add_files(['AndroidManifest.xml'])
+    jni = app.add_subdir('jni')
+    jni.add_files(['Android.mk', 'Application.mk'])
+    src = tree.add_subdir('src')
+    jni = src.add_subdir('jni')
+    jni.add_files(['Android.mk', 'Application.mk'])
+    walk_mock.expect(project)
+    walk_mock.set_root(tree)
+    lib_mock.expect([src.name])
+    apk_mock.expect(app.name)
+    b.build_all()
+
   # TBD, these are highly dependent high level functions that may need refactor
   # to unit-test well, as they are currently difficult to mock. At the moment
-  # the Android examples serve as functional tests for these.
+  # the Android examples and libfplutil autobuild serve as functional tests
+  # for these.
   def test_build_android_apk(self):
     pass
 
