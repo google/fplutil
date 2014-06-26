@@ -50,6 +50,7 @@ _SIGN_APK = 'sign_apk'
 _MANIFEST_FILE = 'AndroidManifest.xml'
 _NDK_MAKEFILE = 'Android.mk'
 
+
 class XMLFile(object):
   """XML file base class factored for testability.
 
@@ -59,6 +60,7 @@ class XMLFile(object):
   Attributes:
     path: Path to XML file as set in initializer.
   """
+
   def __init__(self, path):
     """Constructs the XMLFile for a specified path.
 
@@ -664,3 +666,4 @@ class BuildEnvironment(common.BuildEnvironment):
       retval = -1
 
     return (retval, errmsg)
+
