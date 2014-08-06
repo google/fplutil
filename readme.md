@@ -2,7 +2,8 @@ FPLUtil Version 1.0
 
 # FPL Utility Libraries
 
-fplutil is a set of small libraries and tools that can be useful when developing applications for Android and other platforms.
+fplutil is a set of small libraries and tools that can be useful when
+developing applications for Android and other platforms.
 
 All code in this distribution, unless specifically noted otherwise, is released
 under the Apache License, Version 2.0. Please see LICENSE.txt for details.
@@ -41,7 +42,9 @@ Various useful scripts for direct use or as examples for your own scripts.
 
 ## fplutil/buildutil
 
-A python module which helps to automate builds for Android and Linux. It allows writing simple python build scripts to drive builds and package output in projects containing multiple heterogeneous targets.
+A python module which helps to automate builds for Android and Linux. It
+allows writing simple python build scripts to drive builds and package output
+in projects containing multiple heterogeneous targets.
 
 ## fplutil/examples
 
