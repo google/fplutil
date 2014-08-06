@@ -235,9 +235,16 @@ class AndroidBuildUtilTest(unittest.TestCase):
       self.assertTrue(caught)
 
   def test_manifest_parse_trivial(self):
-    f = FileMock('<manifest '
-                 'xmlns:android="http://schemas.android.com/apk/res/android">\n'
-                 '<uses-sdk android:minSdkVersion="1"/>\n</manifest>')
+    f = FileMock(
+        '<manifest '
+        '  xmlns:android="http://schemas.android.com/apk/res/android"\n'
+        '  package="com.google.fpl.libfplutil_test">\n'
+        '  <uses-sdk android:minSdkVersion="1"/>\n'
+        '  <application>\n'
+        '    <activity android:name="android.app.NativeActivity">\n'
+        '    </activity>\n'
+        '  </application>\n'
+        '</manifest>')
     m = android.AndroidManifest(None)
     m._parse(f)
     self.assertEqual(m.min_sdk, 1)
@@ -246,8 +253,14 @@ class AndroidBuildUtilTest(unittest.TestCase):
   def test_manifest_parse_with_target(self):
     f = FileMock(
         '<manifest '
-        'xmlns:android="http://schemas.android.com/apk/res/android">\n'
-        '<uses-sdk android:minSdkVersion="1" android:targetSdkVersion="2"/>\n'
+        '  xmlns:android="http://schemas.android.com/apk/res/android"\n'
+        '  package="com.google.fpl.libfplutil_test">\n'
+        '  <uses-sdk android:minSdkVersion="1" '
+        '            android:targetSdkVersion="2"/>\n'
+        '  <application>\n'
+        '    <activity android:name="android.app.NativeActivity">\n'
+        '    </activity>\n'
+        '  </application>\n'
         '</manifest>')
     m = android.AndroidManifest(None)
     m._parse(f)
@@ -256,9 +269,15 @@ class AndroidBuildUtilTest(unittest.TestCase):
 
   def test_manifest_parse_with_bad_target(self):
     f = FileMock(
-        '<manifest '
-        'xmlns:android="http://schemas.android.com/apk/res/android">\n'
-        '<uses-sdk android:minSdkVersion="1" android:targetSdkVersion="-2"/>\n'
+        '<manifest \n'
+        '  xmlns:android="http://schemas.android.com/apk/res/android"\n'
+        '  package="com.google.fpl.libfplutil_test">\n'
+        '  <uses-sdk android:minSdkVersion="1" '
+        '            android:targetSdkVersion="-2"/>\n'
+        '  <application>\n'
+        '    <activity android:name="android.app.NativeActivity">\n'
+        '    </activity>\n'
+        '  </application>\n'
         '</manifest>')
     m = android.AndroidManifest(None)
     m._parse(f)
@@ -267,9 +286,11 @@ class AndroidBuildUtilTest(unittest.TestCase):
     self.assertEqual(m.target_sdk, -2)
 
   def test_manifest_parse_missing_min_version(self):
-    f = FileMock('<manifest '
-                 'xmlns:android="http://schemas.android.com/apk/res/android">\n'
-                 '<uses-sdk/>\n</manifest>')
+    f = FileMock(
+        '<manifest '
+        'xmlns:android="http://schemas.android.com/apk/res/android">\n'
+        '<uses-sdk/>\n'
+        '</manifest>')
     m = android.AndroidManifest(None)
     caught = False
     try:
@@ -280,9 +301,10 @@ class AndroidBuildUtilTest(unittest.TestCase):
       self.assertTrue(caught)
 
   def test_manifest_parse_missing_uses_sdk(self):
-    f = FileMock('<manifest '
-                 'xmlns:android="http://schemas.android.com/apk/res/android">\n'
-                 '</manifest>')
+    f = FileMock(
+        '<manifest '
+        'xmlns:android="http://schemas.android.com/apk/res/android">\n'
+        '</manifest>')
     m = android.AndroidManifest(None)
     caught = False
     try:
@@ -384,7 +406,10 @@ class AndroidBuildUtilTest(unittest.TestCase):
     b.run_subprocess = m.verify
     expect = ['android', 'list', 'target', '--compact']
     m.expect(expect)
-    m.returns('android-3\nandroid-5\nmeaningless\nandroid-10\n')
+    m.returns('android-3\n'
+              'android-5\n'
+              'meaningless\n'
+              'android-10\n')
     got = b._find_best_android_sdk('android', 1, 5)
     self.assertEqual(got, 'android-5')
     got = b._find_best_android_sdk('android', 5, 15)
@@ -398,7 +423,9 @@ class AndroidBuildUtilTest(unittest.TestCase):
       caught = True
     finally:
       self.assertTrue(caught)
-    m.returns('android-10\nandroid-15\nandroid-7\n')
+    m.returns('android-10\n'
+              'android-15\n'
+              'android-7\n')
     got = b._find_best_android_sdk('android', 5, 15)
     self.assertEqual(got, 'android-15')
 

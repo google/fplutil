@@ -197,3 +197,7 @@ class CommonBuildUtilTest(unittest.TestCase):
 
   def test_write_archive(self):
     pass
+
+
+if __name__ == '__main__':
+  unittest.main()

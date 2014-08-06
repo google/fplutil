@@ -148,7 +148,11 @@ class AndroidManifest(XMLFile):
         '{http://schemas.android.com/apk/res/android}targetSdkVersion')
 
     app_element = root.find('application')
+    if app_element is None:
+      raise common.ConfigurationError(self.path, 'application missing')
     activity_element = app_element.find('activity')
+    if activity_element is None:
+      raise common.ConfigurationError(self.path, 'activity missing')
 
     self.activity_name = activity_element.get(
         '{http://schemas.android.com/apk/res/android}name')
@@ -160,7 +164,8 @@ class AndroidManifest(XMLFile):
     if not self.package_name:
       raise common.ConfigurationError(self.path, 'package missing')
     if not self.activity_name:
-      raise common.ConfigurationError(self.path, 'activity android:name missing')
+      raise common.ConfigurationError(self.path,
+                                      'activity android:name missing')
 
     self.min_sdk = int(min_sdk_version)
     self.target_sdk = int(target_sdk_version)
@@ -223,7 +228,8 @@ class BuildEnvironment(common.BuildEnvironment):
     sign_apk: Enable signing of Android APKs.
     apk_keystore: Keystore file path to use when signing an APK.
     apk_keyalias: Alias of key to use when signing an APK.
-    apk_passfile: Path to file containing a password to use when signing an APK.
+    apk_passfile: Path to file containing a password to use when signing an
+      APK.
   """
 
   def __init__(self, arguments):
@@ -441,7 +447,8 @@ class BuildEnvironment(common.BuildEnvironment):
 
     Args:
       path: Optional relative path from project directory to project to build.
-      output: Optional relative path from project directory to output directory.
+      output: Optional relative path from project directory to output
+        directory.
 
     Raises:
       SubCommandError: NDK toolchain invocation failed or returned an error.
@@ -734,8 +741,8 @@ class BuildEnvironment(common.BuildEnvironment):
                             full_name))
 
     while wait:
-      # Use logcat -d so that it can be parsed easily in order to determine when
-      # the process ends. An alternative is to read the stream as it gets
+      # Use logcat -d so that it can be parsed easily in order to determine
+      # when the process ends. An alternative is to read the stream as it gets
       # written but this leads to delays in reading the stream and is difficult
       # to get working propery on windows.
       out, err = self.run_subprocess( ('adb %s logcat -d' % adb_device),
