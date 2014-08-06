@@ -22,12 +22,12 @@ limitations under the License.
 
     <uses-sdk android:minSdkVersion="9"/>
 
-    <application android:label="LibFPLUtilExample" android:hasCode="false"
+    <application android:label="libfplutil_example" android:hasCode="false"
                  android:debuggable="true">
         <activity android:name="android.app.NativeActivity"
-                  android:label="LibFPLUtilExample">
+                  android:label="libfplutil_example">
             <meta-data android:name="android.app.lib_name"
-                       android:value="LibFPLUtilExample" />
+                       android:value="fplutil_example" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

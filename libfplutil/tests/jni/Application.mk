@@ -16,6 +16,4 @@ APP_PLATFORM:=android-9
 APP_ABI:=armeabi-v7a
 # Library uses STLPort so verify gnustl compatibility here.
 APP_STL:=gnustl_static
-APP_MODULES:=FPLUtilTests
-# GOOGLETEST_PATH="<relpath to googletest>" required to be passed to ndk-build.
-NDK_MODULE_PATH:=$(abspath $(NDK_PROJECT_PATH)/../..):$(NDK_ROOT)/sources/android:$(GOOGLETEST_PATH)
+APP_MODULES:=fplutiltests

@@ -1,0 +1,17 @@
+**.pyc
+libfplutil/obj/
+examples/libfplutil_example/bin/
+examples/libfplutil_example/build.xml
+examples/libfplutil_example/libs/
+examples/libfplutil_example/local.properties
+examples/libfplutil_example/obj/
+examples/libfplutil_example/proguard-project.txt
+examples/libfplutil_example/project.properties
+examples/libfplutil_example/apks/
+libfplutil/tests/bin/
+libfplutil/tests/build.xml
+libfplutil/tests/libs/
+libfplutil/tests/local.properties
+libfplutil/tests/obj/
+libfplutil/tests/proguard-project.txt
+libfplutil/tests/project.properties

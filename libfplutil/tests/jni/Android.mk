@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Directory which contains the googletest library directory such that
+# $(GOOGLETEST_PATH)/googletest/Android.mk exists.
+GOOGLETEST_PATH?=$(LOCAL_PATH)/../../../
+
 LOCAL_PATH:=$(call my-dir)/..
 
 # --- project ---
 include $(CLEAR_VARS)
-LOCAL_MODULE:=FPLUtilTests
+LOCAL_MODULE:=fplutiltests
 LOCAL_SRC_FILES:=$(wildcard $(LOCAL_PATH)/test_*.cc)
 LOCAL_WHOLE_STATIC_LIBRARIES:=android_native_app_glue libfplutil_main \
 	libfplutil_print libgtest
@@ -24,6 +28,9 @@ LOCAL_LDLIBS:=-llog -landroid
 LOCAL_ARM_MODE:=arm
 include $(BUILD_SHARED_LIBRARY)
 
-$(call import-module,native_app_glue)
+$(call import-add-path,$(abspath $(LOCAL_PATH)/../..))
+$(call import-add-path,$(abspath $(GOOGLETEST_PATH)))
+
+$(call import-module,android/native_app_glue)
 $(call import-module,libfplutil/jni)
 $(call import-module,googletest)

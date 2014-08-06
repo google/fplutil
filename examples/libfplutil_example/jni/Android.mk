@@ -16,7 +16,7 @@ LOCAL_PATH:=$(call my-dir)/..
 
 # --- project ---
 include $(CLEAR_VARS)
-LOCAL_MODULE:=LibFPLUtilExample
+LOCAL_MODULE:=libfplutil_example
 LOCAL_SRC_FILES:=$(LOCAL_PATH)/main.c
 LOCAL_WHOLE_STATIC_LIBRARIES:=android_native_app_glue libfplutil_main \
 	libfplutil_print
@@ -24,5 +24,7 @@ LOCAL_LDLIBS:=-llog -landroid
 LOCAL_ARM_MODE:=arm
 include $(BUILD_SHARED_LIBRARY)
 
-$(call import-module,native_app_glue)
+$(call import-add-path,$(abspath $(LOCAL_PATH)/../../))
+
+$(call import-module,android/native_app_glue)
 $(call import-module,libfplutil/jni)
