@@ -15,6 +15,5 @@
 APP_PLATFORM:=android-9
 APP_ABI:=armeabi-v7a
 APP_STL:=stlport_static
-APP_MODULES:=LibFPLUtilExample
-NDK_MODULE_PATH+=\
-	$(abspath $(NDK_PROJECT_PATH)/../..):$(NDK_ROOT)/sources/android
+APP_MODULES:=libfplutil_example
+

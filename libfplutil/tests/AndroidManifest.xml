@@ -21,12 +21,12 @@ limitations under the License.
 
     <uses-sdk android:minSdkVersion="9"/>
 
-    <application android:label="FPLUtilTests" android:hasCode="false"
+    <application android:label="fplutiltests" android:hasCode="false"
                  android:debuggable="true">
         <activity android:name="android.app.NativeActivity"
-                  android:label="FPLUtilTests">
+                  android:label="fplutiltests">
             <meta-data android:name="android.app.lib_name"
-                       android:value="FPLUtilTests" />
+                       android:value="fplutiltests" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
