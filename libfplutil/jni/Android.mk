@@ -24,16 +24,16 @@ LOCAL_EXPORT_C_INCLUDES:=$(LOCAL_PATH)/include
 # Cause the linker to substitute our implementations for these functions, at
 # a .so-wide level.
 LOCAL_EXPORT_LDFLAGS:=\
-	-Wl,--wrap=perror,--wrap=fflush,--wrap=fprintf,--wrap=vprintf,--wrap=printf \
-	-Wl,--wrap=putc,--wrap=fputc,--wrap=putchar,--wrap=puts,--wrap=fputs \
-	-Wl,--wrap=fwrite,--wrap=write,--wrap=writev
+	-Wl,--wrap=perror,--wrap=fflush,--wrap=fprintf,--wrap=vprintf \
+	-Wl,--wrap=printf,--wrap=putc,--wrap=fputc,--wrap=putchar,--wrap=puts \
+    -Wl,--wrap=fputs,--wrap=fwrite,--wrap=write,--wrap=writev
 # Need this to prevent auto-use of builtin functions.
 LOCAL_EXPORT_CFLAGS:= -fno-builtin-printf -fno-builtin-fprintf \
 	-fno-builtin-fflush -fno-builtin-perror -fno-builtin-vprintf \
 	-fno-builtin-putc -fno-builtin-putchar -fno-builtin-fputc \
 	-fno-builtin-fputs -fno-builtin-puts -fno-builtin-fwrite \
 	-fno-builtin-write -fno-builtin-writev
-LOCAL_CFLAGS:=-fPIC -std=c99 -Wall -Wextra -W
+LOCAL_CFLAGS:=-fPIC -Wall -Wextra -W
 LOCAL_CXXFLAGS:=-fPIC -std=c++98 -Wall -Wextra -W
 LOCAL_ARM_MODE:=arm
 include $(BUILD_STATIC_LIBRARY)

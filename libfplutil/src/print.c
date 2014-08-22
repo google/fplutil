@@ -261,7 +261,8 @@ ssize_t __wrap_writev(int fd, const struct iovec *iov, int iovcnt)
   ssize_t rc = 0;
 
   if (fd == fileno(stdout) || fd == fileno(stderr)) {
-    for (int i = 0; i < iovcnt; ++i) {
+    int i;
+    for (i = 0; i < iovcnt; ++i) {
       const struct iovec *vec = iov + i;
       const ssize_t written = __wrap_write(fd, vec->iov_base, vec->iov_len);
       if (written < 0) {
