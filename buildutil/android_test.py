@@ -18,7 +18,7 @@ import argparse
 import os
 import sys
 import unittest
-sys.path.append('..')
+sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
 import buildutil.android as android
 import buildutil.common as common
 import buildutil.linux as linux
@@ -225,16 +225,28 @@ class AndroidBuildUtilTest(unittest.TestCase):
     self.assertEqual(m.min_sdk, 0)
     self.assertEqual(m.target_sdk, 0)
     self.assertIsNone(m.path)
-
-    caught = False
-    try:
+    with self.assertRaises(common.ConfigurationError):
       android.AndroidManifest('/non existent/bogus_path')
-    except common.ConfigurationError:
-      caught = True
-    finally:
-      self.assertTrue(caught)
 
   def test_manifest_parse_trivial(self):
+    f = FileMock(
+        '<manifest '
+        '  xmlns:android="http://schemas.android.com/apk/res/android"\n'
+        '  package="com.google.fpl.libfplutil_test">\n'
+        '  <uses-sdk android:minSdkVersion="1"/>\n'
+        '  <application>\n'
+        '    <activity android:name="android.app.NativeActivity">\n'
+        '      <meta-data android:name="android.app.lib_name"\n'
+        '                 android:value="test"/>\n'
+        '    </activity>\n'
+        '  </application>\n'
+        '</manifest>')
+    m = android.AndroidManifest(None)
+    m._parse(f)
+    self.assertEqual(m.min_sdk, 1)
+    self.assertEqual(m.target_sdk, m.min_sdk)
+
+  def test_manifest_parse_native_activity_no_lib(self):
     f = FileMock(
         '<manifest '
         '  xmlns:android="http://schemas.android.com/apk/res/android"\n'
@@ -246,9 +258,8 @@ class AndroidBuildUtilTest(unittest.TestCase):
         '  </application>\n'
         '</manifest>')
     m = android.AndroidManifest(None)
-    m._parse(f)
-    self.assertEqual(m.min_sdk, 1)
-    self.assertEqual(m.target_sdk, m.min_sdk)
+    with self.assertRaises(common.ConfigurationError):
+      m._parse(f)
 
   def test_manifest_parse_with_target(self):
     f = FileMock(
@@ -259,6 +270,8 @@ class AndroidBuildUtilTest(unittest.TestCase):
         '            android:targetSdkVersion="2"/>\n'
         '  <application>\n'
         '    <activity android:name="android.app.NativeActivity">\n'
+        '      <meta-data android:name="android.app.lib_name"\n'
+        '                 android:value="test"/>\n'
         '    </activity>\n'
         '  </application>\n'
         '</manifest>')
@@ -276,6 +289,8 @@ class AndroidBuildUtilTest(unittest.TestCase):
         '            android:targetSdkVersion="-2"/>\n'
         '  <application>\n'
         '    <activity android:name="android.app.NativeActivity">\n'
+        '      <meta-data android:name="android.app.lib_name"\n'
+        '                 android:value="test"/>\n'
         '    </activity>\n'
         '  </application>\n'
         '</manifest>')
@@ -292,13 +307,8 @@ class AndroidBuildUtilTest(unittest.TestCase):
         '<uses-sdk/>\n'
         '</manifest>')
     m = android.AndroidManifest(None)
-    caught = False
-    try:
+    with self.assertRaises(common.ConfigurationError):
       m._parse(f)
-    except common.ConfigurationError:
-      caught = True
-    finally:
-      self.assertTrue(caught)
 
   def test_manifest_parse_missing_uses_sdk(self):
     f = FileMock(
@@ -306,37 +316,21 @@ class AndroidBuildUtilTest(unittest.TestCase):
         'xmlns:android="http://schemas.android.com/apk/res/android">\n'
         '</manifest>')
     m = android.AndroidManifest(None)
-    caught = False
-    try:
+    with self.assertRaises(common.ConfigurationError):
       m._parse(f)
-    except common.ConfigurationError:
-      caught = True
-    finally:
-      self.assertTrue(caught)
 
   def test_manifest_parse_error(self):
     f = FileMock('<manifest ')
     m = android.AndroidManifest(None)
-    caught = False
-    try:
+    with self.assertRaises(common.ConfigurationError):
       m._parse(f)
-    except common.ConfigurationError:
-      caught = True
-    finally:
-      self.assertTrue(caught)
 
   def test_construct_buildxml(self):
     b = android.BuildXml(None)
     self.assertIsNone(b.path)
     self.assertIsNone(b.project_name)
-
-    caught = False
-    try:
+    with self.assertRaises(common.ConfigurationError):
       android.BuildXml('/non existent/bogus_path')
-    except common.ConfigurationError:
-      caught = True
-    finally:
-      self.assertTrue(caught)
 
   def test_buildxml_parse_trivial(self):
     f = FileMock('<project name="foo"/>')
@@ -348,24 +342,14 @@ class AndroidBuildUtilTest(unittest.TestCase):
   def test_buildxml_missing_name(self):
     f = FileMock('<project/>')
     b = android.BuildXml(None)
-    caught = False
-    try:
+    with self.assertRaises(common.ConfigurationError):
       b._parse(f)
-    except common.ConfigurationError:
-      caught = True
-    finally:
-      self.assertTrue(caught)
 
   def test_buildxml_missing_project(self):
     f = FileMock('<not-project name="foo"/>')
     b = android.BuildXml(None)
-    caught = False
-    try:
+    with self.assertRaises(common.ConfigurationError):
       b._parse(f)
-    except common.ConfigurationError:
-      caught = True
-    finally:
-      self.assertTrue(caught)
 
   def test_build_libraries(self):
     d = android.BuildEnvironment.build_defaults()
@@ -375,7 +359,7 @@ class AndroidBuildUtilTest(unittest.TestCase):
     ndk_build = os.path.join(b.ndk_home, 'ndk-build')
     l = 'libfoo'
     lpath = os.path.abspath(os.path.join(b.project_directory, l))
-    expect = [ndk_build, '-B', '-j', b.cpu_count, '-C', lpath]
+    expect = [ndk_build, '-j', b.cpu_count, '-C', lpath]
     m.expect(expect)
     b.build_android_libraries([l])
     b.verbose = True
@@ -391,13 +375,9 @@ class AndroidBuildUtilTest(unittest.TestCase):
     m.expect(expect)
     b.build_android_libraries([l], output=l)
     b.ndk_home = '/dev/null'
-    caught = False
-    try:
+    with self.assertRaises(common.ToolPathError):
       b.build_android_libraries([l], output=l)
-    except common.ToolPathError:
-      caught = True
-    finally:
-      self.assertTrue(caught)
+      b._parse(f)
 
   def test_find_android_sdk(self):
     d = android.BuildEnvironment.build_defaults()
@@ -417,13 +397,8 @@ class AndroidBuildUtilTest(unittest.TestCase):
     self.assertEqual(got, 'android-10')
     got = b._find_best_android_sdk('android', 1, 2)
     self.assertEqual(got, 'android-10')
-    caught = False
-    try:
+    with self.assertRaises(common.ConfigurationError):
       b._find_best_android_sdk('android', 11, 20)
-    except common.ConfigurationError:
-      caught = True
-    finally:
-      self.assertTrue(caught)
     m.returns('android-10\n'
               'android-15\n'
               'android-7\n')

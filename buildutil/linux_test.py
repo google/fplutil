@@ -18,7 +18,7 @@ import argparse
 import os
 import sys
 import unittest
-sys.path.append('..')
+sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
 import buildutil.android as android
 import buildutil.common as common
 import buildutil.linux as linux

@@ -50,9 +50,12 @@ _APK_KEYALIAS = 'apk_keyalias'
 _SIGN_APK = 'sign_apk'
 _MANIFEST_FILE = 'AndroidManifest.xml'
 _NDK_MAKEFILE = 'Android.mk'
+_ALWAYS_MAKE = 'always_make'
 
 _MATCH_DEVICES = re.compile(r'^(List of devices attached\s*\n)|(\n)$')
 
+_NATIVE_ACTIVITY = 'android.app.NativeActivity'
+_ANDROID_MANIFEST_SCHEMA = 'http://schemas.android.com/apk/res/android'
 
 class XMLFile(object):
   """XML file base class factored for testability.
@@ -106,6 +109,7 @@ class AndroidManifest(XMLFile):
       is not set.
     package_name: Name of the package.
     activity_name: Name of the activity from the android:name element.
+    lib_name: Name of the library loaded by android.app.NativeActivity.
   """
 
   def __init__(self, path):
@@ -123,6 +127,7 @@ class AndroidManifest(XMLFile):
     self.target_sdk = 0
     self.package_name = ''
     self.activity_name = ''
+    self.lib_name = ''
 
   def process(self, etree):
     """Process the parsed AndroidManifest to extract SDK version info.
@@ -142,10 +147,10 @@ class AndroidManifest(XMLFile):
     if sdk_element is None:
       raise common.ConfigurationError(self.path, 'uses-sdk element missing')
 
-    min_sdk_version = sdk_element.get(
-        '{http://schemas.android.com/apk/res/android}minSdkVersion')
-    target_sdk_version = sdk_element.get(
-        '{http://schemas.android.com/apk/res/android}targetSdkVersion')
+    min_sdk_version = AndroidManifest.__get_schema_attribute_value(
+        sdk_element, 'minSdkVersion')
+    target_sdk_version = AndroidManifest.__get_schema_attribute_value(
+        sdk_element, 'targetSdkVersion')
 
     app_element = root.find('application')
     if app_element is None:
@@ -154,8 +159,8 @@ class AndroidManifest(XMLFile):
     if activity_element is None:
       raise common.ConfigurationError(self.path, 'activity missing')
 
-    self.activity_name = activity_element.get(
-        '{http://schemas.android.com/apk/res/android}name')
+    self.activity_name = AndroidManifest.__get_schema_attribute_value(
+        activity_element, 'name')
 
     if not min_sdk_version:
       raise common.ConfigurationError(self.path, 'minSdkVersion missing')
@@ -167,8 +172,29 @@ class AndroidManifest(XMLFile):
       raise common.ConfigurationError(self.path,
                                       'activity android:name missing')
 
+    if self.activity_name == _NATIVE_ACTIVITY:
+      for metadata_element in activity_element.findall('meta-data'):
+        if (AndroidManifest.__get_schema_attribute_value(
+                metadata_element, 'name') == 'android.app.lib_name'):
+          self.lib_name = AndroidManifest.__get_schema_attribute_value(
+              metadata_element, 'value')
+
+      if not self.lib_name:
+        raise common.ConfigurationError(
+            self.path, 'meta-data android.app.lib_name missing')
+
     self.min_sdk = int(min_sdk_version)
     self.target_sdk = int(target_sdk_version)
+
+  @staticmethod
+  def __get_schema_attribute_value(xml_element, attribute):
+    """Get attribute from xml_element using the Android manifest schema.
+
+    Args:
+      xml_element: xml.etree.ElementTree to query.
+      attribute: Name of Android Manifest attribute to retrieve.
+    """
+    return xml_element.get('{%s}%s' % (_ANDROID_MANIFEST_SCHEMA, attribute))
 
 
 class BuildXml(XMLFile):
@@ -263,6 +289,7 @@ class BuildEnvironment(common.BuildEnvironment):
     self.apk_keystore = args[_APK_KEYSTORE]
     self.apk_keyalias = args[_APK_KEYALIAS]
     self.apk_passfile = args[_APK_PASSFILE]
+    self.always_make = args[_ALWAYS_MAKE]
 
   @staticmethod
   def build_defaults():
@@ -287,6 +314,7 @@ class BuildEnvironment(common.BuildEnvironment):
     args[_APK_KEYALIAS] = None
     args[_APK_PASSFILE] = None
     args[_SIGN_APK] = False
+    args[_ALWAYS_MAKE] = False
 
     return args
 
@@ -328,10 +356,18 @@ class BuildEnvironment(common.BuildEnvironment):
     parser.add_argument('-P', '--' + _APK_PASSFILE,
                         help='Path to file containing keystore password',
                         dest=_APK_PASSFILE, default=defaults[_APK_PASSFILE])
-    parser.add_argument(
-        '-S', '--' + _SIGN_APK,
-        help='Enable signing of Android APKs',
-        dest=_SIGN_APK, action='store_true', default=defaults[_SIGN_APK])
+    parser.add_argument('-S', '--' + _SIGN_APK,
+                        help='Enable signing of Android APKs',
+                        dest=_SIGN_APK, action='store_true',
+                        default=defaults[_SIGN_APK])
+    parser.add_argument('-B', '--' + _ALWAYS_MAKE,
+                        help='Always build all up to date targets.',
+                        dest=_ALWAYS_MAKE, action='store_true')
+    parser.add_argument('--no-' + _ALWAYS_MAKE,
+                        help='Only build out of date targets.',
+                        dest=_ALWAYS_MAKE, action='store_false')
+    parser.set_defaults(**{_ALWAYS_MAKE: defaults[_ALWAYS_MAKE]})
+
 
   def build_android_libraries(self, subprojects, output=None):
     """Build list of Android library projects.
@@ -355,8 +391,10 @@ class BuildEnvironment(common.BuildEnvironment):
     common.BuildEnvironment._check_binary('ndk-build', ndk_build)
 
     for p in subprojects:
-      args = [ndk_build, '-B', '-j', self.cpu_count,
-              '-C', os.path.abspath(os.path.join(self.project_directory, p))]
+      args = [ndk_build, '-j', self.cpu_count]
+      if self.always_make:
+        args += ['-B']
+      args += ['-C', os.path.abspath(os.path.join(self.project_directory, p))]
 
       if self.verbose:
         args.append('V=1')
@@ -478,12 +516,12 @@ class BuildEnvironment(common.BuildEnvironment):
 
     buildxml_path = os.path.join(project, 'build.xml')
 
-    app_name = ''
+    # Get the last component of the package name for the application name.
+    app_name = manifest.package_name[manifest.package_name.rfind('.') + 1:]
 
     # If no build.xml exists, create one for the project in the directory
     # we are currently building.
     if not os.path.exists(buildxml_path):
-      app_name = os.path.basename(project) + '_app'
       apitarget = self._find_best_android_sdk(android, manifest.min_sdk,
                                               manifest.target_sdk)
       acmd = [android, 'update', 'project', '--path', project,

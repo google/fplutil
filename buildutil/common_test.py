@@ -19,7 +19,7 @@ import distutils.spawn
 import os
 import sys
 import unittest
-sys.path.append('..')
+sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
 import buildutil.common as common
 
 mock_path = ''
