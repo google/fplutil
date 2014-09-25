@@ -26,6 +26,8 @@ CMAKE_FLAGS = String to override the default CMake flags with.
 import distutils.spawn
 import os
 import shlex
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
 import buildutil.common as common
 
 _CMAKE_PATH_ENV_VAR = 'CMAKE_PATH'
@@ -100,7 +102,7 @@ class BuildEnvironment(common.BuildEnvironment):
 
     common.BuildEnvironment.add_arguments(parser)
 
-    parser.add_argument('-c', '--' + _CMAKE_PATH,
+    parser.add_argument('-b', '--' + _CMAKE_PATH,
                         help='Path to CMake binary', dest=_CMAKE_PATH,
                         default=defaults[_CMAKE_PATH])
     parser.add_argument(

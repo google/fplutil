@@ -16,11 +16,13 @@
 
 import argparse
 import os
+import platform
 import sys
 import unittest
 sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
 import buildutil.android as android
 import buildutil.common as common
+import buildutil.common_test as common_test
 import buildutil.linux as linux
 
 _saved_walk = os.walk
@@ -37,30 +39,6 @@ class FileMock(object):
     r = self.string[0:nbytes]
     self.string = self.string[nbytes:]
     return r
-
-
-class RunCommandMock(object):
-
-  def __init__(self, test):
-    self.args = None
-    self.cwd = None
-    self.test = test
-    self.stdout = None
-    self.stderr = None
-
-  def returns(self, stdout, stderr=None):
-    self.stdout = stdout
-    self.stderr = stderr
-
-  def expect(self, args, cwd=os.getcwd()):
-    self.args = args
-    self.cwd = cwd
-
-  def verify(self, args, capture=False, cwd=os.getcwd()):
-    self.test.assertEqual(self.cwd, cwd)
-    self.test.assertListEqual(self.args, args)
-    if capture:
-      return (self.stdout, self.stderr)
 
 
 class BuildAndroidLibrariesMock(object):
@@ -354,12 +332,43 @@ class AndroidBuildUtilTest(unittest.TestCase):
   def test_build_libraries(self):
     d = android.BuildEnvironment.build_defaults()
     b = android.BuildEnvironment(d)
-    m = RunCommandMock(self)
-    b.run_subprocess = m.verify
+    m = common_test.RunCommandMock(self)
+    b.run_subprocess = m
     ndk_build = os.path.join(b.ndk_home, 'ndk-build')
     l = 'libfoo'
     lpath = os.path.abspath(os.path.join(b.project_directory, l))
-    expect = [ndk_build, '-j', b.cpu_count, '-C', lpath]
+    expect = [ndk_build, '-j' + str(b.cpu_count), '-C', lpath]
+    m.expect(expect)
+    b.build_android_libraries([l])
+    b.verbose = True
+    expect.append('V=1')
+    m.expect(expect)
+    b.build_android_libraries([l])
+    expect.append('NDK_OUT=%s' % lpath)
+    m.expect(expect)
+    b.build_android_libraries([l], output=l)
+    b.make_flags = '-DFOO -DBAR -DBAZ'
+    flaglist = ['-DFOO', '-DBAR', '-DBAZ']
+    expect += flaglist
+    m.expect(expect)
+    b.build_android_libraries([l], output=l)
+    b.ndk_home = '/dev/null'
+    with self.assertRaises(common.ToolPathError):
+      b.build_android_libraries([l], output=l)
+      b._parse(f)
+
+  def test_clean_libraries(self):
+    d = android.BuildEnvironment.build_defaults()
+    b = android.BuildEnvironment(d)
+    b.clean = True
+    m = common_test.RunCommandMock(self)
+    b.run_subprocess = m
+    ndk_build = os.path.join(b.ndk_home, 'ndk-build')
+    l = 'libfoo'
+    lpath = os.path.abspath(os.path.join(b.project_directory, l))
+    expect = [ndk_build, '-j' + str(platform.mac_ver()[0] and 1 or
+                                    b.cpu_count),
+              '-C', lpath, 'clean']
     m.expect(expect)
     b.build_android_libraries([l])
     b.verbose = True
@@ -382,8 +391,8 @@ class AndroidBuildUtilTest(unittest.TestCase):
   def test_find_android_sdk(self):
     d = android.BuildEnvironment.build_defaults()
     b = android.BuildEnvironment(d)
-    m = RunCommandMock(self)
-    b.run_subprocess = m.verify
+    m = common_test.RunCommandMock(self)
+    b.run_subprocess = m
     expect = ['android', 'list', 'target', '--compact']
     m.expect(expect)
     m.returns('android-3\n'

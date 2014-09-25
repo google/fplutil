@@ -46,6 +46,7 @@ _MAKE_FLAGS = 'make_flags'
 _GIT_CLEAN = 'git_clean'
 _VERBOSE = 'verbose'
 _OUTPUT_DIR = 'output_dir'
+_CLEAN = 'clean'
 
 
 class Error(Exception):
@@ -159,7 +160,7 @@ class AdbError(Error):
     Args:
       error: The specific error to report.
     """
-    super(ConfigurationError, self).__init__()
+    super(AdbError, self).__init__()
     self._error_message = 'Error with adb connection: %s' % (error)
     self._error_code = ConfigurationError.CODE
 
@@ -180,6 +181,7 @@ class BuildEnvironment(object):
     enable_git_clean: Boolean value to enable cleaning for git-based projects.
     make_path: Path to the make binary, for make-based projects.
     make_flags: Flags to pass to make, for make-based projects.
+    clean: Boolean value which specifies whether to clean the project.
     git_path: Path to the git binary, for projects based on git.
     cpu_count: Number of CPU cores to use while building.
     verbose: Boolean to enable verbose message output.
@@ -217,8 +219,10 @@ class BuildEnvironment(object):
     self.make_flags = args[_MAKE_FLAGS]
     self.cpu_count = args[_CPU_COUNT]
     self.verbose = args[_VERBOSE]
+    self.clean = args[_CLEAN]
 
-    (sysname, unused_node, unused_release, unused_version, machine) = os.uname()
+    (sysname, unused_node, unused_release, unused_version,
+     machine) = os.uname()
     self.host_os_name = sysname.lower()
     self.host_architecture = machine.lower()
 
@@ -254,8 +258,11 @@ class BuildEnvironment(object):
       directories = path.split(os.path.sep)
 
       if levels < len(directories):
-        directories = directories[0:-levels]
-        path = os.path.join(os.path.sep, *directories)
+        if levels == len(directories) - 1:
+          path = os.path.sep
+        else:
+          directories = directories[0:-levels]
+          path = os.path.sep.join(directories)
       else:
         path = None
 
@@ -279,6 +286,7 @@ class BuildEnvironment(object):
     args[_CPU_COUNT] = str(multiprocessing.cpu_count())
     args[_VERBOSE] = False
     args[_OUTPUT_DIR] = args[_PROJECT_DIR]
+    args[_CLEAN] = False
 
     return args
 
@@ -320,6 +328,9 @@ class BuildEnvironment(object):
     parser.add_argument('-o', '--' + _OUTPUT_DIR,
                         help='Set build artifact output top-level directory',
                         dest=_OUTPUT_DIR, default=None)
+    parser.add_argument('-c', '--' + _CLEAN, action='store_true',
+                        help='Clean all build artifacts.',
+                        default=False)
 
   @staticmethod
   def _check_binary(name, path):
@@ -392,6 +403,8 @@ class BuildEnvironment(object):
     BuildEnvironment._check_binary('make', self.make_path)
 
     args = [self.make_path, '-j', self.cpu_count, '-C', self.project_directory]
+    if self.clean:
+      args += ['clean']
     if self.make_flags:
       args += shlex.split(self.make_flags, posix=self._posix)
 
@@ -463,7 +476,8 @@ class BuildEnvironment(object):
     with zipfile.ZipFile(path, 'w') as arczip:
       for d in directory_list:
         absd = os.path.join(self.project_directory, d)
-        if self.verbose: print 'Archiving directory %s' % d
+        if self.verbose:
+          print 'Archiving directory %s' % d
         for root, dirs, files in os.walk(absd):
           if exclude:
             for ex in exclude:
@@ -473,7 +487,8 @@ class BuildEnvironment(object):
             absf = os.path.join(root, f)
             absr = os.path.relpath(absf,
                                    os.path.dirname(self.project_directory))
-            if self.verbose: print '--> Archiving "%s" as "%s"' % (absf, absr)
+            if self.verbose:
+              print '--> Archiving "%s" as "%s"' % (absf, absr)
             arczip.write(absf, absr)
 
   def git_clean(self):

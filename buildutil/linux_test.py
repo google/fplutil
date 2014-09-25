@@ -21,7 +21,25 @@ import unittest
 sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
 import buildutil.android as android
 import buildutil.common as common
+import buildutil.common_test as common_test
 import buildutil.linux as linux
+
+
+class CMakeMock(common_test.RunCommandMock):
+  """Verifies cmake command lines."""
+
+  def __init__(self, test_case, expected, cwd):
+    """Callable object which verifies cmake command lines.
+
+    Args:
+      test_case: unitetst.TestCase used to verify arguments.
+      expected: Expected arguments for cmake.
+      cwd: Expected working directory.
+    """
+    common_test.RunCommandMock.__init__(self, test_case)
+    build_environment_defaults = linux.BuildEnvironment.build_defaults()
+    self.expect([build_environment_defaults[linux._CMAKE_PATH]] + expected,
+                cwd)
 
 
 class LinuxBuildUtilTest(unittest.TestCase):
@@ -63,23 +81,10 @@ class LinuxBuildUtilTest(unittest.TestCase):
     d = linux.BuildEnvironment.build_defaults()
     b = linux.BuildEnvironment(d)
     # Mock the call to run_subprocess.
-    b.run_subprocess = self.cmake_verifier
+    b.run_subprocess = CMakeMock(self, ['-G', 'b', 'c', 'd', 'e'], 'e')
     b.cmake_flags = 'c d'
     b.project_directory = 'e'
     b.run_cmake(gen='b')
-
-  def cmake_verifier(self, args, cwd):
-    """BuildEnvironment.run_subprocess mock for test_run_cmake.
-
-    Args:
-      args: Argument list as normally passed to run_subprocess.
-      cwd: Working directory arg as normally passed to run_subprocess.
-    """
-    d = linux.BuildEnvironment.build_defaults()
-    # If the implementation changes arguments, this mock needs updating as well.
-    expected = [d[linux._CMAKE_PATH], '-G', 'b', 'c', 'd', 'e']
-    self.assertListEqual(args, expected)
-    self.assertEqual(cwd, 'e')
 
 if __name__ == '__main__':
   unittest.main()

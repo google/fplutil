@@ -22,18 +22,137 @@ import unittest
 sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
 import buildutil.common as common
 
-mock_path = ''
-mock_path_exists = True
-saved_find_executable = distutils.spawn.find_executable
-saved_path_exists = os.path.exists
+class MockOsPathExists(object):
+  """Mock of os.path.exists.
+
+  Attributes:
+    mock_path_exists: Value to return from  __call__().
+  """
+
+  def __init__(self, mock_path_exists):
+    """Initialize this instance.
+
+    Args:
+      mock_path_exists: Value to return from __call__().
+    """
+    self.mock_path_exists = mock_path_exists
+
+  def __call__(self, unused_path):
+    """Mock of os.path.exists.
+
+    Returns:
+      Value of mock_path_exists set in the constructor.
+    """
+    return self.mock_path_exists
+
+class MockFindExecutable(object):
+  """Mock of distutils.spawn.find_executable.
+
+  Attribtues:
+    mock_path: Path to return from __call__().
+  """
+
+  def __init__(self, mock_path):
+    """Initialize the instance.
+
+    Args:
+      mock_path: Path to return from __call__().
+    """
+    self.mock_path = mock_path
+
+  def __call__(self, unused_name):
+    """Mock of distutils.spawn.find_executable().
+
+    Returns:
+      Returns the mock_path attribute.
+    """
+    return self.mock_path
 
 
-def mock_os_path_exists(unused_path):
-  return mock_path_exists
+class RunCommandMock(object):
+  """Callable object which verifies command lines.
+
+  Attributes:
+    expected_args: Expected command line arguments.
+    expected_cwd: Expected working directory.
+    stdout: Standard output string that is the result of a call to this object.
+    stderr: Standard error string that is the result of a call to this object.
+    test_case: unittest.TestCase used to verify arguments.
+  """
+
+  def __init__(self, test_case):
+    """Callable object which verifies command lines.
+
+    Args:
+      test_case: unittest.TestCase used to verify arguments.
+    """
+    self.expected_args = None
+    self.expected_cwd = None
+    self.stdout = None
+    self.stderr = None
+    self.test_case = test_case
+
+  def returns(self, stdout, stderr=None):
+    """Set the strings values returned by __call__().
+
+    Args:
+      stdout: Standard output string that is the result of a call to this
+        object.
+      stderr: Standard error string that is the result of a call to this
+        object.
+    """
+    self.stdout = stdout
+    self.stderr = stderr
+
+  def expect(self, args, cwd=os.getcwd()):
+    """Set the expected arguments when this class is called.
+
+    Args:
+      args: Expected arguments when this class is called.
+      cwd: Expected current working directory when this class is called or
+         None to ignore this value.
+    """
+    self.expected_args = args
+    self.expected_cwd = cwd
+
+  def __call__(self, argv, capture=False, cwd=os.getcwd()):
+    """Mock of common.BuildEnvironment.run_subprocess().
+
+    Args:
+      argv: Arguments to compare with the expected arguments for this class.
+      capture: Whether to return a tuple (self.stdout, self.stderr)
+      cwd: Optional path relative to the project directory to run process in
+        for commands that do not allow specifying this, such as ant.
+
+    Returns:
+      (self.stdout, self.stderr) if capture is True, None otherwise.
+    """
+    if self.expected_cwd:
+      self.test_case.assertEqual(self.expected_cwd, cwd)
+    self.test_case.assertListEqual(self.expected_args, argv)
+    if capture:
+      return (self.stdout, self.stderr)
 
 
-def mock_find_executable(unused_name):
-  return mock_path
+class MakeVerifier(RunCommandMock):
+  """Callable object which verifies make command lines.
+
+  Attributes:
+    expected: Expected arguments for make.
+    test_case: unittest.TestCase used to verify make arguments.
+  """
+  def __init__(self, test_case, expected):
+    """Initialize this instance.
+
+    Args:
+      test_case: unittest.TestCase used to verify make arguments.
+      expected: Expected arguments for make.
+    """
+    RunCommandMock.__init__(self, test_case)
+    d = common.BuildEnvironment.build_defaults()
+    # If the implementation changes arguments, this mock needs to be updated as
+    # well.
+    self.expect([d[common._MAKE_PATH], '-j', d[common._CPU_COUNT]] + expected)
 
 
 class CommonBuildUtilTest(unittest.TestCase):
@@ -42,10 +161,12 @@ class CommonBuildUtilTest(unittest.TestCase):
   def setUp(self):
     self.git_clean_ran = False
     self.git_reset_ran = False
+    self.os_path_exists = os.path.exists
+    self.distutils_spawn_find_executable = distutils.spawn.find_executable
 
   def tearDown(self):
-    distutils.spawn.find_executable = saved_find_executable
-    os.path.exists = saved_path_exists
+    distutils.spawn.find_executable = self.distutils_spawn_find_executable
+    os.path.exists = self.os_path_exists
 
   def test_build_defaults(self):
     d = common.BuildEnvironment.build_defaults()
@@ -57,6 +178,7 @@ class CommonBuildUtilTest(unittest.TestCase):
     self.assertIn(common._GIT_CLEAN, d)
     self.assertIn(common._VERBOSE, d)
     self.assertIn(common._OUTPUT_DIR, d)
+    self.assertIn(common._CLEAN, d)
 
   def test_init(self):
     d = common.BuildEnvironment.build_defaults()
@@ -69,6 +191,7 @@ class CommonBuildUtilTest(unittest.TestCase):
     self.assertEqual(b.enable_git_clean, d[common._GIT_CLEAN])
     self.assertEqual(b.verbose, d[common._VERBOSE])
     self.assertEqual(b.output_directory, d[common._OUTPUT_DIR])
+    self.assertEqual(b.clean, d[common._CLEAN])
 
   def test_add_arguments(self):
     p = argparse.ArgumentParser()
@@ -80,7 +203,8 @@ class CommonBuildUtilTest(unittest.TestCase):
             '--' + common._MAKE_FLAGS, 'e',
             '--' + common._GIT_CLEAN,
             '--' + common._VERBOSE,
-            '--' + common._OUTPUT_DIR, 'f']
+            '--' + common._OUTPUT_DIR, 'f',
+            '--' + common._CLEAN]
 
     argobj = p.parse_args(args)
     d = vars(argobj)
@@ -93,6 +217,7 @@ class CommonBuildUtilTest(unittest.TestCase):
     self.assertTrue(d[common._GIT_CLEAN])
     self.assertTrue(d[common._VERBOSE])
     self.assertEqual('f', d[common._OUTPUT_DIR])
+    self.assertTrue(d[common._CLEAN])
 
   def test_find_path_from_binary(self):
     test_data = [
@@ -110,44 +235,37 @@ class CommonBuildUtilTest(unittest.TestCase):
         (os.path.join(os.path.sep, 'a'), 1, os.path.sep),
         (os.path.join(os.path.sep, 'a'), 2, None)]
 
-    global mock_path
-    distutils.spawn.find_executable = mock_find_executable  # reset in tearDown
     for (path, levels, expect) in test_data:
-      mock_path = path
+      # reset in tearDown
+      distutils.spawn.find_executable = MockFindExecutable(path)
       result = common.BuildEnvironment._find_path_from_binary('foo', levels)
-      self.assertEqual(result, expect)
+      self.assertEqual(result, expect, '"%s" != "%s" (case: %s)' % (
+          result, expect, str((path, levels, expect))))
 
   def test_run_make(self):
     d = common.BuildEnvironment.build_defaults()
     b = common.BuildEnvironment(d)
     # Mock the call to run_subprocess.
-    b.run_subprocess = self.make_verifier
+    b.run_subprocess = MakeVerifier(self, ['-C', 'e', 'c', 'd'])
     b.make_flags = 'c d'
     b.project_directory = 'e'
     b.run_make()
 
-  def make_verifier(self, args, cwd=None):
-    """BuildEnvironment.run_subprocess mock for test_run_make.
-
-    Args:
-      args: Argument list as normally passed to run_subprocess.
-      cwd: Working directory arg as normally passed to run_subprocess.
-    """
+  def test_run_make_clean(self):
     d = common.BuildEnvironment.build_defaults()
-    # If the implementation changes arguments, this mock needs updating as well.
-    expected = [d[common._MAKE_PATH],
-                '-j', d[common._CPU_COUNT], '-C', 'e', 'c', 'd']
-    self.assertListEqual(args, expected)
-    if cwd:
-      self.assertEqual(cwd, d[common._PROJECT_DIR])
+    b = common.BuildEnvironment(d)
+    b.clean = True
+    # Mock the call to run_subprocess.
+    b.run_subprocess = MakeVerifier(self, ['-C', 'e', 'clean'])
+    b.project_directory = 'e'
+    b.run_make()
 
   def test_git_clean(self):
     d = common.BuildEnvironment.build_defaults()
     b = common.BuildEnvironment(d)
     # Mock the call to run_subprocess.
     b.run_subprocess = self.git_clean_verifier
-    global mock_path_exists
-    os.path.exists = mock_os_path_exists  # reset in tearDown
+    os.path.exists = MockOsPathExists(False)  # reset in tearDown
 
     # first, unless enabled, git_clean() should do nothing.
     b.git_clean()
@@ -156,11 +274,11 @@ class CommonBuildUtilTest(unittest.TestCase):
     b.enable_git_clean = True
 
     # next, should do nothing if not in git dir
-    mock_path_exists = False
     b.git_clean()
     self.assertFalse(self.git_clean_ran)
     self.assertFalse(self.git_reset_ran)
-    mock_path_exists = True
+
+    os.path.exists = MockOsPathExists(True)  # reset in tearDown
 
     # finally, should run
     b.project_directory = 'e'

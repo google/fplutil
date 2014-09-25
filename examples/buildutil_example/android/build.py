@@ -24,10 +24,8 @@ import argparse
 import os
 import shutil
 import sys
-
-# sys.path[0] points to the script directory, when available.
-sys.path.append(os.path.join(sys.path[0], '..', '..', '..'))
-
+sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir,
+                             os.pardir))
 import buildutil.android
 import buildutil.common
 

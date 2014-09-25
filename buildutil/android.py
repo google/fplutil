@@ -28,13 +28,16 @@ command line.
 import distutils.spawn
 import errno
 import os
+import platform
 import random
+import re
 import shlex
 import shutil
 import stat
+import sys
 import xml.etree.ElementTree
+sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
 import buildutil.common as common
-import re
 
 _SDK_HOME_ENV_VAR = 'ANDROID_SDK_HOME'
 _NDK_HOME_ENV_VAR = 'NDK_HOME'
@@ -56,6 +59,7 @@ _MATCH_DEVICES = re.compile(r'^(List of devices attached\s*\n)|(\n)$')
 
 _NATIVE_ACTIVITY = 'android.app.NativeActivity'
 _ANDROID_MANIFEST_SCHEMA = 'http://schemas.android.com/apk/res/android'
+
 
 class XMLFile(object):
   """XML file base class factored for testability.
@@ -175,7 +179,7 @@ class AndroidManifest(XMLFile):
     if self.activity_name == _NATIVE_ACTIVITY:
       for metadata_element in activity_element.findall('meta-data'):
         if (AndroidManifest.__get_schema_attribute_value(
-                metadata_element, 'name') == 'android.app.lib_name'):
+            metadata_element, 'name') == 'android.app.lib_name'):
           self.lib_name = AndroidManifest.__get_schema_attribute_value(
               metadata_element, 'value')
 
@@ -193,6 +197,9 @@ class AndroidManifest(XMLFile):
     Args:
       xml_element: xml.etree.ElementTree to query.
       attribute: Name of Android Manifest attribute to retrieve.
+
+    Returns:
+      XML attribute string from the specified element.
     """
     return xml_element.get('{%s}%s' % (_ANDROID_MANIFEST_SCHEMA, attribute))
 
@@ -366,8 +373,8 @@ class BuildEnvironment(common.BuildEnvironment):
     parser.add_argument('--no-' + _ALWAYS_MAKE,
                         help='Only build out of date targets.',
                         dest=_ALWAYS_MAKE, action='store_false')
-    parser.set_defaults(**{_ALWAYS_MAKE: defaults[_ALWAYS_MAKE]})
-
+    parser.set_defaults(
+        **{_ALWAYS_MAKE: defaults[_ALWAYS_MAKE]})  # pylint: disable=star-args
 
   def build_android_libraries(self, subprojects, output=None):
     """Build list of Android library projects.
@@ -391,10 +398,17 @@ class BuildEnvironment(common.BuildEnvironment):
     common.BuildEnvironment._check_binary('ndk-build', ndk_build)
 
     for p in subprojects:
-      args = [ndk_build, '-j', self.cpu_count]
+      # Disable parallel clean on OSX.
+      cpu_count = self.cpu_count
+      if self.clean and platform.mac_ver()[0]:
+        cpu_count = 1
+
+      args = [ndk_build, '-j' + str(cpu_count)]
       if self.always_make:
-        args += ['-B']
+        args.append('-B')
       args += ['-C', os.path.abspath(os.path.join(self.project_directory, p))]
+      if self.clean:
+        args.append('clean')
 
       if self.verbose:
         args.append('V=1')
@@ -745,13 +759,13 @@ class BuildEnvironment(common.BuildEnvironment):
     number_of_devices = len(_MATCH_DEVICES.sub(r'', out).splitlines())
 
     if number_of_devices == 0:
-      raise AdbError('No Android devices are connected to this host.');
+      raise common.AdbError('No Android devices are connected to this host.')
 
     if number_of_devices > 1:
-      raise AdbError(
-        'Multiple Android devices are connected to this host. '
-        'Please specify a device using --adb-device <serial>. '
-        'The devices connected are: %s' % (os.linesep + out))
+      raise common.AdbError(
+          'Multiple Android devices are connected to this host. '
+          'Please specify a device using --adb-device <serial>. '
+          'The devices connected are: %s' % (os.linesep + out))
 
   def run_android_apk(self, adb_device=None, wait=True):
     """Run an android apk on the given device.
@@ -768,7 +782,7 @@ class BuildEnvironment(common.BuildEnvironment):
     manifest = AndroidManifest(manifest_path)
     manifest.parse()
 
-    full_name = "%s/%s" % (manifest.package_name, manifest.activity_name)
+    full_name = '%s/%s' % (manifest.package_name, manifest.activity_name)
     if not adb_device:
       self._check_adb_devices()
       adb_device = ''
@@ -776,7 +790,8 @@ class BuildEnvironment(common.BuildEnvironment):
     self.run_subprocess('adb %s logcat -c' % adb_device, shell=True)
 
     self.run_subprocess(
-      ('adb %s shell am start -S -n %s' % (adb_device, full_name)), shell=True)
+        ('adb %s shell am start -S -n %s' % (adb_device, full_name)),
+        shell=True)
 
     end_match = re.compile((r'.*(Displayed|Activity destroy timeout).*%s.*' %
                             full_name))
@@ -786,8 +801,8 @@ class BuildEnvironment(common.BuildEnvironment):
       # when the process ends. An alternative is to read the stream as it gets
       # written but this leads to delays in reading the stream and is difficult
       # to get working propery on windows.
-      out, err = self.run_subprocess( ('adb %s logcat -d' % adb_device),
-                                     capture=True, shell=True)
+      out, unused_err = self.run_subprocess(('adb %s logcat -d' % adb_device),
+                                            capture=True, shell=True)
 
       for line in out.splitlines():
         if end_match.match(line):
