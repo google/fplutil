@@ -416,7 +416,10 @@ class BuildEnvironment(common.BuildEnvironment):
       l = line.strip()
       if l.startswith('android-'):
         nstr = l.split('-')[1]
-        n = (int(nstr))
+        # Ignore preview SDK revisions (e.g "L").
+        if not nstr.isdigit():
+          continue
+        n = int(nstr)
         if n > installed:
           if self.verbose:
             print 'sdk api level %d found' % (n)

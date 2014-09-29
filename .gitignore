@@ -15,3 +15,6 @@ libfplutil/tests/local.properties
 libfplutil/tests/obj/
 libfplutil/tests/proguard-project.txt
 libfplutil/tests/project.properties
+apks/
+libs/
+

@@ -409,7 +409,8 @@ class AndroidBuildUtilTest(unittest.TestCase):
     m.returns('android-3\n'
               'android-5\n'
               'meaningless\n'
-              'android-10\n')
+              'android-10\n'
+              'android-L\n')
     got = b._find_best_android_sdk('android', 1, 5)
     self.assertEqual(got, 'android-5')
     got = b._find_best_android_sdk('android', 5, 15)
