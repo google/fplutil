@@ -48,6 +48,8 @@ class BuildEnvironment(common.BuildEnvironment):
     cmake_flags: Flags to pass to cmake, for cmake-based projects.
   """
 
+  CMAKE = 'cmake'
+
   def __init__(self, arguments):
     """Constructs the BuildEnvironment with basic information needed to build.
 
@@ -109,6 +111,32 @@ class BuildEnvironment(common.BuildEnvironment):
         '-F', '--' + _CMAKE_FLAGS, help='Flags to use to override CMake flags',
         dest=_CMAKE_FLAGS, default=defaults[_CMAKE_FLAGS])
 
+  def _find_binary(self, binary, additional_paths=None):
+    """Find a binary from the set of binaries managed by this class.
+
+    This method enables the lookup of a binary path using the name of the
+    binary to avoid replication of code which searches for binaries.
+
+    This class allows the lookup of...
+    * BuildEnvironment.CMAKE
+
+    The _find_binary() method in derived classes may add more binaries.
+
+    Args:
+      binary: Name of the binary.
+      additional_paths: Additional dictionary to search for binary paths.
+
+    Returns:
+      String containing the path of binary.
+
+    Raises:
+      ToolPathError: Binary is not at the specified path.
+    """
+    search_dict = {BuildEnvironment.CMAKE: [self.cmake_path]}
+    if additional_paths:
+      search_dict.update(additional_paths)
+    return BuildEnvironment._check_binary(binary, search_dict[binary])
+
   def run_cmake(self, gen='Unix Makefiles'):
     """Run cmake based on the specified build environment.
 
@@ -124,9 +152,9 @@ class BuildEnvironment(common.BuildEnvironment):
       ToolPathError: CMake not found in configured build environment or $PATH.
     """
 
-    common.BuildEnvironment._check_binary('cmake', self.cmake_path)
+    cmake_path = self._find_binary(BuildEnvironment.CMAKE)
 
-    args = [self.cmake_path, '-G', gen]
+    args = [cmake_path, '-G', gen]
     if self.cmake_flags:
       args += shlex.split(self.cmake_flags, posix=self._posix)
     args.append(self.project_directory)

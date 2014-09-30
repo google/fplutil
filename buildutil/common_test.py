@@ -75,21 +75,31 @@ class RunCommandMock(object):
   Attributes:
     expected_args: Expected command line arguments.
     expected_cwd: Expected working directory.
+    expected_shell: Expected value of the shell argument.
     stdout: Standard output string that is the result of a call to this object.
     stderr: Standard error string that is the result of a call to this object.
     test_case: unittest.TestCase used to verify arguments.
   """
 
-  def __init__(self, test_case):
+  def __init__(self, test_case, args=None, cwd=None, stdout=None, stderr=None,
+               shell=None):
     """Callable object which verifies command lines.
 
     Args:
       test_case: unittest.TestCase used to verify arguments.
+      args: Expected command line arguments.
+      cwd: Expected working directory.
+      stdout: Standard output string that is the result of a call to this
+        object.
+      stderr: Standard error string that is the result of a call to this
+        object.
+      shell: Expected value of the shell argument.
     """
-    self.expected_args = None
-    self.expected_cwd = None
-    self.stdout = None
-    self.stderr = None
+    self.expected_args = args
+    self.expected_cwd = cwd
+    self.expected_shell = shell
+    self.stdout = stdout
+    self.stderr = stderr
     self.test_case = test_case
 
   def returns(self, stdout, stderr=None):
@@ -104,18 +114,22 @@ class RunCommandMock(object):
     self.stdout = stdout
     self.stderr = stderr
 
-  def expect(self, args, cwd=os.getcwd()):
+  def expect(self, args, cwd=None, shell=None):
     """Set the expected arguments when this class is called.
 
     Args:
       args: Expected arguments when this class is called.
       cwd: Expected current working directory when this class is called or
          None to ignore this value.
+      shell: Expected value of the shell argument.
     """
     self.expected_args = args
     self.expected_cwd = cwd
+    if shell is not None:
+      self.expected_shell = shell
 
-  def __call__(self, argv, capture=False, cwd=os.getcwd()):
+  def __call__(self, argv, capture=False, cwd=os.getcwd(), shell=False,
+               stdin=None):
     """Mock of common.BuildEnvironment.run_subprocess().
 
     Args:
@@ -123,15 +137,60 @@ class RunCommandMock(object):
       capture: Whether to return a tuple (self.stdout, self.stderr)
       cwd: Optional path relative to the project directory to run process in
         for commands that do not allow specifying this, such as ant.
+      shell: Compared against expected_shell.
+      stdin: Unused.
 
     Returns:
       (self.stdout, self.stderr) if capture is True, None otherwise.
     """
     if self.expected_cwd:
       self.test_case.assertEqual(self.expected_cwd, cwd)
-    self.test_case.assertListEqual(self.expected_args, argv)
+    if self.expected_shell:
+      self.test_case.assertEqual(self.expected_shell, shell)
+    if issubclass(list, argv.__class__):
+      self.test_case.assertListEqual(self.expected_args, argv)
+    else:
+      self.test_case.assertEqual(str(self.expected_args), argv)
     if capture:
       return (self.stdout, self.stderr)
+
+
+class RunCommandMockList(object):
+  """List of RunCommandMock instances.
+
+  Each call to this class pops the RunCommandMock instance from the top of
+  the pending list and calls the object.
+
+  Attributes:
+    mock_list: List of RunCommandMock instances.  This list of instances is
+      called in sequence on subsequent calls to RunCommandMockList.__call__().
+  """
+
+  def __init__(self, mock_list):
+    """Initialize this instance.
+
+    Args:
+      mock_list: List of RunCommandMock instances.  This list of instances is
+        called in sequence on subsequent calls to
+        RunCommandMockList.__call__().
+    """
+    self.mock_list = mock_list
+
+  def __call__(self, argv, capture=False, cwd=os.getcwd(), shell=False):
+    """Mock of common.BuildEnvironment.run_subprocess().
+
+    Args:
+      argv: Arguments to compare with the expected arguments of the
+        RunCommandMock instance at the head of mock_list.
+      capture: Whether to return a tuple (self.stdout, self.stderr)
+      cwd: Optional path relative to the project directory to run process in
+        for commands that do not allow specifying this, such as ant.
+      shell: Whether to run the command to run in a shell.
+
+    Returns:
+      (self.stdout, self.stderr) if capture is True, None otherwise.
+    """
+    return self.mock_list.pop(0)(argv, capture=capture, cwd=cwd, shell=shell)
 
 
 class MakeVerifier(RunCommandMock):
@@ -163,6 +222,8 @@ class CommonBuildUtilTest(unittest.TestCase):
     self.git_reset_ran = False
     self.os_path_exists = os.path.exists
     self.distutils_spawn_find_executable = distutils.spawn.find_executable
+    distutils.spawn.find_executable = (
+        lambda name, path=None: path if path else os.path.join('a', 'b', name))
 
   def tearDown(self):
     distutils.spawn.find_executable = self.distutils_spawn_find_executable
@@ -242,6 +303,19 @@ class CommonBuildUtilTest(unittest.TestCase):
       self.assertEqual(result, expect, '"%s" != "%s" (case: %s)' % (
           result, expect, str((path, levels, expect))))
 
+  def test_find_binary_found(self):
+    build_environment = common.BuildEnvironment(
+        common.BuildEnvironment.build_defaults())
+    distutils.spawn.find_executable = lambda name, path=None: None
+    with self.assertRaises(common.ToolPathError):
+      build_environment._find_binary(common.BuildEnvironment.MAKE)
+
+  def test_find_binary_missing(self):
+    build_environment = common.BuildEnvironment(
+        common.BuildEnvironment.build_defaults())
+    self.assertNotEquals(None, build_environment._find_binary(
+        common.BuildEnvironment.GIT))
+
   def test_run_make(self):
     d = common.BuildEnvironment.build_defaults()
     b = common.BuildEnvironment(d)
@@ -306,6 +380,19 @@ class CommonBuildUtilTest(unittest.TestCase):
     self.assertListEqual(args, expected)
     if cwd:
       self.assertEqual(cwd, d[common._PROJECT_DIR])
+
+  def test_get_project_directory(self):
+    b = common.BuildEnvironment(common.BuildEnvironment.build_defaults())
+    b.project_directory = os.path.join('examples', 'libfplutil_example')
+    expected = os.path.join(os.getcwd(), b.project_directory)
+    self.assertEquals(expected, b.get_project_directory())
+
+  def test_get_project_directory_relative(self):
+    b = common.BuildEnvironment(common.BuildEnvironment.build_defaults())
+    directories = ('examples', 'libfplutil_example')
+    b.project_directory = os.path.join(directories[0], directories[1])
+    expected = os.path.join(os.getcwd(), directories[0])
+    self.assertEquals(expected, b.get_project_directory(path='..'))
 
   # TBD, these are highly dependent high level functions that may need refactor
   # to unit-test well, as they are currently difficult to mock. At the moment

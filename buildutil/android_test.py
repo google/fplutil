@@ -14,7 +14,9 @@
 # limitations under the License.
 #
 
+import __builtin__
 import argparse
+import distutils.spawn
 import os
 import platform
 import sys
@@ -25,20 +27,127 @@ import buildutil.common as common
 import buildutil.common_test as common_test
 import buildutil.linux as linux
 
-_saved_walk = os.walk
 
 class FileMock(object):
+  """Light mock of a file.
+
+  Attributes:
+    string: String returned by read().
+  """
 
   def __init__(self, string):
+    """Initialize the mock file.
+
+    Args:
+      string: String returned by read().
+    """
     self.string = string
 
   def close(self):
     pass
 
-  def read(self, nbytes):
+  def read(self, nbytes=None):
+    """Return nbytes characters of the "string" attribute.
+
+    Args:
+      nbytes: Number of bytes to read from the file or None returns the entire
+        file.
+
+    Returns:
+      An nbytes slice of the "string" attribute.
+    """
+    if nbytes is None:
+      nbytes = len(self.string)
     r = self.string[0:nbytes]
     self.string = self.string[nbytes:]
     return r
+
+  def readlines(self):
+    """Return a line at a time from the "string" attribute.
+
+    Returns:
+      A list of lines from the string attribute.
+    """
+    return self.string.splitlines()
+
+  def __enter__(self):
+    """Empty file open."""
+    return self
+
+  def __exit__(self, exc_type, exc_val, exc_tb):
+    """Empty file close."""
+    pass
+
+
+class FileSetMockFactory(object):
+  """Factory for FileMock instances which can be used to override open.
+
+  Attributes:
+    test_case: Test case used to verify contents are found for open files.
+    filename_contents: Dictionary containing file contents string indexed by
+      filenames.  A FileMock is returned by __call__ initialized with the
+      contents of the specified filename.  If the filename isn't present, the
+      contents indexed by the key None will be returned.
+  """
+
+  file_open = __builtins__.open
+
+  def __init__(self, test_case, filename_contents):
+    """Initialize the mock file factory.
+
+    Args:
+      test_case: Test case used to verify contents are found for open files.
+      filename_contents: Dictionary containing file contents string indexed by
+        filenames.  A FileMock is returned by __call__ initialized with the
+        contents of the specified filename.  If the filename isn't present, the
+        contents indexed by the key None will be returned.
+    """
+    self.test_case = test_case
+    self.filename_contents = filename_contents
+
+  def __call__(self, filename, *argv):
+    """Mock file open().
+
+    Args:
+      filename: Name of the file used to lookup the contents string in
+        "filename_contents" which initializes the returned FileMock.
+      argv: Additional arguments for file open, ignored by the mock
+        implementation.
+
+    Returns:
+      FileMock instance that will return "contents" on MockFile.read().
+    """
+    # Special case which allows the exception handler to open files to
+    # annotate tracebacks.
+    if filename and filename.endswith('.py'):
+      return self.__class__.file_open(filename, *argv)
+
+    contents = self.filename_contents.get(
+        filename, self.filename_contents.get(None))
+    self.test_case.assertNotEquals(None, contents)
+    return FileMock(contents)
+
+
+class FileMockFactory(FileSetMockFactory):
+  """Factory for FileMock which can be used to override open."""
+
+  def __init__(self, test_case, contents):
+    """Initialize the mock file factory.
+
+    Args:
+      test_case: Test case used to verify contents are found for open files.
+      contents: String which contains the contents of the file returned by
+        FileMock.read().
+    """
+    super(FileMockFactory, self).__init__(test_case, {None: contents})
+
+  def __call__(self, unused_filename, *unused_argv):
+    """Mock file open().
+
+    Returns:
+      FileMock instance that will return "contents" on MockFile.read().
+    """
+    return super(FileMockFactory, self).__call__(None)
 
 
 class BuildAndroidLibrariesMock(object):
@@ -48,7 +157,7 @@ class BuildAndroidLibrariesMock(object):
     self.subprojects = []
     self.output = None
 
-  def verify(self, subprojects, output=None):
+  def __call__(self, subprojects, output=None):
     self.test.assertEqual(self.output, output)
     self.test.assertListEqual(sorted(self.subprojects), sorted(subprojects))
 
@@ -68,7 +177,7 @@ class BuildAndroidAPKMock(object):
   def fail(self, fail=True):
     self.fail_if_called = fail
 
-  def verify(self, path='.', output=None):
+  def __call__(self, path='.', output=None):
     self.test.assertFalse(self.fail_if_called)
     self.test.assertEqual(self.output, output)
     self.test.assertEqual(self.path, path)
@@ -127,9 +236,26 @@ class OsWalkMock(object):
 class AndroidBuildUtilTest(unittest.TestCase):
   """Android-specific unit tests."""
 
+  def setUp(self):
+    # Save methods that are mocked out.
+    self.os_walk = os.walk
+    self.os_path_exists = os.path.exists
+    self.os_path_getmtime = os.path.getmtime
+    self.distutils_spawn_find_executable = distutils.spawn.find_executable
+    self.file_open = __builtin__.open
+    # Mock out find_executable so all binaries are found.
+    distutils.spawn.find_executable = (
+        lambda name, path=None: (
+            os.path.join(path, name) if path else os.path.join(
+                'a', 'b', name)))
+
   def tearDown(self):
     # Undo mocks.
-    os.walk = _saved_walk
+    os.walk = self.os_walk
+    os.path.exists = self.os_path_exists
+    os.path.getmtime = self.os_path_getmtime
+    distutils.spawn.find_executable = self.distutils_spawn_find_executable
+    __builtin__.open = self.file_open
 
   def test_build_defaults(self):
     d = android.BuildEnvironment.build_defaults()
@@ -297,6 +423,34 @@ class AndroidBuildUtilTest(unittest.TestCase):
     with self.assertRaises(common.ConfigurationError):
       m._parse(f)
 
+  def test_get_android_manifest_path(self):
+    build_environment = android.BuildEnvironment(
+        android.BuildEnvironment.build_defaults())
+    self.assertEquals(os.path.join(os.getcwd(), 'AndroidManifest.xml'),
+                      build_environment.get_manifest_path())
+
+  def test_manifest_parse(self):
+    os.path.exists = lambda unused_filename: True
+    __builtin__.open = FileMockFactory(
+        self,
+        '<manifest '
+        '  xmlns:android="http://schemas.android.com/apk/res/android"\n'
+        '  package="com.google.fpl.libfplutil_test">\n'
+        '  <uses-sdk android:minSdkVersion="1"/>\n'
+        '  <application>\n'
+        '    <activity android:name="android.app.NativeActivity">\n'
+        '      <meta-data android:name="android.app.lib_name"\n'
+        '                 android:value="test"/>\n'
+        '    </activity>\n'
+        '  </application>\n'
+        '</manifest>')
+    manifest = android.BuildEnvironment(
+        android.BuildEnvironment.build_defaults()).parse_manifest()
+    # Restore default file behavior for the correct display of exceptions.
+    __builtin__.open = self.file_open
+    self.assertEqual(manifest.min_sdk, 1)
+    self.assertEqual(manifest.target_sdk, manifest.min_sdk)
+
   def test_manifest_parse_error(self):
     f = FileMock('<manifest ')
     m = android.AndroidManifest(None)
@@ -352,6 +506,7 @@ class AndroidBuildUtilTest(unittest.TestCase):
     expect += flaglist
     m.expect(expect)
     b.build_android_libraries([l], output=l)
+    distutils.spawn.find_executable = self.distutils_spawn_find_executable
     b.ndk_home = '/dev/null'
     with self.assertRaises(common.ToolPathError):
       b.build_android_libraries([l], output=l)
@@ -383,6 +538,7 @@ class AndroidBuildUtilTest(unittest.TestCase):
     expect += flaglist
     m.expect(expect)
     b.build_android_libraries([l], output=l)
+    distutils.spawn.find_executable = self.distutils_spawn_find_executable
     b.ndk_home = '/dev/null'
     with self.assertRaises(common.ToolPathError):
       b.build_android_libraries([l], output=l)
@@ -414,31 +570,25 @@ class AndroidBuildUtilTest(unittest.TestCase):
     got = b._find_best_android_sdk('android', 5, 15)
     self.assertEqual(got, 'android-15')
 
-  def _build_all_test_setup(self):
-    d = android.BuildEnvironment.build_defaults()
-    b = android.BuildEnvironment(d)
-    apk_mock = BuildAndroidAPKMock(self)
-    lib_mock = BuildAndroidLibrariesMock(self)
-    b.build_android_libraries = lib_mock.verify
-    b.build_android_apk = apk_mock.verify
+  def _find_projects_test_setup(self):
+    build_environment = android.BuildEnvironment(
+        android.BuildEnvironment.build_defaults())
     walk_mock = OsWalkMock(self)
     os.walk = walk_mock.walk
-    return (b, apk_mock, lib_mock, walk_mock)
+    return (build_environment, walk_mock)
 
-  def test_build_all_trivial(self):
-    (b, apk_mock, lib_mock, walk_mock) = self._build_all_test_setup()
+  def test_find_projects_trivial(self):
+    (b, walk_mock) = self._find_projects_test_setup()
     project = b.project_directory
     tree = FileNode(project)
     jni = tree.add_subdir('jni')
     jni.add_files(['Android.mk', 'Application.mk'])
     walk_mock.expect(project)
     walk_mock.set_root(tree)
-    lib_mock.expect([tree.name])
-    apk_mock.fail()  # should not be called
-    b.build_all()
+    b.find_projects()
 
-  def test_build_all_exclude(self):
-    (b, apk_mock, lib_mock, walk_mock) = self._build_all_test_setup()
+  def test_find_projects_exclude(self):
+    (b, walk_mock) = self._find_projects_test_setup()
     project = b.project_directory
     tree = FileNode(project)
     jni = tree.add_subdir('jni')
@@ -447,12 +597,10 @@ class AndroidBuildUtilTest(unittest.TestCase):
     fooz.add_files(['Android.mk', 'Application.mk'])
     walk_mock.expect(project)
     walk_mock.set_root(tree)
-    lib_mock.expect([tree.name])  # should not pass fooz
-    apk_mock.fail()  # should not be called
-    b.build_all(exclude_dirs=['fooz'])
+    b.find_projects(exclude_dirs=['fooz'])
 
-  def test_build_all_exclude_defaults(self):
-    (b, apk_mock, lib_mock, walk_mock) = self._build_all_test_setup()
+  def test_find_projects_exclude_defaults(self):
+    (b, walk_mock) = self._find_projects_test_setup()
     project = b.project_directory
     tree = FileNode(project)
     jni = tree.add_subdir('jni')
@@ -462,9 +610,131 @@ class AndroidBuildUtilTest(unittest.TestCase):
       n.add_files(['Android.mk', 'Application.mk'])
     walk_mock.expect(project)
     walk_mock.set_root(tree)
-    lib_mock.expect([tree.name])  # should not pass any of the default excludes
-    apk_mock.fail()  # should not be called
-    b.build_all()
+    b.find_projects()
+
+  def test_find_projects_even_more_trivial(self):
+    (b, walk_mock) = self._find_projects_test_setup()
+    project = b.project_directory
+    tree = FileNode(project)
+    tree.add_files(['Android.mk'])  # test handling top level Android.mk
+    walk_mock.expect(project)
+    walk_mock.set_root(tree)
+    b.find_projects()
+
+  def _create_update_build_xml_setup(self):
+    build_environment = android.BuildEnvironment(
+      android.BuildEnvironment.build_defaults())
+    build_environment.sdk_home = ''
+
+    build_environment._find_best_android_sdk = (
+      lambda unused_android, unused_min_sdk, unused_target_sdk: 10)
+
+    project_directory = build_environment.get_project_directory()
+    buildxml_filename = os.path.join(project_directory, 'build.xml')
+
+    manifest = android.AndroidManifest(None)
+    manifest.path = os.path.join(project_directory, 'AndroidManifest.xml')
+    manifest._parse(FileMock(
+        '<manifest '
+        '  xmlns:android="http://schemas.android.com/apk/res/android"\n'
+        '  package="com.google.fpl.libfplutil_test">\n'
+        '  <uses-sdk android:minSdkVersion="1"/>\n'
+        '  <application>\n'
+        '    <activity android:name="android.app.NativeActivity">\n'
+        '      <meta-data android:name="android.app.lib_name"\n'
+        '                 android:value="test"/>\n'
+        '    </activity>\n'
+        '  </application>\n'
+        '</manifest>'))
+
+    __builtin__.open = FileMockFactory(
+        self,  ('<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<project name="libfplutil_test" default="help">\n'
+                '</project>\n'))
+
+    return build_environment, manifest, buildxml_filename
+
+  def test_create_update_build_xml_update(self):
+    build_environment, manifest, buildxml_filename = (
+        self._create_update_build_xml_setup())
+
+    os.path.exists = lambda unused_filename: True
+    os.path.getmtime = lambda filename: (
+        {manifest.path: 10, buildxml_filename: 5}[filename])
+
+    run_command_mock = common_test.RunCommandMock(self)
+    run_command_mock.expect([os.path.join('tools', 'android'), 'update',
+                             'project', '--path',
+                             build_environment.get_project_directory(),
+                             '--target', 10, '--name', 'libfplutil_test'])
+    build_environment.run_subprocess = run_command_mock
+
+    buildxml = build_environment.create_update_build_xml(manifest)
+    self.assertEqual('libfplutil_test', buildxml.project_name)
+
+  def test_create_update_build_xml_create(self):
+    build_environment, manifest, buildxml_filename = (
+        self._create_update_build_xml_setup())
+
+    missing_files = set(buildxml_filename)
+    os.path.exists = lambda f: (
+      True if f not in missing_files else missing_files.remove(f) or False)
+    os.path.getmtime = lambda filename: (
+        {manifest.path: 10, buildxml_filename: 5}[filename])
+
+    run_command_mock = common_test.RunCommandMock(self)
+    run_command_mock.expect([os.path.join('tools', 'android'), 'update',
+                             'project', '--path',
+                             build_environment.get_project_directory(),
+                             '--target', 10, '--name', 'libfplutil_test'])
+    build_environment.run_subprocess = run_command_mock
+
+    buildxml = build_environment.create_update_build_xml(manifest)
+    self.assertEqual('libfplutil_test', buildxml.project_name)
+
+  def test_create_update_build_xml_up_to_date(self):
+    build_environment, manifest, buildxml_filename = (
+        self._create_update_build_xml_setup())
+
+    missing_files = set(buildxml_filename)
+    os.path.exists = lambda unused_filename: True
+    os.path.getmtime = lambda filename: (
+        {manifest.path: 5, buildxml_filename: 5}[filename])
+
+    buildxml = build_environment.create_update_build_xml(manifest)
+    self.assertEqual('libfplutil_test', buildxml.project_name)
+
+  def test_get_apk_filenames(self):
+    build_environment = android.BuildEnvironment(
+      android.BuildEnvironment.build_defaults())
+    signed_apk, unsigned_apk = build_environment.get_apk_filenames(
+      'libfplutil_example')
+    self.assertEquals(os.path.join(os.getcwd(), 'bin',
+                                   'libfplutil_example-release-unsigned.apk'),
+                      unsigned_apk)
+    self.assertEquals(os.path.join(os.getcwd(), 'bin',
+                                   'libfplutil_example.apk'),
+                      signed_apk)
+
+  def test_build_android_apk_unsigned(self):
+    build_environment, manifest, buildxml_filename = (
+        self._create_update_build_xml_setup())
+    os.path.exists = lambda unused_filename: True
+    os.path.getmtime = lambda unused_filename: 1
+    build_environment.ant_path = 'ant'
+    build_environment.ant_flags = 'a b "c d"'
+    run_command_mock = common_test.RunCommandMock(self)
+    run_command_mock.expect(['ant', 'release', 'a', 'b', 'c d'], None)
+    build_environment.run_subprocess = run_command_mock
+    build_environment.build_android_apk(manifest=manifest)
+
+  def _build_all_test_setup(self):
+    b, walk_mock = self._find_projects_test_setup()
+    apk_mock = BuildAndroidAPKMock(self)
+    lib_mock = BuildAndroidLibrariesMock(self)
+    b.build_android_libraries = lib_mock
+    b.build_android_apk = apk_mock
+    return (b, apk_mock, lib_mock, walk_mock)
 
   def test_build_all_even_more_trivial(self):
     (b, apk_mock, lib_mock, walk_mock) = self._build_all_test_setup()
@@ -486,7 +756,7 @@ class AndroidBuildUtilTest(unittest.TestCase):
     jni.add_files(['Android.mk', 'Application.mk'])
     walk_mock.expect(project)
     walk_mock.set_root(tree)
-    lib_mock.expect([])
+    lib_mock.expect([tree.name])
     apk_mock.expect(tree.name)
     b.build_all()
 
@@ -503,9 +773,238 @@ class AndroidBuildUtilTest(unittest.TestCase):
     jni.add_files(['Android.mk', 'Application.mk'])
     walk_mock.expect(project)
     walk_mock.set_root(tree)
-    lib_mock.expect([src.name])
+    lib_mock.expect([src.name, app.name])
     apk_mock.expect(app.name)
     b.build_all()
+
+  def test_check_adb_devices_no_devices(self):
+    build_environment = android.BuildEnvironment(
+        android.BuildEnvironment.build_defaults())
+    build_environment.sdk_home = 'sdk_home'
+    os.path.exists = lambda unused_filename: True
+    build_environment.run_subprocess = common_test.RunCommandMock(
+        self, args='%s devices -l' % (
+            build_environment._find_binary(android.BuildEnvironment.ADB)),
+        stdout='List of devices attached\n\n', shell=True)
+    with self.assertRaises(common.AdbError):
+        build_environment.check_adb_devices()
+
+  def test_check_adb_devices_one_device(self):
+    build_environment = android.BuildEnvironment(
+        android.BuildEnvironment.build_defaults())
+    build_environment.sdk_home = 'sdk_home'
+    os.path.exists = lambda unused_filename: True
+    build_environment.run_subprocess = common_test.RunCommandMock(
+        self, args='%s devices -l' % (
+            build_environment._find_binary(android.BuildEnvironment.ADB)),
+        stdout=('List of devices attached\n'
+                '06d8bd43               device usb:2-3.3 product:razor '
+                'model:Nexus_7 device:flo\n'), shell=True)
+    build_environment.check_adb_devices()
+
+  def test_check_adb_devices_multiple_devices(self):
+    build_environment = android.BuildEnvironment(
+        android.BuildEnvironment.build_defaults())
+    build_environment.sdk_home = 'sdk_home'
+    os.path.exists = lambda unused_filename: True
+    build_environment.run_subprocess = common_test.RunCommandMock(
+        self, args='%s devices -l' % (
+            build_environment._find_binary(android.BuildEnvironment.ADB)),
+        stdout=('List of devices attached\n'
+                '06d8bd43               device usb:2-3.3 product:razor '
+                'model:Nexus_7 device:flo\n'
+                '98aaffe123             device usb:2-3.3 product:fishy '
+                'model:Nexus_55 device:jelly\n'), shell=True)
+    with self.assertRaises(common.AdbError):
+      build_environment.check_adb_devices()
+
+  def test_check_adb_devices_specified_device_found(self):
+    build_environment = android.BuildEnvironment(
+        android.BuildEnvironment.build_defaults())
+    build_environment.sdk_home = 'sdk_home'
+    os.path.exists = lambda unused_filename: True
+    build_environment.run_subprocess = common_test.RunCommandMock(
+        self, args='%s devices -l' % (
+            build_environment._find_binary(android.BuildEnvironment.ADB)),
+        stdout=('List of devices attached\n'
+                '06d8bd43               device usb:2-3.3 product:razor '
+                'model:Nexus_7 device:flo\n'
+                '98aaffe123             device usb:2-3.3 product:fishy '
+                'model:Nexus_55 device:jelly\n'), shell=True)
+    build_environment.check_adb_devices('98aaffe123')
+
+  def test_check_adb_devices_specified_device_not_found(self):
+    build_environment = android.BuildEnvironment(
+        android.BuildEnvironment.build_defaults())
+    build_environment.sdk_home = 'sdk_home'
+    os.path.exists = lambda unused_filename: True
+    build_environment.run_subprocess = common_test.RunCommandMock(
+        self, args='%s devices -l' % (
+            build_environment._find_binary(android.BuildEnvironment.ADB)),
+        stdout=('List of devices attached\n'
+                '06d8bd43               device usb:2-3.3 product:razor '
+                'model:Nexus_7 device:flo\n'
+                '98aaffe123             device usb:2-3.3 product:fishy '
+                'model:Nexus_55 device:jelly\n'), shell=True)
+    with self.assertRaises(common.AdbError):
+      build_environment.check_adb_devices('0000')
+
+  def test_get_adb_device_argument(self):
+    build_environment = android.BuildEnvironment(
+        android.BuildEnvironment.build_defaults())
+    build_environment.sdk_home = 'sdk_home'
+    os.path.exists = lambda unused_filename: True
+    build_environment.run_subprocess = common_test.RunCommandMock(
+        self, args='%s devices -l' % (
+            build_environment._find_binary(android.BuildEnvironment.ADB)),
+        stdout=('List of devices attached\n'
+                '06d8bd43               device usb:2-3.3 product:razor '
+                'model:Nexus_7 device:flo\n'))
+    self.assertEquals('-s 06d8bd43',
+                      build_environment.get_adb_device_argument('06d8bd43'))
+
+  def test_get_adb_device_argument_no_device(self):
+    build_environment = android.BuildEnvironment(
+        android.BuildEnvironment.build_defaults())
+    build_environment.sdk_home = 'sdk_home'
+    os.path.exists = lambda unused_filename: True
+    build_environment.run_subprocess = common_test.RunCommandMock(
+        self, args='%s devices -l' % (
+            build_environment._find_binary(android.BuildEnvironment.ADB)),
+        stdout=('List of devices attached\n'
+                '06d8bd43               device usb:2-3.3 product:razor '
+                'model:Nexus_7 device:flo\n'))
+    self.assertEquals('', build_environment.get_adb_device_argument())
+
+  def test_list_installed_packages(self):
+    build_environment = android.BuildEnvironment(
+        android.BuildEnvironment.build_defaults())
+    build_environment.sdk_home = 'sdk_home'
+    os.path.exists = lambda unused_filename: True
+    adb_path = build_environment._find_binary(android.BuildEnvironment.ADB)
+    build_environment.run_subprocess = common_test.RunCommandMockList(
+        [common_test.RunCommandMock(
+            self, args='%s devices -l' % adb_path,
+            stdout=('List of devices attached\n'
+                    '06d8bd43               device usb:2-3.3 product:razor '
+                    'model:Nexus_7 device:flo\n')),
+         common_test.RunCommandMock(
+            self, args='%s -s 06d8bd43 shell pm list packages' % adb_path,
+            stdout=('package:com.google.earth\n'
+                    'junk\n'
+                    'package:com.google.android.gsf\n'
+                    'package:com.android.keyguard\n'
+                    'nothing useful\n'))])
+    expected = ['com.google.earth', 'com.google.android.gsf',
+               'com.android.keyguard']
+    self.assertListEqual(expected, build_environment.list_installed_packages(
+        '06d8bd43'))
+
+  def test_install_android_apk(self):
+    class MockBuildEnvironment(android.BuildEnvironment):
+      def __init__(self, defaults):
+        android.BuildEnvironment.__init__(self, defaults)
+
+      def parse_manifest(self, path=None):
+        manifest = android.AndroidManifest(None)
+        manifest._parse(FileMock(
+            '<manifest '
+            '  xmlns:android="http://schemas.android.com/apk/res/android"\n'
+            '  package="com.google.fpl.libfplutil_test">\n'
+            '  <uses-sdk android:minSdkVersion="1"/>\n'
+            '  <application>\n'
+            '    <activity android:name="android.app.NativeActivity">\n'
+            '      <meta-data android:name="android.app.lib_name"\n'
+            '                 android:value="test"/>\n'
+            '    </activity>\n'
+            '  </application>\n'
+            '</manifest>'))
+        return manifest
+
+      def create_update_build_xml(self, manifest, path=None):
+        buildxml = android.BuildXml(None)
+        buildxml._parse(FileMock(
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<project name="libfplutil_test" default="help">\n'
+            '</project>\n'))
+        return buildxml
+
+      def list_installed_packages(self, adb_device=None, check_devices=True):
+        return ['com.google.earth',
+                'com.google.android.gsf',
+                'com.google.fpl.libfplutil_test',
+                'com.android.keyguard']
+
+    build_environment = MockBuildEnvironment(
+      android.BuildEnvironment.build_defaults())
+    build_environment.sdk_home = ''
+
+    os.path.exists = lambda unused_filename: True
+    build_environment.sdk_home = 'sdk_home'
+    adb_path = build_environment._find_binary(android.BuildEnvironment.ADB)
+
+    build_environment.run_subprocess = common_test.RunCommandMockList(
+        [common_test.RunCommandMock(
+            self, args='%s devices -l' % adb_path,
+            stdout=('List of devices attached\n'
+                    '06d8bd43               device usb:2-3.3 product:razor '
+                    'model:Nexus_7 device:flo\n')),
+         common_test.RunCommandMock(
+            self, args=('%s -s 06d8bd43 uninstall '
+                        'com.google.fpl.libfplutil_test' % adb_path)),
+         common_test.RunCommandMock(
+            self, args=(
+                '%s -s 06d8bd43 install %s' % (adb_path, os.path.join(
+                    build_environment.get_project_directory(), 'bin',
+                    'libfplutil_test.apk'))))])
+
+    build_environment.install_android_apk(adb_device='06d8bd43')
+
+  def test_run_android_apk(self):
+    os.path.exists = lambda unused_filename: True
+    __builtin__.open = FileMockFactory(
+        self,
+        '<manifest '
+        '  xmlns:android="http://schemas.android.com/apk/res/android"\n'
+        '  package="com.google.fpl.libfplutil_test">\n'
+        '  <uses-sdk android:minSdkVersion="1"/>\n'
+        '  <application>\n'
+        '    <activity android:name="android.app.NativeActivity">\n'
+        '      <meta-data android:name="android.app.lib_name"\n'
+        '                 android:value="test"/>\n'
+        '    </activity>\n'
+        '  </application>\n'
+        '</manifest>')
+    build_environment = android.BuildEnvironment(
+        android.BuildEnvironment.build_defaults())
+
+    # Configure the set of expected commands executed by run_android_apk.
+    os.path.exists = lambda unused_filename: True
+    build_environment.sdk_home = 'sdk_home'
+    adb_path = build_environment._find_binary(android.BuildEnvironment.ADB)
+    run_command_mock = common_test.RunCommandMockList(
+        [common_test.RunCommandMock(
+            self, args='%s devices -l' % adb_path,
+            stdout=('List of devices attached\n'
+                    '123456\tdevice\tusb:2-3.4\tproduct:razor\tmodel:Nexus_7\t'
+                    'device:flo\n')),
+         common_test.RunCommandMock(
+             self, args='%s -s 123456 logcat -c' % adb_path),
+         common_test.RunCommandMock(
+             self, args=('%s -s 123456 shell am start -S -n '
+                         'com.google.fpl.libfplutil_test/'
+                         'android.app.NativeActivity' % adb_path)),
+         common_test.RunCommandMock(
+             self, args='%s -s 123456 logcat -d' % adb_path,
+             stdout=('Random log output\n'
+                     'Some other log output\n'
+                     'Another application log output.\n'
+                     'Displayed com.google.fpl.libfplutil_test/'
+                     'android.app.NativeActivity\n'
+                     'Line noise\n'))])
+    build_environment.run_subprocess = run_command_mock
+
+    build_environment.run_android_apk(adb_device='123456')
 
 
 if __name__ == '__main__':

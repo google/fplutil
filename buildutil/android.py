@@ -56,6 +56,7 @@ _NDK_MAKEFILE = 'Android.mk'
 _ALWAYS_MAKE = 'always_make'
 
 _MATCH_DEVICES = re.compile(r'^(List of devices attached\s*\n)|(\n)$')
+_MATCH_PACKAGE = re.compile(r'^package:(.*)')
 
 _NATIVE_ACTIVITY = 'android.app.NativeActivity'
 _ANDROID_MANIFEST_SCHEMA = 'http://schemas.android.com/apk/res/android'
@@ -265,6 +266,14 @@ class BuildEnvironment(common.BuildEnvironment):
       APK.
   """
 
+  ADB = 'adb'
+  ANDROID = 'android'
+  ANT = 'ant'
+  JARSIGNER = 'jarsigner'
+  KEYTOOL = 'keytool'
+  NDK_BUILD = 'ndk-build'
+  ZIPALIGN = 'zipalign'
+
   def __init__(self, arguments):
     """Constructs the BuildEnvironment with basic information needed to build.
 
@@ -309,12 +318,12 @@ class BuildEnvironment(common.BuildEnvironment):
 
     args[_SDK_HOME] = (os.getenv(_SDK_HOME_ENV_VAR) or
                        common.BuildEnvironment._find_path_from_binary(
-                           'android', 2))
+                           BuildEnvironment.ANDROID, 2))
     args[_NDK_HOME] = (os.getenv(_NDK_HOME_ENV_VAR) or
                        common.BuildEnvironment._find_path_from_binary(
-                           'ndk-build', 1))
+                           BuildEnvironment.NDK_BUILD, 1))
     args[_ANT_PATH] = (os.getenv(_ANT_PATH_ENV_VAR) or
-                       distutils.spawn.find_executable('ant'))
+                       distutils.spawn.find_executable(BuildEnvironment.ANT))
     args[_ANT_FLAGS] = '-quiet'
     args[_ANT_TARGET] = 'release'
     args[_APK_KEYSTORE] = None
@@ -376,6 +385,61 @@ class BuildEnvironment(common.BuildEnvironment):
     parser.set_defaults(
         **{_ALWAYS_MAKE: defaults[_ALWAYS_MAKE]})  # pylint: disable=star-args
 
+  def _find_binary(self, binary, additional_paths=None):
+    """Find a binary from the set of binaries managed by this class.
+
+    This method enables the lookup of a binary path using the name of the
+    binary to avoid replication of code which searches for binaries.
+
+    This class allows the lookup of...
+    * BuildEnvironment.ADB
+    * BuildEnvironment.ANDROID
+    * BuildEnvironment.ANT
+    * BuildEnvironment.JARSIGNER
+    * BuildEnvironment.KEYTOOL
+    * BuildEnvironment.NDK_BUILD
+    * BuildEnvironment.ZIPALIGN
+
+    The _find_binary() method in derived classes may add more binaries.
+
+    Args:
+      binary: Name of the binary.
+      additional_paths: Additional dictionary to search for binary paths.
+
+    Returns:
+      String containing the path of binary.
+
+    Raises:
+      ToolPathError: Binary is not at the specified path.
+    """
+    ndk_build_paths = []
+    if self.ndk_home:
+      ndk_build_paths = [os.path.join(self.ndk_home, '')]
+
+    # zipalign is under the sdk/build-tools subdirectory in ADT 20140702
+    # or newer.  In older ADT releases zipalign was located in sdk/tools.
+    zip_align_paths = []
+    if binary == BuildEnvironment.ZIPALIGN:
+      zip_align_paths = [os.path.join(self.sdk_home, 'tools', '')]
+      for root, dirs, _ in os.walk(os.path.join(self.sdk_home, 'build-tools')):
+        zip_align_paths.extend([os.path.join(root, d, '') for d in dirs])
+        break
+
+    search_dict = {
+        BuildEnvironment.ADB: [os.path.join(
+            self.sdk_home, 'platform-tools', '')],
+        BuildEnvironment.ANDROID: [
+            os.path.join(self.sdk_home, 'tools', '')],
+        BuildEnvironment.ANT: [self.ant_path],
+        BuildEnvironment.NDK_BUILD: ndk_build_paths,
+        BuildEnvironment.JARSIGNER: [],
+        BuildEnvironment.KEYTOOL: [],
+        BuildEnvironment.ZIPALIGN: zip_align_paths}
+    if additional_paths:
+      search_dict.append(additional_paths)
+
+    return common.BuildEnvironment._find_binary(self, binary, search_dict)
+
   def build_android_libraries(self, subprojects, output=None):
     """Build list of Android library projects.
 
@@ -392,10 +456,7 @@ class BuildEnvironment(common.BuildEnvironment):
       ToolPathError: Android NDK location not found in configured build
           environment or $PATH.
     """
-    ndk_build = None
-    if self.ndk_home:
-      ndk_build = os.path.join(self.ndk_home, 'ndk-build')
-    common.BuildEnvironment._check_binary('ndk-build', ndk_build)
+    ndk_build = self._find_binary(BuildEnvironment.NDK_BUILD)
 
     for p in subprojects:
       # Disable parallel clean on OSX.
@@ -406,7 +467,7 @@ class BuildEnvironment(common.BuildEnvironment):
       args = [ndk_build, '-j' + str(cpu_count)]
       if self.always_make:
         args.append('-B')
-      args += ['-C', os.path.abspath(os.path.join(self.project_directory, p))]
+      args += ['-C', self.get_project_directory(path=p)]
       if self.clean:
         args.append('clean')
 
@@ -415,8 +476,7 @@ class BuildEnvironment(common.BuildEnvironment):
 
       if output:
         args.append(
-            'NDK_OUT=%s' % os.path.abspath(
-                os.path.join(self.project_directory, output)))
+            'NDK_OUT=%s' % self.get_project_directory(path=output))
 
       if self.make_flags:
         args += shlex.split(self.make_flags, posix=self._posix)
@@ -488,7 +548,84 @@ class BuildEnvironment(common.BuildEnvironment):
     apitarget = 'android-%d' % (installed)
     return apitarget
 
-  def build_android_apk(self, path='.', output=None):
+  def get_manifest_path(self, path='.'):
+    """Get the path of the manifest file.
+
+    Args:
+      path: Optional relative path from project directory to project to build.
+
+    Returns:
+      Path of the manifest file.
+    """
+    return os.path.join(self.get_project_directory(path=path), _MANIFEST_FILE)
+
+  def parse_manifest(self, path='.'):
+    """Parse the project's manifest.
+
+    Args:
+      path: Optional relative path from project directory to project to build.
+
+    Returns:
+      AndroidManifest instance parsed from the project manifest.
+    """
+    manifest = AndroidManifest(self.get_manifest_path(path=path))
+    manifest.parse()
+    return manifest
+
+  def create_update_build_xml(self, manifest, path='.'):
+    """Create or update ant build.xml for an Android project.
+
+    Args:
+      manifest: Parsed AndroidManifest instance.
+      path: Optional relative path from project directory to project to build.
+
+    Returns:
+      BuildXml instance which references the created / updated ant project.
+    """
+    android = self._find_binary(BuildEnvironment.ANDROID)
+
+    project = self.get_project_directory(path=path)
+    buildxml_path = os.path.join(project, 'build.xml')
+
+    # Get the last component of the package name for the application name.
+    app_name = manifest.package_name[manifest.package_name.rfind('.') + 1:]
+
+    # If no build.xml exists, create one for the project in the directory
+    # we are currently building.
+    if (not os.path.exists(buildxml_path) or
+        os.path.getmtime(buildxml_path) < os.path.getmtime(manifest.path)):
+      apitarget = self._find_best_android_sdk(android, manifest.min_sdk,
+                                              manifest.target_sdk)
+      self.run_subprocess([android, 'update', 'project', '--path', project,
+                           '--target', apitarget, '--name', app_name])
+
+    buildxml = BuildXml(buildxml_path)
+    buildxml.parse()
+    return buildxml
+
+  def get_apk_filenames(self, app_name, path='.'):
+    """Get the set of output APK names for the project.
+
+    Args:
+      app_name: Basename of the APK parsed from build.xml.
+      path: Relative path from project directory to project to build.
+
+    Returns:
+      (signed_apkpath, unsigned_apkpath) where signed_apkpath and
+      unsigned_apkpath are paths to the signed and unsigned APKs respectively.
+      Signing is optional so the signed APK may not be present when the
+      project has been built successfully.
+    """
+    # ant outputs to $PWD/bin. The APK will have a name as constructed below.
+    project_directory = self.get_project_directory(path=path)
+    unsigned_apkpath = os.path.join(
+      project_directory, 'bin', '%s-%s-unsigned.apk' % (app_name,
+                                                        self.ant_target))
+    signed_apkpath = os.path.join(project_directory, 'bin',
+                                  '%s.apk' % app_name)
+    return (signed_apkpath, unsigned_apkpath)
+
+  def build_android_apk(self, path='.', output=None, manifest=None):
     """Build an Android APK.
 
     This function builds an APK by using ndk-build and ant, at an optionally
@@ -504,6 +641,7 @@ class BuildEnvironment(common.BuildEnvironment):
       path: Optional relative path from project directory to project to build.
       output: Optional relative path from project directory to output
         directory.
+      manifest: Parsed AndroidManifest instance.
 
     Raises:
       SubCommandError: NDK toolchain invocation failed or returned an error.
@@ -513,40 +651,12 @@ class BuildEnvironment(common.BuildEnvironment):
           in an unrecoverable way.
       IOError: An error occurred writing or copying the APK.
     """
-    ant = self.ant_path
-    common.BuildEnvironment._check_binary('ant', ant)
+    ant = self._find_binary(BuildEnvironment.ANT)
 
-    android = os.path.join(self.sdk_home, 'tools', 'android')
-    common.BuildEnvironment._check_binary('android', android)
-
-    self.build_android_libraries([path])
-
-    project = os.path.abspath(os.path.join(self.project_directory, path))
-
-    manifest_path = os.path.join(project, _MANIFEST_FILE)
-
-    manifest = AndroidManifest(manifest_path)
-    manifest.parse()
-
-    buildxml_path = os.path.join(project, 'build.xml')
-
-    # Get the last component of the package name for the application name.
-    app_name = manifest.package_name[manifest.package_name.rfind('.') + 1:]
-
-    # If no build.xml exists, create one for the project in the directory
-    # we are currently building.
-    if not os.path.exists(buildxml_path):
-      apitarget = self._find_best_android_sdk(android, manifest.min_sdk,
-                                              manifest.target_sdk)
-      acmd = [android, 'update', 'project', '--path', project,
-              '--target', apitarget, '--name', app_name]
-      self.run_subprocess(acmd)
-
-    buildxml = BuildXml(buildxml_path)
-    buildxml.parse()
-
-    # Set to value in build.xml, which may have just been updated
-    app_name = buildxml.project_name
+    # Create or update build.xml for ant.
+    buildxml = self.create_update_build_xml(
+      manifest if manifest else self.parse_manifest(path=path),
+      path=path)
 
     acmd = [ant, self.ant_target]
 
@@ -555,19 +665,16 @@ class BuildEnvironment(common.BuildEnvironment):
 
     self.run_subprocess(acmd, cwd=path)
 
-    # ant outputs to $PWD/bin. The APK will have a name as constructed below.
-    apkname = '%s-%s-unsigned.apk' % (app_name, self.ant_target)
-    apkpath = os.path.join(project, 'bin', apkname)
-    source_apkpath = apkpath
+    signed_apkpath, unsigned_apkpath = self.get_apk_filenames(
+        buildxml.project_name, path=path)
+    source_apkpath = unsigned_apkpath
 
     if self.sign_apk:
-      signed_apkname = '%s.apk' % app_name
-      signed_apkpath = os.path.join(project, 'bin', signed_apkname)
       source_apkpath = signed_apkpath
-      self._sign_apk(apkpath, signed_apkpath)
+      self._sign_apk(unsigned_apkpath, signed_apkpath)
 
     if output:
-      out_abs = os.path.abspath(os.path.join(self.project_directory, output))
+      out_abs = self.get_project_directory(path=output)
       if not os.path.exists(out_abs):
         os.makedirs(out_abs)
       if self.verbose:
@@ -626,17 +733,22 @@ class BuildEnvironment(common.BuildEnvironment):
         if self.verbose:
           print ('Creating ephemeral keystore file %s and password file %s' %
                  (keystore, passfile))
+
+        password = '%08x' % (random.random() * 16 ** 8)
         with open(passfile, 'w') as pf:
           os.fchmod(pf.fileno(), stat.S_IRUSR | stat.S_IWUSR)
-          pf.write('%08x' % (random.random() * 16 ** 8))
+          pf.write(password)
 
         alias = os.path.basename(source).split('.')[0]
-        keytool = distutils.spawn.find_executable('keytool')
-        common.BuildEnvironment._check_binary('keytool', keytool)
-        acmd = ['keytool', '-genkey', '-v', '-dname',
-                'cn=, ou=%s, o=fpl' % (alias), '-storepass:file', passfile,
-                '-keypass:file', passfile, '-keystore', keystore, '-alias',
-                alias, '-keyalg', 'RSA', '-keysize', '2048', '-validity', '60']
+
+        # NOTE: The password is passed via the command line for compatibility
+        # with JDK 6.  Move to use -storepass:file and -keypass:file when
+        # JDK 7 is a requirement for Android development.
+        acmd = [self._find_binary(BuildEnvironment.KEYTOOL), '-genkeypair',
+                '-v', '-dname', 'cn=, ou=%s, o=fpl' % alias, '-storepass',
+                password, '-keypass', password, '-keystore', keystore,
+                '-alias', alias, '-keyalg', 'RSA', '-keysize', '2048',
+                '-validity', '60']
         self.run_subprocess(acmd)
 
       tmpapk = target + '.tmp'
@@ -646,19 +758,27 @@ class BuildEnvironment(common.BuildEnvironment):
 
       shutil.copy2(source, tmpapk)
 
-      acmd = ['jarsigner', '-verbose', '-sigalg', 'SHA1withRSA', '-digestalg',
-              'SHA1', '-keystore', keystore, '-storepass:file', passfile,
-              '-keypass:file', passfile, tmpapk, alias]
+      with open(passfile, 'r') as pf:
+        password = pf.read()
 
-      self.run_subprocess(acmd)
+      # NOTE: The password is passed via stdin for compatibility with JDK 6
+      # which - unlike the use of keytool above - ensures the password is
+      # not visible when displaying the command lines of processes of *nix
+      # operating systems like Linux and OSX.
+      # Move to use -storepass:file and -keypass:file when JDK 7 is a
+      # requirement for Android development.
+      password_stdin = os.linesep.join(
+          [password, password,  # Store password and confirmation.
+           password, password])  # Key password and confirmation.
+      acmd = [self._find_binary(BuildEnvironment.JARSIGNER),
+              '-verbose', '-sigalg', 'SHA1withRSA', '-digestalg',
+              'SHA1', '-keystore', keystore, tmpapk, alias]
+      self.run_subprocess(acmd, stdin=password_stdin)
 
       # We want to align the APK for more efficient access on the device.
       # See:
       # http://developer.android.com/tools/help/zipalign.html
-      zipalign = os.path.join(self.sdk_home, 'tools', 'zipalign')
-      BuildEnvironment._check_binary('zipalign', zipalign)
-
-      acmd = [zipalign, '-f']
+      acmd = [self._find_binary(BuildEnvironment.ZIPALIGN), '-f']
       if self.verbose:
         acmd.append('-v')
       acmd += ['4', tmpapk, target]  # alignment == 4
@@ -673,38 +793,27 @@ class BuildEnvironment(common.BuildEnvironment):
         if os.path.exists(passfile):
           os.unlink(passfile)
 
-  def build_all(self, path='.', apk_output='apks', lib_output='libs',
-                exclude_dirs=None):
-    """Locate and build all Android sub-projects as appropriate.
-
-    This function will recursively scan a directory tree for Android library
-    and application projects and build them with the current build defaults.
-    This will not work for projects which only wish for subsets to be built
-    or have complicated external manipulation of makefiles and manifests, but
-    it should handle the majority of projects as a reasonable default build.
+  def find_projects(self, path='.', exclude_dirs=None):
+    """Find all Android projects under the specified path.
 
     Args:
-      path: Optional path to start the search in, defaults to '.'.
-      apk_output: Optional path to apk output directory, default is 'apks'.
-      lib_output: Optional path to library output directory, default is 'libs'.
-      exclude_dirs: Optional list of directory names to exclude from project
-                    detection in addition to:
-                    [apk_output, lib_output, 'bin', 'obj', 'res'],
-                    which are always excluded.
-    Returns:
-      (retval, errmsg) tuple of an integer return value suitable for returning
-      to the invoking shell, and an error string (if any) or None (on success).
-    """
+      path: Path to start the search in, defaults to '.'.
+      exclude_dirs: List of directory names to exclude from project
+        detection in addition to ['bin', 'obj', 'res'], which are always
+        excluded.
 
-    retval = 0
-    errmsg = None
-    project = os.path.abspath(os.path.join(self.project_directory, path))
+    Returns:
+      (apk_dirs, lib_dirs) where apk_dirs is the list of directories which
+      contain Android projects that build an APK and lib_dirs is alist of
+      Android project directories that only build native libraries.
+    """
+    project = self.get_project_directory(path=path)
 
     apk_dir_set = set()
     module_dir_set = set()
 
     # Exclude paths where buildutil or ndk-build may generate or copy files.
-    exclude = [apk_output, lib_output, 'bin', 'obj', 'res']
+    exclude = (exclude_dirs if exclude_dirs else []) + ['bin', 'obj', 'res']
 
     if type(exclude_dirs) is list:
       exclude += exclude_dirs
@@ -722,11 +831,37 @@ class BuildEnvironment(common.BuildEnvironment):
           p = os.path.dirname(p)
         module_dir_set.add(p)
 
-    # Set difference, remove anything in apks from libs.
-    module_dir_set = module_dir_set.difference(apk_dir_set)
+    return (list(apk_dir_set), list(module_dir_set))
 
-    apk_dirs = list(apk_dir_set)
-    lib_dirs = list(module_dir_set)
+  def build_all(self, path='.', apk_output='apks', lib_output='libs',
+                exclude_dirs=None):
+    """Locate and build all Android sub-projects as appropriate.
+
+    This function will recursively scan a directory tree for Android library
+    and application projects and build them with the current build defaults.
+    This will not work for projects which only wish for subsets to be built
+    or have complicated external manipulation of makefiles and manifests, but
+    it should handle the majority of projects as a reasonable default build.
+
+    Args:
+      path: Optional path to start the search in, defaults to '.'.
+      apk_output: Optional path to apk output directory, default is 'apks'.
+      lib_output: Optional path to library output directory, default is 'libs'.
+      exclude_dirs: Optional list of directory names to exclude from project
+                    detection in addition to
+                    [apk_output, lib_output, 'bin', 'obj', 'res'],
+                    which are always excluded.
+    Returns:
+      (retval, errmsg) tuple of an integer return value suitable for returning
+      to the invoking shell, and an error string (if any) or None (on success).
+    """
+
+    retval = 0
+    errmsg = None
+
+    apk_dirs, lib_dirs = self.find_projects(
+        path=path, exclude_dirs=([apk_output, lib_output] + (
+            exclude_dirs if exclude_dirs else [])))
 
     if self.verbose:
       print 'Found APK projects in: %s' % str(apk_dirs)
@@ -748,63 +883,215 @@ class BuildEnvironment(common.BuildEnvironment):
 
     return (retval, errmsg)
 
-  def _check_adb_devices(self):
+  def check_adb_devices(self, adb_device=None):
     """Verifies that only one device is connected.
+
+    Args:
+      adb_device: If specified, check whether this device is connected.
 
     Raises:
       AdbError: Incorrect number of connected devices.
     """
-    out = self.run_subprocess('adb devices -l', capture=True, shell=True)[0]
+    out = self.run_subprocess(
+        '%s devices -l' % self._find_binary(BuildEnvironment.ADB),
+        capture=True, shell=True)[0]
 
-    number_of_devices = len(_MATCH_DEVICES.sub(r'', out).splitlines())
+    devices = _MATCH_DEVICES.sub(r'', out).splitlines()
+    number_of_devices = len(devices)
 
     if number_of_devices == 0:
       raise common.AdbError('No Android devices are connected to this host.')
 
-    if number_of_devices > 1:
+    if adb_device:
+      if not [l for l in devices if l.split()[0] == adb_device]:
+        raise common.AdbError(
+            '%s not found in the list of devices returned by "adb devices -l".'
+            'The devices connected are: %s' % (adb_device, os.linesep + out))
+    elif number_of_devices > 1:
       raise common.AdbError(
           'Multiple Android devices are connected to this host. '
           'Please specify a device using --adb-device <serial>. '
           'The devices connected are: %s' % (os.linesep + out))
 
-  def run_android_apk(self, adb_device=None, wait=True):
+  def get_adb_device_argument(self, adb_device=None, check_devices=True):
+    """Construct the argument for ADB to select the specified device.
+
+    Args:
+      adb_device: Serial number of the device to use with ADB.
+      check_devices: Whether to check the specified device exists.
+
+    Returns:
+      String which contains the second argument passed to ADB to select a
+      target device.
+
+    Raises:
+      AdbError: If adb_device is None and more than one device is connected.
+    """
+    if check_devices:
+      self.check_adb_devices(adb_device)
+    return '-s ' + adb_device if adb_device else ''
+
+  def list_installed_packages(self, adb_device=None, check_devices=True):
+    """Get the list of packages installed on an Android device.
+
+    Args:
+      adb_device: The device to query.
+      check_devices: Check whether the specified device exists.
+
+    Raises:
+      AdbError: If it's not possible to query the device.
+    """
+    packages = []
+    for line in self.run_subprocess(
+        '%s %s shell pm list packages' % (
+            self._find_binary(BuildEnvironment.ADB),
+            self.get_adb_device_argument(
+                adb_device, check_devices=check_devices)),
+        shell=True, capture=True)[0].splitlines():
+      m = _MATCH_PACKAGE.match(line)
+      if m:
+        packages.append(m.groups()[0])
+    return packages
+
+  def install_android_apk(self, path='.', adb_device=None):
+    """Install an android apk on the given device.
+
+    This function will attempt to install an unsigned APK if a signed APK is
+    not available which will *only* work on rooted devices.
+
+    Args:
+      path: Relative path from project directory to project to run.
+      adb_device: The device to run the apk on. If none it will use the only
+        device connected.
+
+    Raises:
+      ConfigurationError: If no APKs are found.
+      AdbError: If it's not possible to install the APK.
+    """
+    adb_path = self._find_binary(BuildEnvironment.ADB)
+    adb_device_arg = self.get_adb_device_argument(adb_device)
+    manifest = self.parse_manifest(path=path)
+    buildxml = self.create_update_build_xml(manifest, path=path)
+    apks = [f for f in self.get_apk_filenames(buildxml.project_name,
+                                              path=path) if os.path.exists(f)]
+    if not apks:
+      raise common.ConfigurationError(
+          'Unable to find an APK for the project in %s' % (
+              self.get_project_directory(path=path)))
+    # If the project is installed, uninstall it.
+    if manifest.package_name in self.list_installed_packages(
+        adb_device=adb_device, check_devices=False):
+      self.run_subprocess('%s %s uninstall %s' % (
+          adb_path, adb_device_arg, manifest.package_name), shell=True)
+    # Install the APK.
+    self.run_subprocess('%s %s install %s' % (
+        adb_path, adb_device_arg, apks[0]), shell=True)
+
+  def install_all(self, path='.', adb_device=None, exclude_dirs=None):
+    """Locate and install all Android APKs.
+
+    This function recursively scans a directory tree for Android application
+    projects and installs them on the specified device.
+
+    Args:
+      path: Path to search the search in, defaults to '.'
+      adb_device: The device to install the APK to. If none it will use the
+        only device connected.
+      exclude_dirs: List of directory names to exclude from project
+        detection (see find_projects() for more information).
+
+    Returns:
+      (retval, errmsg) tuple of an integer return value suitable for
+      returning to the invoking shell, and an error string (if any) or None
+      (on success).
+    """
+    retval = 0
+    errmsg = None
+
+    apk_dirs, unused_lib_dirs = self.find_projects(path=path,
+                                                   exclude_dirs=exclude_dirs)
+
+    for apk_dir in apk_dirs:
+      try:
+        self.install_android_apk(path=apk_dir, adb_device=adb_device)
+      except common.Error as e:
+        errmsg  = 'buildutil error: %s' % e.error_message
+        retval = e.error_code
+        break
+
+    return (retval, errmsg)
+
+  def run_android_apk(self, path='.', adb_device=None, wait=True):
     """Run an android apk on the given device.
 
     Args:
+      path: Relative path from project directory to project to run.
       adb_device: The device to run the apk on. If none it will use the only
         device connected.
       wait: Optional argument to tell the function to wait until the process
         completes and dump the output.
     """
-    project = os.path.abspath(self.project_directory)
-    manifest_path = os.path.join(project, 'AndroidManifest.xml')
-
-    manifest = AndroidManifest(manifest_path)
-    manifest.parse()
-
+    manifest = self.parse_manifest(path=path)
     full_name = '%s/%s' % (manifest.package_name, manifest.activity_name)
-    if not adb_device:
-      self._check_adb_devices()
-      adb_device = ''
+    adb_path = self._find_binary(BuildEnvironment.ADB)
+    adb_device_arg = self.get_adb_device_argument(adb_device)
 
-    self.run_subprocess('adb %s logcat -c' % adb_device, shell=True)
+    self.run_subprocess('%s %s logcat -c' % (adb_path, adb_device_arg),
+                        shell=True)
 
     self.run_subprocess(
-        ('adb %s shell am start -S -n %s' % (adb_device, full_name)),
-        shell=True)
+        ('%s %s shell am start -S -n %s' % (adb_path, adb_device_arg,
+                                            full_name)), shell=True)
 
-    end_match = re.compile((r'.*(Displayed|Activity destroy timeout).*%s.*' %
-                            full_name))
+    end_match = re.compile(
+        (r'.*(Displayed|Activity destroy timeout|'
+         r'Force finishing activity).*%s.*' % full_name))
 
     while wait:
       # Use logcat -d so that it can be parsed easily in order to determine
       # when the process ends. An alternative is to read the stream as it gets
       # written but this leads to delays in reading the stream and is difficult
       # to get working propery on windows.
-      out, unused_err = self.run_subprocess(('adb %s logcat -d' % adb_device),
-                                            capture=True, shell=True)
+      out, unused_err = self.run_subprocess(
+          ('%s %s logcat -d' % (adb_path, adb_device_arg)),
+          capture=True, shell=True)
 
       for line in out.splitlines():
         if end_match.match(line):
           print out
           wait = False
+
+  def run_all(self, path='.', adb_device=None, exclude_dirs=None, wait=True):
+    """Locate and run all Android APKs.
+
+    This function recursively scans a directory tree for Android application
+    projects and runs them on the specified device.
+
+    Args:
+      path: Path to search the search in, defaults to '.'
+      adb_device: The device to run the APK on. If none it will use the
+        only device connected.
+      exclude_dirs: List of directory names to exclude from project
+        detection (see find_projects() for more information).
+      wait: Whether to wait for the application to start.
+
+    Returns:
+      (retval, errmsg) tuple of an integer return value suitable for
+      returning to the invoking shell, and an error string (if any) or None
+      (on success).
+    """
+    retval = 0
+    errmsg = None
+
+    apk_dirs, unused_lib_dirs = self.find_projects(path=path,
+                                                   exclude_dirs=exclude_dirs)
+
+    for apk_dir in apk_dirs:
+      try:
+        self.run_android_apk(path=apk_dir, adb_device=adb_device, wait=wait)
+      except common.Error as e:
+        errmsg  = 'buildutil error: %s' % e.error_message
+        retval = e.error_code
+        break
+
+    return (retval, errmsg)

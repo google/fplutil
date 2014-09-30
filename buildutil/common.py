@@ -187,7 +187,14 @@ class BuildEnvironment(object):
     verbose: Boolean to enable verbose message output.
     host_os_name: Lowercased name of host operating system.
     host_architecture: Lowercased name of host machine architecture.
+
+  Class Attributes:
+    GIT: Name of the git binary.
+    MAKE: Name of the make binary.
   """
+
+  GIT = 'git'
+  MAKE = 'make'
 
   def __init__(self, arguments):
     """Constructs the BuildEnvironment with basic information needed to build.
@@ -333,20 +340,70 @@ class BuildEnvironment(object):
                         default=False)
 
   @staticmethod
-  def _check_binary(name, path):
+  def _check_binary(name, paths):
     """Helper function to verify a binary resides at a path.
 
     Args:
       name: The binary name we are checking.
-      path: The path to check.
+      paths: Paths to search starting with the first.  If this is an empty
+        list, the set of paths in the PATH environment variable are searched.
+        All paths that don't end with os.path.sep are treated as filenames.
+
+    Returns:
+      String containing the path of binary.
 
     Raises:
       ToolPathError: Binary is not at the specified path.
     """
-    if not path or not os.path.exists(path):
-      raise ToolPathError(name, path)
+    filenames = []
+    directories = []
+    for p in paths:
+      if p.endswith(os.path.sep):
+        directories.append(p)
+      else:
+        filenames.append(p)
 
-  def run_subprocess(self, argv, capture=False, cwd=None, shell=False):
+    for f in filenames:
+      if os.path.exists(f):
+        return f
+
+    search_path = os.pathsep.join(directories)
+    path = distutils.spawn.find_executable(
+        name, path=search_path if search_path else None)
+    if not path:
+      raise ToolPathError(name, repr(paths))
+    return path
+
+  def _find_binary(self, binary, additional_paths=None):
+    """Find a binary from the set of binaries managed by this class.
+
+    This method enables the lookup of a binary path using the name of the
+    binary to avoid replication of code which searches for binaries.
+
+    This class allows the lookup of...
+    * BuildEnvironment.GIT
+    * BuildEnvironment.MAKE
+
+    The _find_binary() method in derived classes may add more binaries.
+
+    Args:
+      binary: Name of the binary.
+      additional_paths: Additional dictionary to search for binary paths.
+
+    Returns:
+      String containing the path of binary.
+
+    Raises:
+      ToolPathError: Binary is not at the specified path.
+    """
+    search_dict = {BuildEnvironment.GIT: [self.git_path],
+                   BuildEnvironment.MAKE: [self.make_path]}
+    if additional_paths:
+      search_dict.update(additional_paths)
+    return BuildEnvironment._check_binary(binary, search_dict[binary])
+
+  def run_subprocess(self, argv, capture=False, cwd=None, shell=False,
+                     stdin=None):
     """Run a subprocess as specified by the given argument list.
 
     Runs a process via popen().
@@ -358,6 +415,7 @@ class BuildEnvironment(object):
       cwd: Optional path relative to the project directory to run process in
         for commands that do not allow specifying this, such as ant.
       shell: Optional argument to tell subprocess to allow for shell features.
+      stdin: String to send to the standard input of the process.
     Returns:
       A tuple of (stdout, stderr), or (None, None) if capture=False.
 
@@ -373,13 +431,15 @@ class BuildEnvironment(object):
 
     stdout = None
     stderr = None
+    stdin_pipe = subprocess.PIPE if stdin else None
     if capture:
       process = subprocess.Popen(args=argv, bufsize=-1, stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, shell=shell, cwd=cwd)
-      (stdout, stderr) = process.communicate()
+                                 stderr=subprocess.PIPE, shell=shell, cwd=cwd,
+                                 stdin=stdin_pipe)
     else:
-      process = subprocess.Popen(argv, shell=shell, cwd=cwd)
-      process.wait()
+      process = subprocess.Popen(argv, shell=shell, cwd=cwd, stdin=stdin_pipe)
+
+    (stdout, stderr) = process.communicate(stdin)
 
     if process.returncode or self.verbose:
       print 'Subprocess returned %d' % process.returncode
@@ -400,9 +460,9 @@ class BuildEnvironment(object):
       ToolPathError: Make not found in configured build environment or $PATH.
     """
 
-    BuildEnvironment._check_binary('make', self.make_path)
+    make_path = self._find_binary(BuildEnvironment.MAKE)
 
-    args = [self.make_path, '-j', self.cpu_count, '-C', self.project_directory]
+    args = [make_path, '-j', self.cpu_count, '-C', self.project_directory]
     if self.clean:
       args += ['clean']
     if self.make_flags:
@@ -518,12 +578,23 @@ class BuildEnvironment(object):
         print 'Not cleaning, %s is not a git repo base' % gitdir
       return
 
-    BuildEnvironment._check_binary('git', self.git_path)
+    git_path = self._find_binary(BuildEnvironment.GIT)
 
     # Need to use git clean to take care of build output files.
-    self.run_subprocess([self.git_path, '-C', self.project_directory, 'clean',
+    self.run_subprocess([git_path, '-C', self.project_directory, 'clean',
                          '-d', '-f'])
     # Need to use git reset to take care of things like generated config that
     # may also be checked in.
-    self.run_subprocess([self.git_path, '-C', self.project_directory, 'reset',
+    self.run_subprocess([git_path, '-C', self.project_directory, 'reset',
                          '--hard'])
+
+  def get_project_directory(self, path='.'):
+    """Retrieve an absolute path relative to the project_directory.
+
+    Args:
+      path: Relative from the project_directory.
+
+    Returns:
+      Absolute path of the specified directory.
+    """
+    return os.path.abspath(os.path.join(self.project_directory, path))

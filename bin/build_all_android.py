@@ -33,6 +33,9 @@ _SEARCH_PATH = 'search_path'
 _APK_OUTPUT_DIR = 'apk_output_dir'
 _LIB_OUTPUT_DIR = 'lib_output_dir'
 _EXCLUDE_DIRS = 'exclude_dirs'
+_APK_INSTALL = 'apk_install'
+_APK_RUN = 'apk_run'
+_ADB_DEVICES = 'adb_devices'
 
 class BuildAllEnvironment(buildutil.android.BuildEnvironment):
 
@@ -57,6 +60,8 @@ class BuildAllEnvironment(buildutil.android.BuildEnvironment):
       args = vars(arguments)
 
     self.search_path = args[_SEARCH_PATH]
+    self.apk_install = args[_APK_INSTALL]
+    self.apk_run = args[_APK_RUN]
 
   @staticmethod
   def build_defaults():
@@ -70,7 +75,10 @@ class BuildAllEnvironment(buildutil.android.BuildEnvironment):
     args[_SEARCH_PATH] = '.'
     args[_APK_OUTPUT_DIR] = 'apks'
     args[_LIB_OUTPUT_DIR] = 'libs'
-    args[_EXCLUDE_DIRS] = ''
+    args[_EXCLUDE_DIRS] = []
+    args[_APK_INSTALL] = False
+    args[_APK_RUN] = False
+    args[_ADB_DEVICES] = []
     return args
 
   @staticmethod
@@ -103,22 +111,57 @@ class BuildAllEnvironment(buildutil.android.BuildEnvironment):
                         'from the Android project search.',
                         dest=_EXCLUDE_DIRS, default=defaults[_EXCLUDE_DIRS],
                         nargs='+')
+    parser.add_argument('-i', '--' + _APK_INSTALL,
+                        help=('Whether to install each apk on the selected '
+                              'device(s).'),
+                        dest=_APK_INSTALL, action='store_true',
+                        default=defaults[_APK_INSTALL])
+    parser.add_argument('-r', '--' + _APK_RUN,
+                        help=('Whether to run each apk on the selected '
+                              'device(s).'),
+                        dest=_APK_RUN, action='store_true',
+                        default=defaults[_APK_RUN])
+    parser.add_argument('-d', '--' + _ADB_DEVICES,
+                        help=('List of Android device serial numbers to '
+                              'install to / run on.'),
+                        dest=_ADB_DEVICES, default=defaults[_ADB_DEVICES],
+                        nargs='+')
 
 def main():
   parser = argparse.ArgumentParser()
   BuildAllEnvironment.add_arguments(parser)
   args = parser.parse_args()
 
-  env = buildutil.android.BuildEnvironment(args)
+  env = BuildAllEnvironment(args)
 
-  (rc, errmsg) = env.build_all(path=args.search_path,
-                               apk_output=args.apk_output_dir,
-                               lib_output=args.lib_output_dir,
-                               exclude_dirs=args.exclude_dirs)
+  (rc, errmsg) = env.build_all(
+      path=args.search_path, apk_output=args.apk_output_dir,
+      lib_output=args.lib_output_dir, exclude_dirs=args.exclude_dirs)
   if (rc != 0):
     print >> sys.stderr, errmsg
+    return rc
 
-  return rc
+  adb_devices = args.adb_devices if args.adb_devices else [None]
+
+  if env.apk_install:
+    for adb_device in adb_devices:
+      (rc, errmsg) = env.install_all(
+          path=args.search_path, adb_device=adb_device, exclude_dirs=[
+              args.apk_output_dir, args.lib_output_dir] + args.exclude_dirs)
+      if (rc != 0):
+        print >> sys.stderr, errmsg
+        return rc
+
+  if env.apk_run:
+    for adb_device in adb_devices:
+      (rc, errmsg) = env.run_all(
+          path=args.search_path, adb_device=adb_device, exclude_dirs=[
+              args.apk_output_dir, args.lib_output_dir] + args.exclude_dirs)
+      if (rc != 0):
+        print >> sys.stderr, errmsg
+        return rc
+
+  return 0
 
 if __name__ == '__main__':
   sys.exit(main())
