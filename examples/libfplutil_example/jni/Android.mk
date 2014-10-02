@@ -20,7 +20,6 @@ LOCAL_MODULE:=libfplutil_example
 LOCAL_SRC_FILES:=$(LOCAL_PATH)/main.c
 LOCAL_WHOLE_STATIC_LIBRARIES:=android_native_app_glue libfplutil_main \
 	libfplutil_print
-LOCAL_LDLIBS:=-llog -landroid
 LOCAL_ARM_MODE:=arm
 include $(BUILD_SHARED_LIBRARY)
 

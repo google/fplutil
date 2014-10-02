@@ -1,0 +1,59 @@
+<doxygenlayout version="1.0">
+  <navindex>
+    <tab type="usergroup" url="@ref libfplutil_overview" title="libfplutil">
+      <tab type="usergroup" url="@ref libfplutil_main"
+           title="Using libfplutil_main">
+        <tab type="user" url="@ref libfplutil_main_events"
+             title="Event Processing" />
+      </tab>
+      <tab type="usergroup" url="@ref libfplutil_print"
+           title="Using libfplutil_print">
+        <tab type="user" url="@ref libfplutil_print_tag"
+             title="Customizing the Log Tag" />
+        <tab type="user" url="@ref libfplutil_print_buffering"
+             title="Configuring Buffering" />
+        <tab type="user" url="@ref libfplutil_print_redirection"
+             title="Redirecting Output" />
+      </tab>
+      <tab type="usergroup" url="@ref libfplutil_example"
+           title="Example">
+        <tab type="user" url="@ref libfplutil_example_preparation"
+             title="Getting Started" />
+        <tab type="user" url="@ref libfplutil_example_build_fplutil"
+             title="Building with fplutil" />
+        <tab type="user" url="@ref libfplutil_example_build_ndkbuild"
+             title="Building with ndk-build" />
+      </tab>
+      <tab type="usergroup" url="@ref libfplutil_linking"
+           title="Linking with Applications">
+        <tab type="user" url="@ref libfplutil_linking_print"
+             title="Linking libfplutil_print" />
+      </tab>
+      <tab type="usergroup" title="API Reference">
+        <tab type="user" url="@ref libfplutil/include/fplutil/main.h"
+             title="libfplutil_main" />
+        <tab type="user" url="@ref libfplutil/include/fplutil/print.h"
+             title="libfplutil_print" />
+      </tab>
+    </tab>
+    <tab type="usergroup" url="@ref build_all_android"
+         title="build_all_android.py">
+        <tab type="user" url="@ref build_all_android_build"
+             title="Building Applications" />
+        <tab type="user" url="@ref build_all_android_sign"
+             title="Signing Applications" />
+        <tab type="user" url="@ref build_all_android_install"
+             title="Installing Applications" />
+        <tab type="user" url="@ref build_all_android_run"
+             title="Running Applications" />
+        <tab type="user" url="@ref build_all_android_build_config"
+             title="Build Configuration" />
+        <tab type="user" url="@ref build_all_android_clean"
+             title="Cleaning Build Artifacts" />
+        <tab type="user" url="@ref build_all_android_multiple_devices"
+             title="Working with Multiple Devices" />
+    </tab>
+    <tab type="usergroup" url="@ref buildutil_overview" title="buildutil">
+    </tab>
+  </navindex>
+</doxygenlayout>
