@@ -483,6 +483,42 @@ class AndroidBuildUtilTest(unittest.TestCase):
     with self.assertRaises(common.ConfigurationError):
       b._parse(f)
 
+  def test_parse_adb_devices_list(self):
+    device = android.AdbDevice(
+      '06d8bd43               device usb:2-3.3 product:razor model:Nexus_7 '
+      'device:flo')
+    self.assertEquals(device.serial, '06d8bd43')
+    self.assertEquals(device.type, 'device')
+    self.assertEquals(device.usb, '2-3.3')
+    self.assertEquals(device.product, 'razor')
+    self.assertEquals(device.model, 'Nexus_7')
+    self.assertEquals(device.device, 'flo')
+
+  def test_adb_device_to_string(self):
+    device = android.AdbDevice()
+    device.serial = '06d8bd43'
+    device.type = 'device'
+    device.usb = '2-3.3'
+    device.product = 'razor'
+    device.model = 'Nexus_7'
+    device.device = 'flo'
+    self.assertEquals('device:flo model:Nexus_7 product:razor serial:06d8bd43 '
+                      'type:device usb:2-3.3', str(device))
+
+  def test_adb_device_to_string(self):
+    build_environment = android.BuildEnvironment(
+        android.BuildEnvironment.build_defaults())
+    device = android.AdbDevice(
+      '06d8bd43 device usb:2-3.3 product:razor model:Nexus_7 device:flo')
+    self.assertEquals('06d8bd43',
+                      build_environment.get_adb_device_name(device))
+
+    build_environment.verbose = True
+    self.assertEquals('device:flo model:Nexus_7 product:razor serial:06d8bd43 '
+                      'type:device usb:2-3.3',
+                      build_environment.get_adb_device_name(device))
+
+
   def test_build_libraries(self):
     d = android.BuildEnvironment.build_defaults()
     b = android.BuildEnvironment(d)
@@ -800,7 +836,8 @@ class AndroidBuildUtilTest(unittest.TestCase):
         stdout=('List of devices attached\n'
                 '06d8bd43               device usb:2-3.3 product:razor '
                 'model:Nexus_7 device:flo\n'), shell=True)
-    build_environment.check_adb_devices()
+    device = build_environment.check_adb_devices()
+    self.assertEquals('06d8bd43', device.serial)
 
   def test_check_adb_devices_multiple_devices(self):
     build_environment = android.BuildEnvironment(
@@ -852,28 +889,12 @@ class AndroidBuildUtilTest(unittest.TestCase):
   def test_get_adb_device_argument(self):
     build_environment = android.BuildEnvironment(
         android.BuildEnvironment.build_defaults())
-    build_environment.sdk_home = 'sdk_home'
-    os.path.exists = lambda unused_filename: True
-    build_environment.run_subprocess = common_test.RunCommandMock(
-        self, args='%s devices -l' % (
-            build_environment._find_binary(android.BuildEnvironment.ADB)),
-        stdout=('List of devices attached\n'
-                '06d8bd43               device usb:2-3.3 product:razor '
-                'model:Nexus_7 device:flo\n'))
     self.assertEquals('-s 06d8bd43',
                       build_environment.get_adb_device_argument('06d8bd43'))
 
   def test_get_adb_device_argument_no_device(self):
     build_environment = android.BuildEnvironment(
         android.BuildEnvironment.build_defaults())
-    build_environment.sdk_home = 'sdk_home'
-    os.path.exists = lambda unused_filename: True
-    build_environment.run_subprocess = common_test.RunCommandMock(
-        self, args='%s devices -l' % (
-            build_environment._find_binary(android.BuildEnvironment.ADB)),
-        stdout=('List of devices attached\n'
-                '06d8bd43               device usb:2-3.3 product:razor '
-                'model:Nexus_7 device:flo\n'))
     self.assertEquals('', build_environment.get_adb_device_argument())
 
   def test_list_installed_packages(self):
@@ -882,19 +903,13 @@ class AndroidBuildUtilTest(unittest.TestCase):
     build_environment.sdk_home = 'sdk_home'
     os.path.exists = lambda unused_filename: True
     adb_path = build_environment._find_binary(android.BuildEnvironment.ADB)
-    build_environment.run_subprocess = common_test.RunCommandMockList(
-        [common_test.RunCommandMock(
-            self, args='%s devices -l' % adb_path,
-            stdout=('List of devices attached\n'
-                    '06d8bd43               device usb:2-3.3 product:razor '
-                    'model:Nexus_7 device:flo\n')),
-         common_test.RunCommandMock(
-            self, args='%s -s 06d8bd43 shell pm list packages' % adb_path,
-            stdout=('package:com.google.earth\n'
-                    'junk\n'
-                    'package:com.google.android.gsf\n'
-                    'package:com.android.keyguard\n'
-                    'nothing useful\n'))])
+    build_environment.run_subprocess = common_test.RunCommandMock(
+      self, args='%s -s 06d8bd43 shell pm list packages' % adb_path,
+      stdout=('package:com.google.earth\n'
+              'junk\n'
+              'package:com.google.android.gsf\n'
+              'package:com.android.keyguard\n'
+              'nothing useful\n'))
     expected = ['com.google.earth', 'com.google.android.gsf',
                'com.android.keyguard']
     self.assertListEqual(expected, build_environment.list_installed_packages(
