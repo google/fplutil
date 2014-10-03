@@ -716,6 +716,18 @@ class AndroidBuildUtilTest(unittest.TestCase):
                                    'libfplutil_example.apk'),
                       signed_apk)
 
+  def test_get_apk_filenames_debug(self):
+    build_environment = android.BuildEnvironment(
+      android.BuildEnvironment.build_defaults())
+    build_environment.ant_target = 'debug'
+    signed_apk, unsigned_apk = build_environment.get_apk_filenames(
+      'libfplutil_example')
+    expected_apk = os.path.join(os.getcwd(), 'bin',
+                                'libfplutil_example-debug.apk')
+    self.assertEquals(expected_apk, unsigned_apk)
+    self.assertEquals(expected_apk, signed_apk)
+
+
   def test_build_android_apk_unsigned(self):
     build_environment, manifest, buildxml_filename = (
         self._create_update_build_xml_setup())

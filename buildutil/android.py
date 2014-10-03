@@ -618,11 +618,15 @@ class BuildEnvironment(common.BuildEnvironment):
     """
     # ant outputs to $PWD/bin. The APK will have a name as constructed below.
     project_directory = self.get_project_directory(path=path)
-    unsigned_apkpath = os.path.join(
-      project_directory, 'bin', '%s-%s-unsigned.apk' % (app_name,
-                                                        self.ant_target))
-    signed_apkpath = os.path.join(project_directory, 'bin',
-                                  '%s.apk' % app_name)
+    apk_directory = os.path.join(project_directory, 'bin')
+    if self.ant_target == 'debug':
+      unsigned_apkpath = os.path.join(apk_directory, '%s-%s.apk' % (
+          app_name, self.ant_target))
+      signed_apkpath = unsigned_apkpath
+    else:
+      unsigned_apkpath = os.path.join(apk_directory, '%s-%s-unsigned.apk' % (
+          app_name, self.ant_target))
+      signed_apkpath = os.path.join(apk_directory, '%s.apk' % app_name)
     return (signed_apkpath, unsigned_apkpath)
 
   def build_android_apk(self, path='.', output=None, manifest=None):
