@@ -246,6 +246,53 @@ class BuildXml(XMLFile):
       raise common.ConfigurationError(self.path, 'project name missing')
 
 
+class AdbDevice(object):
+  """Stores information about an Android device.
+
+  Attributes:
+    serial: Serial number of the device.
+    type: Type of device.
+    usb: USB location.
+    product: Product codename.
+    device: Device codename.
+    model: Model name.
+  """
+
+  def __init__(self, adb_device_line=None):
+    """Initialize this instance from a device line from "adb devices -l"
+
+    Args:
+      adb_device_line: Device line from "adb devices -l".
+    """
+    self.serial = ''
+    self.type = ''
+    self.usb = ''
+    self.product = ''
+    self.device = ''
+    self.model = ''
+    if adb_device_line:
+      tokens = adb_device_line.split()
+      if len(tokens) > 2:
+        self.serial = tokens[0]
+        self.type = tokens[1]
+        for token in tokens[2:]:
+          key_value = token.split(':')
+          if len(key_value) != 2:
+            continue
+          setattr(self, key_value[0], key_value[1])
+
+  def __str__(self):
+    """Convert this instance into a string representation.
+
+    Returns:
+      A string in the form "key0:value0 key1:value1 ... keyN:valueN"
+      where key is an attribute of this instance and value is the value of
+      the attribute.
+    """
+    return ' '.join([':'.join([k, v]) for k, v in
+                     sorted(self.__dict__.iteritems())])
+
+
 class BuildEnvironment(common.BuildEnvironment):
 
   """Class representing an Android build environment.
@@ -887,27 +934,44 @@ class BuildEnvironment(common.BuildEnvironment):
 
     return (retval, errmsg)
 
+  def get_adb_devices(self):
+    """Get the set of attached devices.
+
+    Returns:
+      (device_list, command_output) where device_list is a list of AdbDevice
+      instances, one for each attached device and command_output is the raw
+      output of the ADB command.
+    """
+    out = self.run_subprocess(
+        '%s devices -l' % self._find_binary(BuildEnvironment.ADB),
+        capture=True, shell=True)[0]
+
+    devices = []
+    for device_line in  _MATCH_DEVICES.sub(r'', out).splitlines():
+      devices.append(AdbDevice(device_line))
+    return (devices, out)
+
   def check_adb_devices(self, adb_device=None):
     """Verifies that only one device is connected.
 
     Args:
       adb_device: If specified, check whether this device is connected.
 
+    Returns:
+      The device matching adb_device or the first device reported by ADB
+      if only one device is connected.
+
     Raises:
       AdbError: Incorrect number of connected devices.
     """
-    out = self.run_subprocess(
-        '%s devices -l' % self._find_binary(BuildEnvironment.ADB),
-        capture=True, shell=True)[0]
-
-    devices = _MATCH_DEVICES.sub(r'', out).splitlines()
+    devices, out = self.get_adb_devices()
     number_of_devices = len(devices)
-
     if number_of_devices == 0:
       raise common.AdbError('No Android devices are connected to this host.')
 
     if adb_device:
-      if not [l for l in devices if l.split()[0] == adb_device]:
+      devices = [d for d in devices if d.serial == adb_device]
+      if not devices:
         raise common.AdbError(
             '%s not found in the list of devices returned by "adb devices -l".'
             'The devices connected are: %s' % (adb_device, os.linesep + out))
@@ -916,31 +980,25 @@ class BuildEnvironment(common.BuildEnvironment):
           'Multiple Android devices are connected to this host. '
           'Please specify a device using --adb-device <serial>. '
           'The devices connected are: %s' % (os.linesep + out))
+    return devices[0]
 
-  def get_adb_device_argument(self, adb_device=None, check_devices=True):
+  def get_adb_device_argument(self, adb_device=None):
     """Construct the argument for ADB to select the specified device.
 
     Args:
       adb_device: Serial number of the device to use with ADB.
-      check_devices: Whether to check the specified device exists.
 
     Returns:
-      String which contains the second argument passed to ADB to select a
+      A string which contains the second argument passed to ADB to select a
       target device.
-
-    Raises:
-      AdbError: If adb_device is None and more than one device is connected.
     """
-    if check_devices:
-      self.check_adb_devices(adb_device)
     return '-s ' + adb_device if adb_device else ''
 
-  def list_installed_packages(self, adb_device=None, check_devices=True):
+  def list_installed_packages(self, adb_device=None):
     """Get the list of packages installed on an Android device.
 
     Args:
       adb_device: The device to query.
-      check_devices: Check whether the specified device exists.
 
     Raises:
       AdbError: If it's not possible to query the device.
@@ -949,13 +1007,23 @@ class BuildEnvironment(common.BuildEnvironment):
     for line in self.run_subprocess(
         '%s %s shell pm list packages' % (
             self._find_binary(BuildEnvironment.ADB),
-            self.get_adb_device_argument(
-                adb_device, check_devices=check_devices)),
+            self.get_adb_device_argument(adb_device)),
         shell=True, capture=True)[0].splitlines():
       m = _MATCH_PACKAGE.match(line)
       if m:
         packages.append(m.groups()[0])
     return packages
+
+  def get_adb_device_name(self, device):
+    """Get the string which describes an AdbDevice based upon the verbose mode.
+
+    Args:
+      device: AdbDevice instance.
+
+    Returns:
+      String which describes the device.
+    """
+    return str(device) if self.verbose else device.serial
 
   def install_android_apk(self, path='.', adb_device=None):
     """Install an android apk on the given device.
@@ -973,7 +1041,8 @@ class BuildEnvironment(common.BuildEnvironment):
       AdbError: If it's not possible to install the APK.
     """
     adb_path = self._find_binary(BuildEnvironment.ADB)
-    adb_device_arg = self.get_adb_device_argument(adb_device)
+    device = self.check_adb_devices(adb_device=adb_device)
+    adb_device_arg = self.get_adb_device_argument(adb_device=device.serial)
     manifest = self.parse_manifest(path=path)
     buildxml = self.create_update_build_xml(manifest, path=path)
     apks = [f for f in self.get_apk_filenames(buildxml.project_name,
@@ -982,9 +1051,12 @@ class BuildEnvironment(common.BuildEnvironment):
       raise common.ConfigurationError(
           'Unable to find an APK for the project in %s' % (
               self.get_project_directory(path=path)))
+
+    print 'Installing %s on %s' % (apks[0], self.get_adb_device_name(device))
+
     # If the project is installed, uninstall it.
     if manifest.package_name in self.list_installed_packages(
-        adb_device=adb_device, check_devices=False):
+        adb_device=adb_device):
       self.run_subprocess('%s %s uninstall %s' % (
           adb_path, adb_device_arg, manifest.package_name), shell=True)
     # Install the APK.
@@ -1038,7 +1110,10 @@ class BuildEnvironment(common.BuildEnvironment):
     manifest = self.parse_manifest(path=path)
     full_name = '%s/%s' % (manifest.package_name, manifest.activity_name)
     adb_path = self._find_binary(BuildEnvironment.ADB)
-    adb_device_arg = self.get_adb_device_argument(adb_device)
+    device = self.check_adb_devices(adb_device=adb_device)
+    adb_device_arg = self.get_adb_device_argument(adb_device=device.serial)
+
+    print 'Launching %s on %s' % (full_name, self.get_adb_device_name(device))
 
     self.run_subprocess('%s %s logcat -c' % (adb_path, adb_device_arg),
                         shell=True)

@@ -123,7 +123,8 @@ class BuildAllEnvironment(buildutil.android.BuildEnvironment):
                         default=defaults[_APK_RUN])
     parser.add_argument('-d', '--' + _ADB_DEVICES,
                         help=('List of Android device serial numbers to '
-                              'install to / run on.'),
+                              'install to / run on.  If @ is specified all '
+                              'attached devices are selected.'),
                         dest=_ADB_DEVICES, default=defaults[_ADB_DEVICES],
                         nargs='+')
 
@@ -142,6 +143,9 @@ def main():
     return rc
 
   adb_devices = args.adb_devices if args.adb_devices else [None]
+  # If all devices are selected, get the list of serial numbers.
+  if '@' in adb_devices:
+    adb_devices = [d.serial for d in env.get_adb_devices()[0]]
 
   if env.apk_install:
     for adb_device in adb_devices:
