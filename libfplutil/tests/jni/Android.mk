@@ -12,11 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+LOCAL_PATH:=$(call my-dir)/..
+
+PROJECT_ROOT:=$(LOCAL_PATH)/../..
+DEPENDENCIES_ROOT:=$(wildcard $(PROJECT_ROOT)/dependencies)
+
 # Directory which contains the googletest library directory such that
 # $(GOOGLETEST_PATH)/googletest/Android.mk exists.
-GOOGLETEST_PATH?=$(LOCAL_PATH)/../../../
-
-LOCAL_PATH:=$(call my-dir)/..
+ifneq ($(DEPENDENCIES_ROOT),)
+GOOGLETEST_PATH?=$(realpath $(DEPENDENCIES_ROOT))
+else
+GOOGLETEST_PATH?=$(realpath $(PROJECT_ROOT)/..)
+endif
 
 # --- project ---
 include $(CLEAR_VARS)
@@ -28,7 +35,7 @@ LOCAL_LDLIBS:=-llog -landroid
 LOCAL_ARM_MODE:=arm
 include $(BUILD_SHARED_LIBRARY)
 
-$(call import-add-path,$(abspath $(LOCAL_PATH)/../..))
+$(call import-add-path,$(abspath $(PROJECT_ROOT)))
 $(call import-add-path,$(abspath $(GOOGLETEST_PATH)))
 
 $(call import-module,android/native_app_glue)
