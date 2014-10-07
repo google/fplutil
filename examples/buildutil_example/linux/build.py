@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Linux example build script.
+"""@file build.py Linux example build script.
 
 Builds a tiny example using cmake.
 

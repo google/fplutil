@@ -13,17 +13,17 @@
 # limitations under the License.
 #
 
-"""Common BuildEnvironment sub-module.
+"""@file buildutil/common.py Common BuildEnvironment.
 
-This is the base implementation for target-specific build environments. Common
-utility functions are collected here as well.
+This is the base implementation for target-specific build environments.
+Common utility classes are assembled here as well.
 
 Optional environment variables:
 
-GIT_PATH = Path to git binary.
-MAKE_PATH = Path to make binary. Required if make is not in $PATH,
+@li GIT_PATH = Path to git binary.
+@li MAKE_PATH = Path to make binary. Required if make is not in $PATH,
 or not passed on command line.
-MAKE_FLAGS = String to override the default make flags with.
+@li MAKE_FLAGS = String to override the default make flags with.
 """
 
 import datetime
@@ -35,19 +35,32 @@ import shutil
 import subprocess
 import zipfile
 
+## @internal Flag which specifies directory of the project to build.
 _PROJECT_DIR = 'project_dir'
+## @internal Environment variable which specifies the path to `make`.
 _MAKE_PATH_ENV_VAR = 'MAKE_PATH'
+## @internal Environment variable which specifies the path to `git`.
 _GIT_PATH_ENV_VAR = 'GIT_PATH'
+## @internal Environment variable which specifies flags for `make`.
 _MAKE_FLAGS_ENV_VAR = 'MAKE_FLAGS'
+## @internal Flag which specifies the number of CPUs to use during the build
+## process.
 _CPU_COUNT = 'cpu_count'
+## @internal Flag which specifies the path to `make`.
 _MAKE_PATH = 'make_path'
+## @internal Flag which specifies the path to `git`.
 _GIT_PATH = 'git_path'
+## @internal Flag which specifies flags for `make`.
 _MAKE_FLAGS = 'make_flags'
+## @internal Flag that controls whether the git working copy should be cleaned.
 _GIT_CLEAN = 'git_clean'
+## @internal Flag which controls the verbosity of BuildEnvironment's output.
 _VERBOSE = 'verbose'
+## @internal Flag which specifies the output directory for archived build
+## artifacts.
 _OUTPUT_DIR = 'output_dir'
+## @internal Flag which controls whether the project should be cleaned.
 _CLEAN = 'clean'
-
 
 class Error(Exception):
 
@@ -55,7 +68,7 @@ class Error(Exception):
 
   Attributes:
     error_message: An error message composited by specific error subclasses.
-    error_code: An error scalar unique to each error subclass, suitable for
+    error_code: An error integer unique to each error subclass, suitable for
       return from main()
   """
 
@@ -64,7 +77,10 @@ class Error(Exception):
   def __init__(self):
     """Initializes base exception values."""
     super(Error, self).__init__()
+    ## An error message composited by specific error subclasses.
     self._error_message = 'Unknown Error'
+    ## An error integer unique to each error subclass, suitable for return
+    ## from main()
     self._error_code = Error.CODE
 
   @property

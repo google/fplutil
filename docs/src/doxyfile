@@ -751,6 +751,10 @@ INPUT                  = "index.md" \
                          "libfplutil/examples.md" \
                          "libfplutil/linking.md" \
                          "buildutil/overview.md" \
+                         "buildutil/examples.md" \
+                         "buildutil/examples_android.md" \
+                         "buildutil/examples_linux.md" \
+                         "buildutil/api_reference.md" \
                          "tools/build_all_android.md" \
                          "../../libfplutil" \
                          "../../buildutil"
@@ -857,7 +861,7 @@ EXCLUDE_PATTERNS       = *_test.py \
 # Note that the wildcards are matched against the file with absolute path, so to
 # exclude all test directories use the pattern */test/*
 
-EXCLUDE_SYMBOLS        = 
+EXCLUDE_SYMBOLS        = _*
 
 # The EXAMPLE_PATH tag can be used to specify one or more files or directories
 # that contain example code fragments that are included (see the \include
@@ -877,7 +881,7 @@ EXAMPLE_PATTERNS       = *
 # irrespective of the value of the RECURSIVE tag.
 # The default value is: NO.
 
-EXAMPLE_RECURSIVE      = NO
+EXAMPLE_RECURSIVE      = YES
 
 # The IMAGE_PATH tag can be used to specify one or more files or directories
 # that contain images that are to be included in the documentation (see the
@@ -909,7 +913,7 @@ INPUT_FILTER           =
 # filters are used. If the FILTER_PATTERNS tag is empty or if none of the
 # patterns match the file name, INPUT_FILTER is applied.
 
-FILTER_PATTERNS        = 
+FILTER_PATTERNS        = *.py=py_filter
 
 # If the FILTER_SOURCE_FILES tag is set to YES, the input filter (if set using
 # INPUT_FILTER ) will also be used to filter the input files that are used for

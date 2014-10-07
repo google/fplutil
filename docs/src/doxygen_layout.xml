@@ -1,6 +1,7 @@
 <doxygenlayout version="1.0">
   <navindex>
-    <tab type="usergroup" url="@ref libfplutil_overview" title="libfplutil">
+    <tab type="usergroup" url="@ref libfplutil_overview"
+         title="libfplutil" >
       <tab type="usergroup" url="@ref libfplutil_main"
            title="Using libfplutil_main">
         <tab type="user" url="@ref libfplutil_main_events"
@@ -38,22 +39,67 @@
     </tab>
     <tab type="usergroup" url="@ref build_all_android"
          title="build_all_android.py">
-        <tab type="user" url="@ref build_all_android_build"
-             title="Building Applications" />
-        <tab type="user" url="@ref build_all_android_sign"
-             title="Signing Applications" />
-        <tab type="user" url="@ref build_all_android_install"
-             title="Installing Applications" />
-        <tab type="user" url="@ref build_all_android_run"
-             title="Running Applications" />
-        <tab type="user" url="@ref build_all_android_build_config"
-             title="Build Configuration" />
-        <tab type="user" url="@ref build_all_android_clean"
-             title="Cleaning Build Artifacts" />
-        <tab type="user" url="@ref build_all_android_multiple_devices"
-             title="Working with Multiple Devices" />
+      <tab type="user" url="@ref build_all_android_build"
+           title="Building Applications" />
+      <tab type="user" url="@ref build_all_android_sign"
+           title="Signing Applications" />
+      <tab type="user" url="@ref build_all_android_install"
+           title="Installing Applications" />
+      <tab type="user" url="@ref build_all_android_run"
+           title="Running Applications" />
+      <tab type="user" url="@ref build_all_android_build_config"
+           title="Build Configuration" />
+      <tab type="user" url="@ref build_all_android_clean"
+           title="Cleaning Build Artifacts" />
+      <tab type="user" url="@ref build_all_android_multiple_devices"
+           title="Working with Multiple Devices" />
     </tab>
     <tab type="usergroup" url="@ref buildutil_overview" title="buildutil">
+      <tab type="usergroup" url="@ref buildutil_examples" title="Examples">
+        <tab type="user" url="@ref buildutil_examples_android"
+             title="Android" />
+        <tab type="user" url="@ref buildutil_examples_android_code"
+             title="Android Code" />
+        <tab type="user" url="@ref buildutil_examples_linux" title="Linux" />
+        <tab type="user" url="@ref buildutil_examples_linux_code"
+             title="Linux Code" />
+      </tab>
+      <tab type="usergroup" url="@ref buildutil_api_reference"
+           title="API Reference">
+        <tab type="usergroup" url="@ref buildutil/common.py"
+             title="common.py">
+          <tab type="user" url="@ref buildutil.common.Error"
+               title="buildutil.common.Error" />
+          <tab type="user" url="@ref buildutil.common.ToolPathError"
+               title="buildutil.common.ToolPathError" />
+          <tab type="user" url="@ref buildutil.common.SubCommandError"
+               title="buildutil.common.SubCommandError" />
+          <tab type="user" url="@ref buildutil.common.ConfigurationError"
+               title="buildutil.common.ConfigurationError" />
+          <tab type="user" url="@ref buildutil.common.AdbError"
+               title="buildutil.common.AdbError" />
+          <tab type="user" url="@ref buildutil.common.BuildEnvironment"
+               title="buildutil.common.BuildEnvironment" />
+        </tab>
+        <tab type="usergroup" url="@ref buildutil/android.py"
+             title="android.py">
+          <tab type="user" url="@ref buildutil.android.XMLFile"
+               title="buildutil.android.XMLFile" />
+          <tab type="user" url="@ref buildutil.android.AndroidManifest"
+               title="buildutil.android.AndroidManifest" />
+          <tab type="user" url="@ref buildutil.android.BuildXml"
+               title="buildutil.android.BuildXml" />
+          <tab type="user" url="@ref buildutil.android.AdbDevice"
+               title="buildutil.android.AdbDevice" />
+          <tab type="user" url="@ref buildutil.android.BuildEnvironment"
+               title="buildutil.android.BuildEnvironment" />
+        </tab>
+        <tab type="usergroup" url="@ref buildutil/linux.py"
+             title="linux.py">
+          <tab type="user" url="@ref buildutil.linux.BuildEnvironment"
+               title="buildutil.linux.BuildEnvironment" />
+        </tab>
+      </tab>
     </tab>
   </navindex>
 </doxygenlayout>

@@ -13,13 +13,13 @@
 # limitations under the License.
 #
 
-"""Linux-specific BuildEnvironment sub-module.
+"""@file buildutil/linux.py Linux-specific BuildEnvironment sub-module.
 
 Optional environment variables:
 
-CMAKE_PATH = Path to CMake binary. Required if cmake is not in $PATH,
+@li CMAKE_PATH = Path to CMake binary. Required if cmake is not in $PATH,
 or not passed on command line.
-CMAKE_FLAGS = String to override the default CMake flags with.
+@li CMAKE_FLAGS = String to override the default CMake flags with.
 """
 
 

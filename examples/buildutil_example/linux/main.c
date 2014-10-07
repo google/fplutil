@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/// @file main.c Example application built by buildutil.
 #include <stdio.h>
 
 // Very simple linux build example. MESSAGE is defined on the make command line

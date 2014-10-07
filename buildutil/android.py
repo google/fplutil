@@ -13,15 +13,15 @@
 # limitations under the License.
 #
 
-"""Android-specific BuildEnvironment sub-module.
+"""@file buildutil/android.py Android-specific BuildEnvironment.
 
 Optional environment variables:
 
-ANT_PATH = Path to ant binary. Required if ant is not in $PATH,
+@li ANT_PATH = Path to ant binary. Required if ant is not in $PATH,
 or not passed on command line.
-ANDROID_SDK_HOME = Path to the Android SDK. Required if it is not passed on the
-command line.
-NDK_HOME = Path to the Android NDK. Required if it is not in passed on the
+@li ANDROID_SDK_HOME = Path to the Android SDK. Required if it is not passed
+on the command line.
+@li NDK_HOME = Path to the Android NDK. Required if it is not in passed on the
 command line.
 """
 
@@ -311,6 +311,7 @@ class BuildEnvironment(common.BuildEnvironment):
     apk_keyalias: Alias of key to use when signing an APK.
     apk_passfile: Path to file containing a password to use when signing an
       APK.
+    always_make: Whether to build when the project is already up to date.
   """
 
   ADB = 'adb'

@@ -15,6 +15,19 @@ development of C/C++ applications for Android.
 In order to use this module you should already be familiar with C/C++, the
 [Android NDK][] and [adb][].
 
+## Contents
+
+For more information about this module see the following:
+
+   * [libfplutil_main][] description and use cases.
+   * [libfplutil_print][] description and use cases.
+   * An [example](@ref libfplutil_example) which demonstrates how to use
+     [libfplutil_main][] and [libfplutil_print][] in an application.
+   * An [API reference](@ref libfplutil/include/fplutil/main.h) for
+     [libfplutil_main][]
+   * An [API reference](@ref libfplutil/include/fplutil/print.h) for
+     [libfplutil_print][]
+
   [adb]: http://developer.android.com/tools/help/adb.html
   [Android NDK]: http://developer.android.com/tools/sdk/ndk/index.html
   [libfplutil_main]: @ref libfplutil_main

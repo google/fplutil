@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Android example build script.
+"""@file build.py Android example build script.
 
 Copies an NDK sample to the current directory and builds it.
 
@@ -31,12 +31,13 @@ import buildutil.common
 
 
 def main():
+  # Parse arguments and create the build environment.
   parser = argparse.ArgumentParser()
   buildutil.android.BuildEnvironment.add_arguments(parser)
   args = parser.parse_args()
-
   env = buildutil.android.BuildEnvironment(args)
 
+  # Clean the git working copy.
   env.git_clean()
 
   # Copy one of the NDK samples here and build it
@@ -45,8 +46,10 @@ def main():
   shutil.rmtree(samplename, True)
   shutil.copytree(samplepath, samplename)
 
+  # Build the sample.
   (rc, errmsg) = env.build_all()
   if (rc == 0):
+    # Archive the sample built in the apks directory to output.zip.
     env.make_archive(['apks'], 'output.zip', exclude=['objs', 'objs-debug'])
   else:
     print >> sys.stderr, errmsg
