@@ -1,0 +1,39 @@
+diff --git a/libdw/Android.mk b/libdw/Android.mk
+index 0822ced..471f4e4 100755
+--- a/libdw/Android.mk
++++ b/libdw/Android.mk
+@@ -127,7 +127,7 @@ LOCAL_C_INCLUDES := \
+ 	$(LOCAL_PATH)/../libelf
+ 
+ ifeq ($(HOST_OS),darwin)
+-	LOCAL_CFLAGS += -fnested-functions
++	LOCAL_CFLAGS += #-fnested-functions
+ 	LOCAL_SRC_FILES += \
+ 		../host-darwin-fixup/getline.c
+ endif
+diff --git a/libdwfl/Android.mk b/libdwfl/Android.mk
+index f742b5c..2f21a9e 100755
+--- a/libdwfl/Android.mk
++++ b/libdwfl/Android.mk
+@@ -60,7 +60,7 @@ LOCAL_CFLAGS += -DHAVE_CONFIG_H -std=gnu99 -D_GNU_SOURCE
+ LOCAL_CFLAGS += -Wno-pointer-arith
+ 
+ ifeq ($(HOST_OS),darwin)
+-	LOCAL_CFLAGS += -fnested-functions
++	LOCAL_CFLAGS += #-fnested-functions
+ endif
+ 
+ # to fix machine-dependent issues
+diff --git a/libelf/Android.mk b/libelf/Android.mk
+index 95ccadf..34c6f33 100755
+--- a/libelf/Android.mk
++++ b/libelf/Android.mk
+@@ -152,7 +152,7 @@ LOCAL_CFLAGS += -DHAVE_CONFIG_H -std=gnu99 -D_GNU_SOURCE
+ LOCAL_CFLAGS += -Wno-pointer-arith
+ 
+ ifeq ($(HOST_OS),darwin)
+-	LOCAL_CFLAGS += -fnested-functions
++	LOCAL_CFLAGS += #-fnested-functions
+ endif
+ 
+ # to fix machine-dependent issues

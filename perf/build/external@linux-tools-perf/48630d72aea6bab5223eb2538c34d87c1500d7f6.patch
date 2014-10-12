@@ -1,0 +1,26 @@
+diff --git a/builtin-sched.c b/builtin-sched.c
+index 4d68763..52548e3 100644
+--- a/builtin-sched.c
++++ b/builtin-sched.c
+@@ -29,6 +29,8 @@
+ #include <pthread.h>
+ #include <math.h>
+ 
++#include <sys/resource.h>
++
+ static char			const *input_name = "perf.data";
+ 
+ static char			default_sort_order[] = "avg, max, switch, runtime";
+diff --git a/util/include/linux/added/rbtree.h b/util/include/linux/added/rbtree.h
+index 70c4bba..01bd2d4 100644
+--- a/util/include/linux/added/rbtree.h
++++ b/util/include/linux/added/rbtree.h
+@@ -103,6 +103,8 @@ static inline struct page * rb_insert_page_cache(struct inode * inode,
+ #endif
+ /* ANDROID_CHANGE_END */
+ 
++#include <stddef.h>
++
+ struct rb_node
+ {
+ 	unsigned long  rb_parent_color;

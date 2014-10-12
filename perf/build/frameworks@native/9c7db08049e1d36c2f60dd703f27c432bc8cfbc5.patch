@@ -1,0 +1,9 @@
+diff --git a/opengl/tests/Android.mk b/opengl/tests/Android.mk
+index 3ae3b4e..7e52d3e 100644
+--- a/opengl/tests/Android.mk
++++ b/opengl/tests/Android.mk
+@@ -41,4 +41,3 @@ dirs += \
+ 
+ endif # JAVA_SUPPORT platform
+ 
+-include $(call all-named-subdir-makefiles, $(dirs))

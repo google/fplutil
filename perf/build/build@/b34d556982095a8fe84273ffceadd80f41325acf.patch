@@ -1,0 +1,13 @@
+diff --git a/core/combo/HOST_darwin-x86.mk b/core/combo/HOST_darwin-x86.mk
+index ba61cbf..0b0714c 100644
+--- a/core/combo/HOST_darwin-x86.mk
++++ b/core/combo/HOST_darwin-x86.mk
+@@ -36,7 +36,7 @@ endif # BUILD_HOST_static
+ 
+ build_mac_version := $(shell sw_vers -productVersion)
+ 
+-mac_sdk_versions_supported :=  10.6 10.7 10.8
++mac_sdk_versions_supported :=  10.8 10.7 10.6
+ ifneq ($(strip $(MAC_SDK_VERSION)),)
+ mac_sdk_version := $(MAC_SDK_VERSION)
+ ifeq ($(filter $(mac_sdk_version),$(mac_sdk_versions_supported)),)
