@@ -763,6 +763,11 @@ class BuildEnvironment(common.BuildEnvironment):
     alias = self.apk_keyalias
     ephemeral = False
 
+    # Only sign if the source file is newer than the target.
+    if os.path.exists(target):
+      if os.path.getmtime(source) > os.path.getmtime(target):
+        return
+
     try:
       if not keystore or not passfile or not alias:
         # If the user specifies any of these, they need to specify them all,
