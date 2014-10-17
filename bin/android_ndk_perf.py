@@ -27,6 +27,7 @@ Caveats:
 """
 
 import argparse
+import distutils.spawn
 import os
 import platform
 import re
@@ -143,6 +144,11 @@ performance data.
 """
 
 
+## Regular expression which matches the libraries referenced by
+## "perf buildid-list --with-hits -i ${input_file}".
+PERF_BUILDID_LIST_MATCH_OBJ_RE = re.compile(r'^[^ ]* ([^\[][^ ]*[^\]])')
+
+
 class CommandFailedError(Exception):
   """Thrown when a shell command fails.
 
@@ -180,6 +186,9 @@ class Adb(object):
       connected.
     cached_properties: Dictionary of cached properties of the device.
     verbose: Whether to display all shell commands run by this class.
+    adb_path: Path to the ADB executable.
+    command_handler: Callable which executes subprocesses.  See
+      execute_command().
 
   Class Attributes:
     _MATCH_DEVICES: Regular expression which matches connected devices.
@@ -206,13 +215,15 @@ class Adb(object):
       """
       self.adb = adb
 
-    def __call__(self, command, error, **kwargs):
+    def __call__(self, executable, executable_args, error, **kwargs):
       """Run a shell command on the device associated with this instance.
 
       Args:
-        command: Command to execute.
+        executable: String added to the start of the command line.
+        executable_args: List of strings that are joined with whitespace to
+          form the shell command.
         error: The message to print if the command fails.
-        **kwargs: Keyword arguments passed to execute_local_command().
+        **kwargs: Keyword arguments passed to the command_handler attribute.
 
       Returns:
         (stdout, stderr, kbdint) where stdout is a string containing the
@@ -220,31 +231,50 @@ class Adb(object):
         standard error stream and kbdint is whether a keyboard interrupt
         occurred.
       """
-      return self.adb.shell_command(command, error, **kwargs)
+      args = [executable]
+      args.extend(executable_args)
+      return self.adb.shell_command(' '.join(args), error, **kwargs)
 
   _MATCH_DEVICES = re.compile(r'^(List of devices attached\s*\n)|(\n)$')
   _MATCH_PROPERTY = re.compile(r'^\[([^\]]*)\]: *\[([^\]]*)\]$')
 
-  def __init__(self, serial, verbose=False):
+  def __init__(self, serial, command_handler, adb_path=None, verbose=False):
     """Initialize this instance.
 
     Args:
       serial: Device serial number to connect to.  If this is an empty
         string this class will use the first device connected if only one
         device is connected.
+      command_handler: Callable which executes subprocesses.  See
+        execute_local_command().
+      adb_path: Path to the adb executable.  If this is None the PATH is
+        searched.
       verbose: Whether to display all shell commands run by this class.
+
+    Raises:
+      Adb.Error: If multiple devices are connected and no device is selected,
+        no devices are connected or ADB can't be found.
     """
     self.cached_properties = {}
     self.verbose = verbose
-    self._serial = serial
+    self.command_handler = command_handler
+    self.adb_path = (adb_path if adb_path else
+                     distutils.spawn.find_executable('adb'))
+    if not self.adb_path:
+      raise Adb.Error('Unable to find adb executable, '
+                      'is the ADT platforms-tools directory in the PATH?')
+    self.serial = serial
 
-  def run_command(self, command, error, **kwargs):
+  def _run_command(self, command, command_args, error, add_serial, **kwargs):
     """Run an ADB command for a specific device.
 
     Args:
       command: Command to execute.
+      command_args: Arguments to pass to the command.
       error: The message to print if the command fails.
-      **kwargs: Keyword arguments passed to execute_local_command().
+      add_serial: Add the device serial number to ADB's arguments.  This should
+        only be used with command that operate on a single device.
+      **kwargs: Keyword arguments passed to "command_handler".
 
     Returns:
       (stdout, stderr, kbdint) where stdout is a string containing the
@@ -257,18 +287,62 @@ class Adb(object):
     """
     kwargs = dict(kwargs)
     kwargs['verbose'] = self.verbose
-    return execute_local_command(
-        'adb %s %s' % ('-s ' + self.serial if self.serial else '',
-                       command), '%s (device=%s)' % (error, str(self)),
-        **kwargs)
+    args = []
+    if add_serial and self.serial:
+      args.extend(('-s', self.serial))
+    args.append(command)
+    args.extend(command_args)
+    return self.command_handler(self.adb_path, args, error, **kwargs)
+
+  def run_command(self, command, command_args, error, **kwargs):
+    """Run an ADB command for a specific device.
+
+    Args:
+      command: Command to execute.
+      command_args: Arguments to pass to the command.
+      error: The message to print if the command fails.
+      **kwargs: Keyword arguments passed to "command_handler".
+
+    Returns:
+      (stdout, stderr, kbdint) where stdout is a string containing the
+      standard output stream and stderr is a string containing the
+      standard error stream and kbdint is whether a keyboard interrupt
+      occurred.
+
+    Raises:
+      CommandFailedError: If the command fails.
+    """
+    return self._run_command(command, command_args,
+                             '%s (device=%s)' % (error, str(self)), True,
+                             **kwargs)
+
+  def run_global_command(self, command, command_args, error, **kwargs):
+    """Run an ADB command that does not operate on an individual device.
+
+    Args:
+      command: Command to execute.
+      command_args: Arguments to pass to the command.
+      error: The message to print if the command fails.
+      **kwargs: Keyword arguments passed to "command_handler".
+
+    Returns:
+      (stdout, stderr, kbdint) where stdout is a string containing the
+      standard output stream and stderr is a string containing the
+      standard error stream and kbdint is whether a keyboard interrupt
+      occurred.
+
+    Raises:
+      CommandFailedError: If the command fails.
+    """
+    return self._run_command(command, command_args, error, False, **kwargs)
 
   def shell_command(self, command, error, **kwargs):
     """Run a shell command on the device associated with this instance.
 
     Args:
-      command: Command to execute.
+      command: Command to execute in the remote shell.
       error: The message to print if the command fails.
-      **kwargs: Keyword arguments passed to execute_local_command().
+      **kwargs: Keyword arguments passed to "command_handler".
 
     Returns:
       (stdout, stderr, kbdint) where stdout is a string containing the
@@ -285,7 +359,7 @@ class Adb(object):
     # so get the status code up from the shell using the standard error
     # stream.
     out, err, kbdint = self.run_command(
-        r'shell "%s; echo \$? >&2"' % command, error, **kwargs)
+        'shell', [command + r'; echo $? >&2'], error, **kwargs)
     out_lines = out.splitlines()
     # If a keyboard interrupt occurred and the caller wants to ignore the
     # interrupt status, ignore it.
@@ -302,7 +376,7 @@ class Adb(object):
           out_lines = out_lines[:-1]
         except ValueError:
           pass
-    if returncode:
+    if returncode and not kwargs.get('display_output'):
       print out
       print >> sys.stderr, err
       raise CommandFailedError(error, returncode)
@@ -427,9 +501,8 @@ class Adb(object):
     Raises:
       CommandFailedError: An error occured running the command.
     """
-    out, _, _ = execute_local_command(
-        'adb devices -l', 'Unable to get the list of connected devices',
-        verbose=self.verbose)
+    out, _, _ = self.run_global_command(
+        'devices', ['-l'], 'Unable to get the list of connected devices.')
     return Adb._MATCH_DEVICES.sub(r'', out).splitlines()
 
   def start_activity(self, package, activity):
@@ -450,8 +523,8 @@ class Adb(object):
     package_activity = '%s/%s' % (package, activity)
     out, _, _ = self.shell_command(
         ' && '.join(['am start -S -n %s' % package_activity,
-                     r'fields=( \$(ps | grep -F %s) )' % package,
-                     r'echo \${fields[1]}']),
+                     r'fields=( $(ps | grep -F %s) )' % package,
+                     r'echo ${fields[1]}']),
         'Unable to start Android application %s' % package_activity)
     try:
       return int(out.splitlines()[-1])
@@ -468,9 +541,8 @@ class Adb(object):
     Raises:
       CommandFailedError: If the push fails.
     """
-    self.run_command('push %s %s' % (local_file, remote_path),
-                     'Unable to push %s to %s' %
-                     (local_file, remote_path))
+    self.run_command('push', [local_file, remote_path],
+                     'Unable to push %s to %s' % (local_file, remote_path))
 
   def push_files(self, local_remote_paths):
     """Push a set of local files to remote paths on the device.
@@ -485,6 +557,36 @@ class Adb(object):
     """
     for local, remote in local_remote_paths:
       self.push(local, remote)
+
+  def pull(self, remote_path, local_file):
+    """Pull a remote file to the host.
+
+    Args:
+      remote_path: Path on the device.
+      local_file: Path to the file on the host.  If the directories to the
+        local file don't exist, they're created.
+
+    Raises:
+      CommandFailedError: If the pull fails.
+    """
+    local_dir = os.path.dirname(local_file)
+    if not os.path.exists(local_dir):
+      os.makedirs(local_dir)
+    self.run_command('pull', [remote_path, local_file],
+                     'Unable to pull %s to %s' % (remote_path, local_file))
+
+  def pull_files(self, remote_local_paths):
+    """Pull a set of remote files to the host.
+
+    Args:
+      remote_local_paths: List of (remote, local) tuples where "remote" is the
+        source location on the device and "local" is the host path to copy to.
+
+    Raises:
+      CommandFailedError: If the pull fails.
+    """
+    for remote, local in remote_local_paths:
+      self.pull(remote, local)
 
   @staticmethod
   def get_package_data_directory(package_name):
@@ -521,7 +623,7 @@ class Adb(object):
     """
     self.shell_command('run-as %s chmod 666 %s' % (package_name, package_file),
                        'Unable to make %s readable.' % package_file)
-    self.run_command('pull %s %s' % (package_file, output_file),
+    self.run_command('pull', [package_file, output_file],
                      'Unable to copy %s from device to %s.' % (package_file,
                                                                output_file))
 
@@ -562,45 +664,125 @@ class SignalHandler(object):
     self.signal_handler = None
 
 
+class PerfArgsCommand(object):
+  """Properties of a perf command.
+
+  Attributes:
+    name: Name of the command.
+    sub_commands: Dictionary of sub-commands in the form of
+      PerfArgsCommand instances indexed by sub-command name.
+    value_options: List of value options that need to be skipped when
+      determining the sub-command.
+    verbose: Whether the command supports the verbose option.
+    remote: Whether the command needs to be executed on a remote device.
+    real_command: Whether this is a real perf command.
+  """
+
+  def __init__(self, name, sub_commands=None, value_options=None,
+               verbose=False, remote=False, real_command=True):
+    """Initialize this instance.
+
+    Args:
+      name: Name of the command.
+      sub_commands: List of sub-commands in the form of
+        PerfArgsCommand instances.
+      value_options: List of value options that need to be skipped when
+        determining the sub-command.
+      verbose: Whether the command supports the verbose option.
+      remote: Whether the command needs to be executed on a remote device.
+      real_command: Whether this is a real perf command.
+    """
+    self.name = name
+    self.sub_commands = (dict([(cmd.name, cmd) for cmd in sub_commands]) if
+                         sub_commands else {})
+    self.value_options = value_options if value_options else []
+    self.verbose = verbose
+    self.remote = remote
+    self.real_command = real_command
+
+  def __str__(self):
+    """Get the name of the command.
+
+    Returns:
+      Name of the command.
+    """
+    return self.name
+
+
 class PerfArgs(object):
   """Class which parses and processes arguments to perf.
 
   Attributes:
     initial_args: Arguments the instance is initialized with.
     args: Arguments that have been modified by methods of this class.
-    command: Primary perf command.
+    command: Primary perf command as a PerfArgsCommand instance.
+    sub_command: PerfArgsCommand instance of the secondary command
+      if provided, None otherwise.
 
   Class Attributes:
-    SUPPORTED_COMMANDS: Set of commands that *should* work with Android, not
-      all commands have been tested.
+    SUPPORTED_COMMANDS: List of PerfArgsCommand instances, one for each
+      command that *should* work with perf on Android.  Not all commands have
+      been tested
+    SUPPORTED_COMMANDS_DICT: Dictionary populated from SUPPORTED_COMMANDS.
   """
 
   class Error(Exception):
     """Thrown if a problem is found parsing perf arguments."""
     pass
 
-  SUPPORTED_COMMANDS = set(('annotate',
-                            'archive',  # May not be compiled in.
-                            'bench',  # May not be compiled in.
-                            'buildid-cache',
-                            'buildid-list',
-                            'diff',
-                            'evlist',
-                            'help',
-                            'inject',
-                            'list',
-                            'lock',
-                            'probe',
-                            'record',
-                            'report',
-                            'sched',
-                            'script',
-                            'stat',
-                            'test',  # May not be compiled in.
-                            'timechart',
-                            'top',
-                            'visualize'  # Specific to this script.
-                           ))
+  SUPPORTED_COMMANDS = [
+      PerfArgsCommand('annotate', verbose=True),
+      # May not be compiled in.
+      PerfArgsCommand('archive', remote=True),
+      # May not be compiled in.
+      PerfArgsCommand('bench', remote=True),
+      PerfArgsCommand('buildid-cache', verbose=True),
+      PerfArgsCommand('buildid-list', verbose=True),
+      PerfArgsCommand('diff', verbose=True),
+      PerfArgsCommand('evlist'),
+      PerfArgsCommand('help'),
+      PerfArgsCommand('inject', verbose=True),
+      PerfArgsCommand('kmem',
+                      sub_commands=(PerfArgsCommand('record'),
+                                    PerfArgsCommand('stat', remote=True)),
+                      value_options=('-i', '--input', '-s', '--sort',
+                                     '-l', '--line')),
+      PerfArgsCommand('list', remote=True),
+      PerfArgsCommand('lock',
+                      sub_commands=(PerfArgsCommand('record', remote=True),
+                                    PerfArgsCommand('trace'),
+                                    PerfArgsCommand('report')),
+                      value_options=('-i', '--input'), verbose=True),
+      PerfArgsCommand('probe', verbose=True, remote=True),
+      PerfArgsCommand('record', verbose=True, remote=True),
+      PerfArgsCommand('report', verbose=True),
+      PerfArgsCommand('sched',
+                      sub_commands=(PerfArgsCommand('record', remote=True),
+                                    PerfArgsCommand('latency'),
+                                    PerfArgsCommand('map'),
+                                    PerfArgsCommand('replay'),
+                                    PerfArgsCommand('trace')),
+                      value_options=('-i', '--input'), verbose=True),
+      PerfArgsCommand('script',
+                      sub_commands=(PerfArgsCommand('record', remote=True),
+                                    PerfArgsCommand('report')),
+                      value_options=('-s', '--script', '-g', '--gen-script',
+                                     '-i', '--input', '-k', '--vmlinux',
+                                     '--kallsyms', '--symfs'), verbose=True),
+      PerfArgsCommand('stat'),
+      # May not be compiled in.
+      PerfArgsCommand('test'),
+      PerfArgsCommand('timechart',
+                      sub_commands=(PerfArgsCommand('record'),),
+                      value_options=('-i', '--input', '-o', '--output',
+                                     '-w', '--width', '-p', '--process',
+                                     '--symfs')),
+      PerfArgsCommand('top', verbose=True),
+      # Specific to this script.
+      PerfArgsCommand('visualize', real_command=False)]
+
+  SUPPORTED_COMMANDS_DICT = dict([(cmd.name, cmd)
+                                  for cmd in SUPPORTED_COMMANDS])
 
   def __init__(self, args, verbose):
     """Initialize the instance.
@@ -615,13 +797,33 @@ class PerfArgs(object):
     self.initial_args = args
     self.args = list(args)
     self.man_to_builtin_help()
-    self.command = self.args[0] if self.args else ''
-    if self.command in ('annotate', 'buildid-cache', 'buildid-list', 'diff',
-                        'inject', 'lock', 'probe', 'record', 'report', 'sched',
-                        'script', 'top') and verbose:
+    command_arg = self.args[0] if self.args else 'help'
+    self.command = PerfArgs.SUPPORTED_COMMANDS_DICT.get(command_arg)
+    if not self.command:
+      raise PerfArgs.Error('Unsupported perf command %s' % command_arg)
+    if self.command.verbose and verbose:
       self.args.append('--verbose')
-    if self.command and self.command not in PerfArgs.SUPPORTED_COMMANDS:
-      raise PerfArgs.Error('Unsupported perf command %s' % self.command)
+    self.sub_command = self.get_sub_command()
+
+  def get_sub_command(self):
+    """Get the sub-command for the current command if applicable.
+
+    Returns:
+      PerfArgsCommand instance for the sub-command of the current command.  If
+      a sub-command isn't found None is returned.
+    """
+    if len(self.args) > 2:
+      index = 1
+      arg = self.args[1]
+      while index < len(self.args):
+        arg = self.args[index]
+        if not arg.startswith('-'):
+          break
+        if arg in self.command.value_options:
+          index += 1
+        index += 1
+      return self.command.sub_commands.get(arg)
+    return None
 
   def requires_root(self):
     """Determines whether the perf command requires a rooted device.
@@ -629,29 +831,33 @@ class PerfArgs(object):
     Returns:
       True if the command requires root, False otherwise.
     """
-    return self.command in ('stat', 'top')
+    if self.command.name == 'top' and not [
+        arg for arg in self.args[1:] if arg in ('-p', '-t', '-u')]:
+      return True
+    return False
 
-  def run_remote(self):
+  def requires_remote(self):
     """Determine whether the perf command needs to run on a remote device.
 
     Returns:
       True if perf should be run on an Android device, False otherwise.
     """
-    sub_command = self.args[1:2]
-    return (self.command in ('archive', 'bench', 'buildid-cache',
-                             'buildid-list', 'list', 'probe', 'record',
-                             'stat', 'test', 'top') or
-            (self.command == 'lock' and ('record' in sub_command)) or
-            (self.command == 'kmem' and ('record' in sub_command)) or
-            (self.command == 'sched' and ('record' in sub_command or
-                                          'replay' in sub_command)) or
-            (self.command == 'script' and ('record' in self.args[1:])) or
-            (self.command == 'timechart' and ('record' in sub_command)))
+    return self.command.remote or (self.sub_command and
+                                   self.sub_command.remote)
 
-  def requires_process(self):
-    """Determines whether the command records a process."""
-    return (self.command == 'record' or
-            (self.command in ('stat', 'top') and '-p' in self.args[1:]))
+  def insert_process_option(self, pid):
+    """Inserts a process option into the argument list.
+
+    Inserts a process option into the argument list if the command accepts
+    a process ID.
+
+    Args:
+      pid: Process ID to add to the argument list.
+    """
+    if (self.command.name in ('record', 'stat', 'top') or
+        (self.command.name == 'script' and
+         self.sub_command and self.sub_command.name == 'record')):
+      self.args.extend(('-p', str(pid)))
 
   def get_help_enabled(self):
     """Determine whether help display is requested in the arguments.
@@ -678,6 +884,8 @@ class PerfArgs(object):
         out_args.append(args[index + 1])
         out_args.append('-h')
         index += 1
+      elif arg == '--help' and index + 1 == len(args):
+        out_args.append('-h')
       else:
         out_args.append(arg)
       index += 1
@@ -692,14 +900,32 @@ class PerfArgs(object):
     Args:
       symbols_dir: Directory that contains symbols for perf data.
     """
-    if not symbols_dir or self.command not in ('annotate', 'diff', 'report',
-                                               'script', 'timechart'):
+    if not symbols_dir or self.command.name not in (
+        'annotate', 'diff', 'report', 'script', 'timechart'):
       return
     if '--symfs' not in self.args:
       return
     out_args = list(self.args)
     out_args.extend(('--symfs', symbols_dir))
     self.args = out_args
+
+  def _parse_value_option(self, options):
+    """Parse an argument with a value from the current argument list.
+
+    Args:
+      options: List of equivalent option strings (e.g '-o' and '--output') that
+        are followed by the value to be retrieved.
+
+    Returns:
+      The index of the value argument in the 'args' attribute or -1 if it's
+      not found.
+    """
+    index = -1
+    for i, arg in enumerate(self.args):
+      if arg in options and i < len(self.args) - 1:
+        index = i + 1
+        break
+    return index
 
   def get_output_filename(self, remote_output_filename=''):
     """Parse output filename from perf arguments.
@@ -711,31 +937,45 @@ class PerfArgs(object):
     Returns:
       Original output filename string.
     """
-    if self.command == 'lock' and ('record' in self.args[1:]):
-      return 'perf.data'
-    output_filename = {'record': 'perf.data',
-                       'stat': 'perf.txt',
-                       'timechart': 'output.svg'}.get(self.command)
+    output_filename = self.get_default_output_filename()
     if not output_filename:
       return ''
 
-    args = self.args
-    out_args = []
-    index = 0
-    found_filename = False
-    while index < len(args):
-      out_args.append(args[index])
-      index += 1
-      if args[index - 1] == '-o' and index < len(args):
-        output_filename = args[index]
-        found_filename = True
-        out_args.append(remote_output_filename if remote_output_filename else
-                        output_filename)
-        index += 1
-    if not found_filename and remote_output_filename:
-      out_args.extend(('-o', remote_output_filename))
-    self.args = out_args
+    index = self._parse_value_option('-o')
+    if index >= 0:
+      output_filename = self.args[index]
+      if remote_output_filename:
+        self.args[index] = remote_output_filename
+    elif remote_output_filename:
+      self.args.extend(('-o', remote_output_filename))
     return output_filename
+
+  def get_default_output_filename(self):
+    """Get the default output filename for the current command.
+
+    Returns:
+      String containing the default output filename for the current command
+      if the command results in an output file, empty string otherwise.
+    """
+    if (self.command.name == 'lock' and self.sub_command and
+        self.sub_command.name == 'record'):
+      return 'perf.data'
+    return  {'record': 'perf.data',
+             'stat': 'perf.txt',
+             'timechart': 'output.svg'}.get(self.command.name)
+
+  def get_input_filename(self):
+    """Parse input filename from perf arguments.
+
+    Returns:
+      Input filename string if found in the arguemnts or an empty string.
+    """
+    if self.command.name not in (
+        'annotate', 'buildid-list', 'evlist', 'kmem', 'lock', 'report',
+        'sched', 'script', 'timechart'):
+      return ''
+    index = self._parse_value_option('-i')
+    return self.args[index] if index >= 0 else ''
 
   def process_remote_args(self, remote_output_filename):
     """Process arguments specifically for remote commands.
@@ -747,10 +987,10 @@ class PerfArgs(object):
       The local output filename string or an empty string if this doesn't
       reference the record command.
     """
-    if self.command not in ('record', 'top', 'stat'):
+    if self.command.name not in ('record', 'top', 'stat'):
       return ''
     # Use -m 4 due to certain devices not having mmap data pages.
-    if self.command == 'record':
+    if self.command.name == 'record':
       self.args.extend(('-m', '4'))
     return self.get_output_filename(remote_output_filename)
 
@@ -804,8 +1044,9 @@ class CommandThread(threading.Thread):
 
   Attributes:
     command_handler: Callable which implements the same interface as
-      execute_local_command used to run the command from this thread.
-    command_line: Command line to pass to the command_handler.
+      execute_command() used to run the command from this thread.
+    executable: String path to the executable to run.
+    executable_args: List of string arguments to pass to the executable.
     error: Error string to pass to the command_handler.
     kwargs: Keyword arguments to pass to the command handler.
     stdout: String containing the standard output of the executed command.
@@ -814,19 +1055,22 @@ class CommandThread(threading.Thread):
     returncode: Return code of the command.
   """
 
-  def __init__(self, command_handler, command_line, error, **kwargs):
+  def __init__(self, command_handler, executable, executable_args, error,
+               **kwargs):
     """Initialize the instance.
 
     Args:
       command_handler: Callable which implements the same interface as
-        execute_local_command used to run the command from this thread.
-      command_line: Command line to pass to the command_handler.
+        execute_command() used to run the command from this thread.
+      executable: String path to the executable to run.
+      executable_args: List of string arguments to pass to the executable.
       error: Error string to pass to the command_handler.
       **kwargs: Keyword arguments to pass to the command handler.
     """
     super(CommandThread, self).__init__()
     self.command_handler = command_handler
-    self.command_line = command_line
+    self.executable = executable
+    self.executable_args = executable_args
     self.error = error
     self.stdout = ''
     self.stderr = ''
@@ -840,7 +1084,7 @@ class CommandThread(threading.Thread):
     kwargs['catch_sigint'] = False
     try:
       self.stdout, self.stderr, _ = self.command_handler(
-          self.command_line, self.error, **kwargs)
+          self.executable, self.executable_args, self.error, **kwargs)
     except CommandFailedError as e:
       self.returncode = e.returncode
 
@@ -988,7 +1232,7 @@ def find_host_binary(name, adb_device=None):
   if adb_device:
     api_levels = range(adb_device.get_api_level(), PERF_MIN_API_LEVEL - 1, -1)
   else:
-    api_levels = [int(filename[api_level_dir_prefix:])
+    api_levels = [int(filename[len(api_level_dir_prefix):])
                   for filename in os.listdir(PERF_TOOLS_BIN_DIRECTORY) if
                   filename.startswith(api_level_dir_prefix)]
 
@@ -1014,14 +1258,16 @@ def find_host_binary(name, adb_device=None):
       str(search_paths[:-1]), name))
 
 
-def execute_local_command(command_str, error, display_output_on_error=True,
-                          verbose=False, keyboard_interrupt_success=False,
-                          catch_sigint=True, ignore_error=False,
-                          display_output=False):
+def execute_command(executable, executable_args, error,
+                    display_output_on_error=True,
+                    verbose=False, keyboard_interrupt_success=False,
+                    catch_sigint=True, ignore_error=False,
+                    display_output=False):
   """Execute a command and throw an exception on failure.
 
   Args:
-    command_str: The command to be executed.
+    executable: String path to the executable to run.
+    executable_args: List of string arguments to pass to the executable.
     error: The message to print when failing.
     display_output_on_error: Display the command output if it fails.
     verbose: Whether to display excecuted commands.
@@ -1041,7 +1287,8 @@ def execute_local_command(command_str, error, display_output_on_error=True,
     CommandFailedError: An error occured running the command.
   """
   if verbose:
-    print >> sys.stderr, command_str
+    print >> sys.stderr, ' '.join((
+        executable, ' '.join(['"%s"' % a for a in executable_args])))
 
   # TODO(smiles): This isn't going to work on Windows, fix it.
   interrupt_signal = signal.SIGINT
@@ -1049,16 +1296,12 @@ def execute_local_command(command_str, error, display_output_on_error=True,
     sigint = SignalHandler()
     sigint.acquire(interrupt_signal)
 
-  # TODO(smiles): Can all of the commands be executed *without* the shell?
-  # Stuff will become far easier to deal with.
-
-  # TODO(smiles): Escape command string for local shell (e.g cmd vs. bash)
-  process = subprocess.Popen(command_str, shell=True,
+  process = subprocess.Popen([executable] + executable_args,
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
   # Read output of the command and optionally mirror the captured stdout and
   # stderr streams to stderr and stdout respectively.
-  stdout, stderr = ((sys.stdout, sys.stderr) if display_output or verbose else
+  stdout, stderr = ((sys.stdout, sys.stderr) if display_output else
                     (None, None))
   stdout_reader = ThreadedReader(process.stdout, stdout)
   stdout_reader.start()
@@ -1076,7 +1319,7 @@ def execute_local_command(command_str, error, display_output_on_error=True,
     sigint.release()
 
   if process.returncode and not ignore_error:
-    if display_output_on_error:
+    if display_output_on_error and not display_output:
       print str(stdout_reader)
       print >> sys.stderr, str(stderr_reader)
     raise CommandFailedError(error, process.returncode)
@@ -1097,17 +1340,17 @@ def run_perf_remotely(adb_device, apk_directory, perf_args):
   # TODO(smiles): Change this to raise on error.
   """
   # TODO(smiles): Optionally install the apk on the device.
+  # TODO(smiles): Optionally profile a package by name on the device.
   # TODO(smiles): Read main activity and package name from APK using aapt.
-  name = MANIFEST_NAME
+  package_name = ''
   if apk_directory:
-    name = apk_directory + '/' + MANIFEST_NAME
-  if not os.path.isfile(name):
-    print >> sys.stderr, (
-        'Cannot find Manifest %s, please specify the directory where the '
-        'manifest is located with --apk-directory.') % name
-    return 1
-
-  package_name = get_package_name_from_manifest(name)
+    manifest_filename = os.path.join(apk_directory, MANIFEST_NAME)
+    if not os.path.isfile(manifest_filename):
+      print >> sys.stderr, (
+          'Cannot find Manifest %s, please specify the directory where the '
+          'manifest is located with --apk-directory.') % manifest_filename
+      return 1
+    package_name = get_package_name_from_manifest(manifest_filename)
 
   # Push perf and wrapper script to the device.
   android_perf = find_target_binary('perf', adb_device)
@@ -1117,22 +1360,25 @@ def run_perf_remotely(adb_device, apk_directory, perf_args):
 
   # Get the output filename and mangle the arguments to run perf remotely.
   output_filename = perf_args.get_output_filename()
-  perf_data = '/'.join([Adb.get_package_data_directory(package_name),
-                        os.path.basename(output_filename)])
+  if package_name:
+    perf_data = '/'.join([Adb.get_package_data_directory(package_name),
+                          os.path.basename(output_filename)])
+  else:
+    perf_data = output_filename
   perf_args.process_remote_args(perf_data)
 
   try:
-    if perf_args.requires_process():
+    if package_name:
       # TODO(smiles): Parse the main activity name from the package.
-      pid = adb_device.start_activity(package_name,
-                                      'android.app.NativeActivity')
+      perf_args.insert_process_option(
+          adb_device.start_activity(package_name,
+                                    'android.app.NativeActivity'))
 
       # Start perf in a seperate thread so that it's possible to relay signals
       # to the remote process from the main thread.
       perf_thread = CommandThread(
-          Adb.ShellCommand(adb_device), ' '.join([
-              'run-as', package_name, android_perf_remote,
-              ' '.join(perf_args.args), '-p %d' % pid]), '',
+          Adb.ShellCommand(adb_device), 'run-as',
+          [package_name, android_perf_remote, ' '.join(perf_args.args)], '',
           display_output=True)
       perf_thread.start()
 
@@ -1143,10 +1389,10 @@ def run_perf_remotely(adb_device, apk_directory, perf_args):
       except KeyboardInterrupt:
         keyboard_interrupt = True
         adb_device.shell_command(
-            r'pkg_user=\$(ps | grep %(pkg)s | while read l; do '
-            r'  t=( \${l} ); echo \${t[0]}; break; done); '
-            r'pid=( \$(ps | grep \"\${pkg_user}.* %(perf)s\") ); '
-            r'echo \"kill -s SIGINT \${pid[1]}\" | run-as %(pkg)s sh' % {
+            r'pkg_user=$(ps | grep %(pkg)s | while read l; do '
+            r'  t=( ${l} ); echo ${t[0]}; break; done); '
+            r'pid=( $(ps | grep "${pkg_user}.* %(perf)s") ); '
+            r'echo "kill -s SIGINT ${pid[1]}" | run-as %(pkg)s sh' % {
                 'pkg': package_name, 'perf': android_perf_remote},
             'Unable to stop %s' % android_perf_remote)
 
@@ -1156,16 +1402,35 @@ def run_perf_remotely(adb_device, apk_directory, perf_args):
         perf_thread.stdout = 0
 
       if output_filename:
+        # Create the output directory if it doesn't exist.
+        output_directory = os.path.dirname(output_filename)
+        if output_directory and not os.path.exists(output_directory):
+          os.makedirs(output_directory)
+
         adb_device.pull_package_file(package_name, perf_data, output_filename)
-        # TODO(smiles): Use local perf report to determine which libraries
-        # need to be pulled from the device in order to properly annotate
-        # samples.
+
+        if (os.path.splitext(perf_args.get_default_output_filename())[1] ==
+            '.data'):
+          # Parse dependencies from the trace.
+          out, _, _ = execute_command(
+              find_host_binary(PERFHOST_BINARY, adb_device),
+              ['buildid-list', '-i', output_filename, '--with-hits'],
+              'Unable to retrieve the set of dependencies for perf '
+              'trace %s' % output_filename, verbose=adb_device.verbose)
+          # Pull all dependencies from the device.
+          for dep in [s.groups()[0] for s in [
+              PERF_BUILDID_LIST_MATCH_OBJ_RE.match(l)
+              for l in out.splitlines()] if s]:
+            try:
+              adb_device.pull(dep, os.path.join(output_directory, dep[1:]))
+            except CommandFailedError as e:
+              print >> sys.stderr, 'WARNING: ' + str(e)
+
     else:
-      out, _, _ = adb_device.shell_command(
-          '%s %s' % (android_perf_remote, ' '.join(perf_args)),
-          'Unable to execute perf %s on device.' % perf_args.command)
-      # TODO(smiles): Move this input execute_local_command()
-      print out
+      adb_device.shell_command(
+          ' '.join((android_perf_remote, ' '.join(perf_args.args))),
+          'Unable to execute perf %s on device.' % perf_args.command.name,
+          display_output=True)
 
   finally:
     # Remove temporary files from the device.
@@ -1173,9 +1438,9 @@ def run_perf_remotely(adb_device, apk_directory, perf_args):
     adb_device.shell_command(
         ''.join(('rm -f %s' % android_perf_remote,
                  '; run-as %s rm -f %s' % (package_name, perf_data)
-                 if perf_data else '')),
+                 if package_name and perf_data else '')),
         'Unable to remove temporary files %s from the device.' % (
-            temporary_files))
+            temporary_files), display_output=True)
   return 0
 
 
@@ -1197,8 +1462,8 @@ def run_perf_visualizer(browser, perf_args, adb_device, verbose=False):
 
   # Output samples and stacks while including specific attributes that are
   # read by the visualizer
-  out, _, _ = execute_local_command(
-      '%s script -f comm,tid,time,cpu,event,ip,sym,dso,period' % perf_host,
+  out, _, _ = execute_command(
+      perf_host, ('script', '-f' 'comm,tid,time,cpu,event,ip,sym,dso,period'),
       'Cannot visualize perf data. Please run record using -R',
       verbose=verbose)
 
@@ -1207,29 +1472,58 @@ def run_perf_visualizer(browser, perf_args, adb_device, verbose=False):
   # TODO(smiles): Replace with temporary file
   JSON_OUTPUT = 'perf_json.json'
 
-  with open(SCRIPT_OUTPUT, 'w') as f:
-    f.write(out)
+  try:
+    with open(SCRIPT_OUTPUT, 'w') as f:
+      f.write(out)
 
-  # Generate a common json format from the outputted sample data
-  out, _, _ = execute_local_command('%s perf_script.txt' % perf_to_tracing, '',
-                                    verbose=verbose)
+    # Generate a common json format from the outputted sample data
+    out, _, _ = execute_command(
+        perf_to_tracing, [SCRIPT_OUTPUT],
+        'Unable to convert perf script output to JSON.', verbose=verbose)
+    with open(JSON_OUTPUT, 'w') as f:
+      f.write(out)
 
-  with open(JSON_OUTPUT, 'w') as f:
-    f.write(out)
+    # Generate the html file from the json data
+    perf_vis_args = list(perf_args.args[1:])
+    perf_vis_args.append(JSON_OUTPUT)
+    out, _, _ = execute_command(
+        perf_vis, perf_vis_args,
+        'Unable to generate HTML report from JSON data', verbose=verbose)
 
-  # Generate the html file from the json data
-  out, _, _ = execute_local_command('%s %s perf_json.json' % (
-      perf_vis, ' '.join(perf_args)), '', verbose=verbose)
-
-  os.remove(SCRIPT_OUTPUT)
-  os.remove(JSON_OUTPUT)
+  finally:
+    if os.path.exists(SCRIPT_OUTPUT):
+      os.remove(SCRIPT_OUTPUT)
+    if os.path.exists(JSON_OUTPUT):
+      os.remove(JSON_OUTPUT)
 
   url = re.sub(r'.*output: ', r'', out.replace('\n', ' ')).strip()
-  execute_local_command(
-      '%s %s' % (browser, url), 'Cannot start browser %s' % browser,
-      verbose=verbose)
-
+  execute_command(browser, [url], 'Cannot start browser %s' % browser,
+                  verbose=verbose)
   return 0
+
+
+def display_help(parser, perf_args, adb_device, verbose):
+  """Display help for command referenced by perf_args.
+
+  Args:
+    parser: argparse.ArgumentParser instance which is used to print the
+      global help string.
+    perf_args: PerfArgs instance which is used to determine which perf command
+      help to display.
+    adb_device: Device used to determine which perf binary should be used.
+    verbose: Whether verbose output is enabled.
+  """
+  parser.print_help()
+  if perf_args.command and perf_args.command.real_command:
+    out, err, _ = execute_command(
+        find_host_binary(PERFHOST_BINARY, adb_device), perf_args.args,
+        'Unable to get %s help' % PERFHOST_BINARY, verbose=verbose,
+        ignore_error=True)
+    command_name = perf_args.command.name
+    command_header = 'perf help%s' % (
+        ' %s' % command_name if command_name != 'help' else '')
+    print os.linesep.join(('', command_header +
+                           ('-' * (80 - len(command_header))), out + err))
 
 
 def main():
@@ -1264,33 +1558,29 @@ def main():
     print >> sys.stderr, str(e)
     return 1
 
-  # Construct a class to communicate with the ADB device.
-  try:
-    adb_device = Adb(args.adb_device, verbose)
-  except Adb.Error, error:
-    print >> sys.stderr, os.linesep.join([
-        str(error), 'Try specifying a device using --adb-device <serial>.'])
-    return 1
-
   # Preprocess perf arguments.
   perf_args.insert_symfs_dir(os.path.dirname(
-      perf_args.get_output_filename()))
+      perf_args.get_input_filename()))
+
+  try:
+    # Construct a class to communicate with the ADB device.
+    adb_device = Adb(args.adb_device, execute_command, verbose=verbose)
+  except Adb.Error, error:
+    # If the perf command needs to be run on the device, report the error and
+    # exit.
+    if not perf_args.get_help_enabled() and perf_args.requires_remote():
+      print >> sys.stderr, os.linesep.join([
+          str(error), 'Try specifying a device using --adb-device <serial>.'])
+      return 1
+    else:
+      adb_device = None
 
   # If requested, display the help text and exit.
   if perf_args.get_help_enabled():
-    parser.print_help()
-    out, err, _ = execute_local_command(
-        '%s %s' % (find_host_binary(PERFHOST_BINARY, adb_device),
-                   ' '.join(perf_args.args)),
-        'Unable to get %s help' % PERFHOST_BINARY, verbose=verbose,
-        ignore_error=True)
-    perf_command = 'perf help%s' % (
-        ' %s' % perf_args.command if perf_args.command != 'help' else '')
-    print os.linesep.join(('', perf_command +
-                           ('-' * (80 - len(perf_command))), out + err))
+    display_help(parser, perf_args, adb_device, verbose)
     return 1
 
-  if perf_args.command == 'visualize':
+  if perf_args.command.name == 'visualize':
     # TODO(smiles): Move into a function which retrieves the browser.
     if args.browser:
       browser = args.browser
@@ -1298,8 +1588,8 @@ def main():
     else:
       # TODO(smiles): This does *not* work on OSX or Windows
       browser = 'xdg-open'
-      browser_name, _ = execute_local_command(
-          'xdg-settings get default-web-browser',
+      browser_name, _ = execute_command(
+          'xdg-settings', ('get', 'default-web-browser'),
           'Cannot find default browser. Please specify using --browser.',
           verbose=verbose)
       browser_name = browser_name.strip()
@@ -1311,7 +1601,7 @@ def main():
 
   try:
     # Run perf remotely
-    if perf_args.run_remote():
+    if perf_args.requires_remote():
       android_version = adb_device.get_version()
       if is_version_less_than(android_version, '4.1'):
         print >> sys.stderr, PERF_BINARIES_NOT_SUPPORTED % {
@@ -1321,18 +1611,19 @@ def main():
         print >> sys.stderr, PERFORMANCE_COUNTERS_BROKEN % model
       elif name not in SUPPORTED_DEVICES:
         print >> sys.stderr, NOT_SUPPORTED_DEVICE % model
-      user, _, _ = adb_device.shell_command(r'echo \${USER}',
+      user, _, _ = adb_device.shell_command(r'echo ${USER}',
                                             'Unable to get Android user name')
       if perf_args.requires_root() and user != 'root':
-        print >> sys.stderr, DEVICE_NOT_ROOTED % perf_args.command
+        print >> sys.stderr, DEVICE_NOT_ROOTED % perf_args.command.name
 
       return run_perf_remotely(adb_device, args.apk_directory, perf_args)
     # Run perf locally
     else:
-      execute_local_command(
-          '%s %s' % (find_host_binary(PERFHOST_BINARY, adb_device),
-                     ' '.join(perf_args.args)),
-          'Failed to execute %s' % PERFHOST_BINARY, verbose=verbose)
+      execute_command(
+          find_host_binary(PERFHOST_BINARY, adb_device), perf_args.args,
+          'Failed to execute %s %s' % (PERFHOST_BINARY,
+                                       ' '.join(perf_args.args)),
+          verbose=verbose, display_output=True)
 
   except CommandFailedError, error:
     print >> sys.stderr, str(error)
