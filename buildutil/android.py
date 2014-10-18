@@ -409,7 +409,8 @@ class BuildEnvironment(common.BuildEnvironment):
                         help='Flags to use to override ant flags',
                         dest=_ANT_FLAGS, default=defaults[_ANT_FLAGS])
     parser.add_argument('-T', '--' + _ANT_TARGET,
-                        help='Target to use for ant build',
+                        help=('Target to use for ant build.  If the clean '
+                              'option is specified, this is ignored.'),
                         dest=_ANT_TARGET, default=defaults[_ANT_TARGET])
     parser.add_argument('-k', '--' + _APK_KEYSTORE,
                         help='Path to keystore to use when signing an APK',
@@ -710,8 +711,7 @@ class BuildEnvironment(common.BuildEnvironment):
       manifest if manifest else self.parse_manifest(path=path),
       path=path)
 
-    acmd = [ant, self.ant_target]
-
+    acmd = [ant, 'clean' if self.clean else self.ant_target]
     if self.ant_flags:
       acmd += shlex.split(self.ant_flags, posix=self._posix)
 

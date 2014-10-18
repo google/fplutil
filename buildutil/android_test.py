@@ -776,6 +776,19 @@ class AndroidBuildUtilTest(unittest.TestCase):
     build_environment.run_subprocess = run_command_mock
     build_environment.build_android_apk(manifest=manifest)
 
+  def test_clean_android_apk(self):
+    build_environment, manifest, buildxml_filename = (
+        self._create_update_build_xml_setup())
+    os.path.exists = lambda unused_filename: True
+    os.path.getmtime = lambda unused_filename: 1
+    build_environment.clean = True
+    build_environment.ant_path = 'ant'
+    run_command_mock = common_test.RunCommandMock(self)
+    run_command_mock.expect(['ant', 'clean', '-quiet'], None)
+    build_environment.run_subprocess = run_command_mock
+    build_environment.build_android_apk(manifest=manifest)
+
+
   def _build_all_test_setup(self):
     b, walk_mock = self._find_projects_test_setup()
     apk_mock = BuildAndroidAPKMock(self)
