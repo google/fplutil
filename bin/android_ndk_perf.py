@@ -191,6 +191,37 @@ class Adb(object):
     """Thrown when the Adb object detects an error."""
     pass
 
+  class ShellCommand(object):
+    """Callable object which can be used to run shell commands.
+
+    Attributes:
+      adb: Adb instance to relay shell commands to.
+    """
+
+    def __init__(self, adb):
+      """Initialize this instance.
+
+      Args:
+        adb: Adb instance to relay shell commands to.
+      """
+      self.adb = adb
+
+    def __call__(self, command, error, **kwargs):
+      """Run a shell command on the device associated with this instance.
+
+      Args:
+        command: Command to execute.
+        error: The message to print if the command fails.
+        **kwargs: Keyword arguments passed to execute_local_command().
+
+      Returns:
+        (stdout, stderr, kbdint) where stdout is a string containing the
+        standard output stream and stderr is a string containing the
+        standard error stream and kbdint is whether a keyboard interrupt
+        occurred.
+      """
+      return self.adb.shell_command(command, error, **kwargs)
+
   _MATCH_DEVICES = re.compile(r'^(List of devices attached\s*\n)|(\n)$')
   _MATCH_PROPERTY = re.compile(r'^\[([^\]]*)\]: *\[([^\]]*)\]$')
 
@@ -548,10 +579,9 @@ class PerfArgs(object):
     """Thrown if a problem is found parsing perf arguments."""
     pass
 
-
   SUPPORTED_COMMANDS = set(('annotate',
                             'archive',  # May not be compiled in.
-                            'bench', # May not be compiled in.
+                            'bench',  # May not be compiled in.
                             'buildid-cache',
                             'buildid-list',
                             'diff',
@@ -566,11 +596,11 @@ class PerfArgs(object):
                             'sched',
                             'script',
                             'stat',
-                            'test',
+                            'test',  # May not be compiled in.
                             'timechart',
                             'top',
                             'visualize'  # Specific to this script.
-                            ))
+                           ))
 
   def __init__(self, args, verbose):
     """Initialize the instance.
@@ -723,6 +753,96 @@ class PerfArgs(object):
     if self.command == 'record':
       self.args.extend(('-m', '4'))
     return self.get_output_filename(remote_output_filename)
+
+
+class ThreadedReader(threading.Thread):
+  """Reads a file like object into a string from a thread.
+
+  This also optionally writes data read to an output file.
+
+  Attributes:
+    read_file: File to read.
+    output_file: If this isn't None, data read from read_file will be written
+      to this file.
+    read_lines: List of line strings read from the file.
+  """
+
+  def __init__(self, read_file, output_file):
+    """Initialize this instance.
+
+    Args:
+      read_file: File to read.
+      output_file: If this isn't None, data read from read_file will be written
+        to this file.
+    """
+    super(ThreadedReader, self).__init__()
+    self.read_file = read_file
+    self.output_file = output_file
+    self.read_lines = []
+
+  def run(self):
+    """Capture output from read_file into read_string."""
+    while True:
+      line = self.read_file.readline()
+      if not line:
+        break
+      self.read_lines.append(line)
+      if self.output_file:
+        self.output_file.write(line)
+
+  def __str__(self):
+    """Get the string read from the file.
+
+    Returns:
+      String read from the file.
+    """
+    return ''.join(self.read_lines)
+
+
+class CommandThread(threading.Thread):
+  """Runs a command in a separate thread.
+
+  Attributes:
+    command_handler: Callable which implements the same interface as
+      execute_local_command used to run the command from this thread.
+    command_line: Command line to pass to the command_handler.
+    error: Error string to pass to the command_handler.
+    kwargs: Keyword arguments to pass to the command handler.
+    stdout: String containing the standard output of the executed command.
+    stderr: String containing the standard error output of the executed
+      command.
+    returncode: Return code of the command.
+  """
+
+  def __init__(self, command_handler, command_line, error, **kwargs):
+    """Initialize the instance.
+
+    Args:
+      command_handler: Callable which implements the same interface as
+        execute_local_command used to run the command from this thread.
+      command_line: Command line to pass to the command_handler.
+      error: Error string to pass to the command_handler.
+      **kwargs: Keyword arguments to pass to the command handler.
+    """
+    super(CommandThread, self).__init__()
+    self.command_handler = command_handler
+    self.command_line = command_line
+    self.error = error
+    self.stdout = ''
+    self.stderr = ''
+    self.returncode = 0
+    self.kwargs = kwargs
+
+  def run(self):
+    """Execute the command."""
+    # Signals can only be caught from the main thread so disable capture.
+    kwargs = dict(self.kwargs)
+    kwargs['catch_sigint'] = False
+    try:
+      self.stdout, self.stderr, _ = self.command_handler(
+          self.command_line, self.error, **kwargs)
+    except CommandFailedError as e:
+      self.returncode = e.returncode
 
 
 def version_to_tuple(version):
@@ -896,7 +1016,8 @@ def find_host_binary(name, adb_device=None):
 
 def execute_local_command(command_str, error, display_output_on_error=True,
                           verbose=False, keyboard_interrupt_success=False,
-                          catch_sigint=True, ignore_error=False):
+                          catch_sigint=True, ignore_error=False,
+                          display_output=False):
   """Execute a command and throw an exception on failure.
 
   Args:
@@ -908,6 +1029,7 @@ def execute_local_command(command_str, error, display_output_on_error=True,
       a command failure.
     catch_sigint: Whether to catch sigint (keyboard interrupt).
     ignore_error: Ignore errors running this command.
+    display_output: Display the output stream.
 
   Returns:
     (stdout, stderr, kbdint) where stdout is a string containing the
@@ -933,8 +1055,18 @@ def execute_local_command(command_str, error, display_output_on_error=True,
   # TODO(smiles): Escape command string for local shell (e.g cmd vs. bash)
   process = subprocess.Popen(command_str, shell=True,
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  # TODO(smiles): Add option to send output in real-time here.
-  out, err = process.communicate()
+
+  # Read output of the command and optionally mirror the captured stdout and
+  # stderr streams to stderr and stdout respectively.
+  stdout, stderr = ((sys.stdout, sys.stderr) if display_output or verbose else
+                    (None, None))
+  stdout_reader = ThreadedReader(process.stdout, stdout)
+  stdout_reader.start()
+  stderr_reader = ThreadedReader(process.stderr, stderr)
+  stderr_reader.start()
+  stdout_reader.join()
+  stderr_reader.join()
+  process.wait()
 
   kbdint = False
   if catch_sigint:
@@ -945,10 +1077,10 @@ def execute_local_command(command_str, error, display_output_on_error=True,
 
   if process.returncode and not ignore_error:
     if display_output_on_error:
-      print out
-      print >> sys.stderr, err
+      print str(stdout_reader)
+      print >> sys.stderr, str(stderr_reader)
     raise CommandFailedError(error, process.returncode)
-  return (out, err, kbdint)
+  return (str(stdout_reader), str(stderr_reader), kbdint)
 
 
 def run_perf_remotely(adb_device, apk_directory, perf_args):
@@ -995,31 +1127,13 @@ def run_perf_remotely(adb_device, apk_directory, perf_args):
       pid = adb_device.start_activity(package_name,
                                       'android.app.NativeActivity')
 
-      # Run perf in a separate thread so that the process can be stopped from
-      # the main thread.
-      class PerfThread(threading.Thread):
-        def __init__(self, adb, command_line):
-          super(PerfThread, self).__init__()
-          self.adb = adb
-          self.command_line = command_line
-          self.stdout = ''
-          self.stderr = ''
-          self.returncode = 0
-
-        def run(self):
-          try:
-            self.stdout, self.stderr, _ = self.adb.shell_command(
-                self.command_line, 'Unable to execute perf record on device.',
-                catch_sigint=False)
-          except CommandFailedError as e:
-            self.returncode = e.returncode
-
       # Start perf in a seperate thread so that it's possible to relay signals
       # to the remote process from the main thread.
-      perf_thread = PerfThread(
-          adb_device, ' '.join([
+      perf_thread = CommandThread(
+          Adb.ShellCommand(adb_device), ' '.join([
               'run-as', package_name, android_perf_remote,
-              ' '.join(perf_args.args), '-p %d' % pid]))
+              ' '.join(perf_args.args), '-p %d' % pid]), '',
+          display_output=True)
       perf_thread.start()
 
       keyboard_interrupt = False
