@@ -55,7 +55,7 @@ _MANIFEST_FILE = 'AndroidManifest.xml'
 _NDK_MAKEFILE = 'Android.mk'
 _ALWAYS_MAKE = 'always_make'
 
-_MATCH_DEVICES = re.compile(r'^(List of devices attached\s*\n)|(\n)$')
+_MATCH_DEVICES = re.compile(r'^List of devices attached\s*')
 _MATCH_PACKAGE = re.compile(r'^package:(.*)')
 
 _NATIVE_ACTIVITY = 'android.app.NativeActivity'
@@ -953,8 +953,18 @@ class BuildEnvironment(common.BuildEnvironment):
         capture=True, shell=True)[0]
 
     devices = []
-    for device_line in  _MATCH_DEVICES.sub(r'', out).splitlines():
-      devices.append(AdbDevice(device_line))
+
+    lines = out.splitlines()
+    start_line = 0
+    for i, line in enumerate(lines):
+      if _MATCH_DEVICES.match(line):
+        start_line = i + 1
+        break
+
+    if start_line:
+      for device_line in lines[start_line:]:
+        if device_line:
+          devices.append(AdbDevice(device_line))
     return (devices, out)
 
   def check_adb_devices(self, adb_device=None):
