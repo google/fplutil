@@ -45,13 +45,14 @@ class StackFrameNode:
     return out_dict
 
 class PerfSample:
-  def __init__(self, stack_id, ts, cpu, tid, weight, type):
+  def __init__(self, stack_id, ts, cpu, tid, weight, type, comm):
     self.stack_id = stack_id
     self.ts = ts
     self.cpu = cpu
     self.tid = tid
     self.weight = weight
     self.type = type
+    self.comm = comm
 
   def ToDict(self):
     ret = {}
@@ -60,6 +61,7 @@ class PerfSample:
     ret['cpu'] = self.cpu  # Sampled CPU
     ret['weight'] = self.weight  # Sample weight
     ret['name'] = self.type  # Sample type
+    ret['comm'] = self.comm  # Command
     assert self.stack_id != 0
     if self.stack_id:
       ret['sf'] = self.stack_id  # Stack frame id
@@ -136,7 +138,8 @@ def Main(args):
                         samp_cpu,
                         samp_tid,
                         samp_period,
-                        samp_type)
+                        samp_type,
+                        samp_command)
         samples.append(sample)
         saved_period += samp_period
         break

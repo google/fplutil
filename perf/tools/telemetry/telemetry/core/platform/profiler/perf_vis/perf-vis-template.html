@@ -2,41 +2,40 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title><page-title></title>
+    <title>fplutil perf</title>
     <style type="text/css">
       body {
         font-family: 'Open Sans', sans-serif;
         font-size: 12px;
         font-weight: 400;
         background-color: #fff;
-        padding: 0;
-        margin: 5;
-      }
-
-      .left {
-          width: 810px;
-          position: absolute;
-          left: 0;
-          top: 0;
-          height: 820px;
-          margin: 5;
-      }
-      .right {
-          min-height: 810px;
-          margin-left: 810px;
-          margin: 5;
+        width: 960px;
+        height: 700px;
+        margin-top: 10px;
       }
 
       #main {
+        float: left;
+        width: 750px;
+      }
+
+      #sidebar {
+        float: left;
+        width: 50px;
       }
 
       #sequence {
-        width: auto;
-        height: 400px;
+        width: 600px;
+        height: 70px;
       }
 
       #legend {
         padding: 10px 0 0 3px;
+      }
+
+      #sequence text, #legend text {
+        font-weight: 600;
+        fill: #fff;
       }
 
       #chart {
@@ -45,23 +44,12 @@
 
       #chart path {
         stroke: #fff;
-        position:absolute;
-        left:0px;
-        top:0px;
-        height:800px;
-        width:800px;
-      }
-
-      #sidebar {
-        position:absolute;
-        left:10px;
-        top:10px;
       }
 
       #explanation {
         position: absolute;
-        top: 370px;
-        left: 355px;
+        top: 375px;
+        left: 410px;
         width: 100px;
         height: 100px;
         text-align: center;
@@ -73,71 +61,36 @@
       #percentage {
         font-size: 1.5em;
       }
-
-      #sequence text, #legend text {
-        font-weight: 600;
-        fill: #fff;
+      #summary {
+        font-size: 1.0em;
+        font-family: "Courier New";
       }
-
-      #callees {
-        position: relative;
-        width: auto;
-        height: auto;
-        z-index: 1;
-      }
-
-      <jquery.dataTables.css>
-
-      table.dataTable tbody td {
-        height:16px;
-        font-weight:bold;
-        padding: 1px 5px;
-      }
-
-      table.dataTable tbody th {
-        height:16px;
-        font-weight:bold;
-        padding: 1px 5px;
-      }
-
-      a:link {text-decoration:none;}
-      a:hover {text-decoration:underline;}
-
-      .dataTables_wrapper .dataTables_filter {
-         width: 50%;
-         float: left;
-         text-align: left;
-      }
-
     </style>
     <link rel="stylesheet" type="text/css"
       href="https://fonts.googleapis.com/css?family=Open+Sans:400,600">
   </head>
   <body>
-    <div id="center_area" class="left">
-      <div id="chart"></div>
+    <div id="main" style="height:800px;width:1850px">
       <div id="sidebar">
         <div id="legend"></div>
       </div>
-      <div id="explanation" style="visibility: hidden;">
-        <span id="percentage"></span><br/>
-      </div>
+      <div id="chart" style="height:800px;width:800px;float:left";></div>
+      <div id="sequence" style="height:800px;width:1000px;float:right";></div>
     </div>
-    <div id="right_panel" class="right">
-      <div id="merging"></div>
-      <div id="sequence"></div>
-      <div id="callees">
-        <table id="example" class="display" cellspacing="0" width="auto" />
-        <table id="bottom-up" class="display" cellspacing="0" width="auto" />
-      </div>
+    <div id="explanation" style="visibility: hidden;">
+      <span id="percentage"></span><br/>
     </div>
-  </body>
+    <div id="summary" style="width:1850px">Summary here</div>
     <script type="text/javascript">
       <jquery-1.11.0.min.js>
-      <jquery.dataTables.min.js>
       <sammy-latest.min.js>
       <d3.v3.min.js>
       var json = <data_json>;
-      <perf-vis.js>
+      <sequences.js>
     </script>
+    <script type="text/javascript">
+      // Hack to make this example display correctly in an iframe on bl.ocks.org
+      d3.select(self.frameElement).style("height", "700px");
+    </script> 
+  </body>
 </html>
