@@ -859,7 +859,9 @@ class AndroidBuildUtilTest(unittest.TestCase):
     build_environment.run_subprocess = common_test.RunCommandMock(
         self, args='%s devices -l' % (
             build_environment._find_binary(android.BuildEnvironment.ADB)),
-        stdout=('List of devices attached\n'
+        stdout=('Stuff to ignore\n'
+                'More stuff to ignore\n'
+                'List of devices attached\n'
                 '06d8bd43               device usb:2-3.3 product:razor '
                 'model:Nexus_7 device:flo\n'
                 '98aaffe123             device usb:2-3.3 product:fishy '
