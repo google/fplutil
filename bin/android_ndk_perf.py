@@ -15,7 +15,7 @@
 
 """@file bin/android_ndk_perf.py Linux perf automation for Android.
 
-detailed usage: android_ndk_perf.py [options] perf_command [perf_arguments]
+Detailed usage: android_ndk_perf.py [options] perf_command [perf_arguments]
 
 perf_command can be any valid command for the Linux perf tool or
 "visualize" to display a visualization of the performance report.
@@ -34,6 +34,7 @@ import re
 import signal
 import subprocess
 import sys
+import tempfile
 import threading
 import xml.dom.minidom as minidom
 
@@ -95,10 +96,8 @@ PERF_TOOLS_BIN_DIRECTORY = os.path.join(PERF_TOOLS_DIRECTORY, 'bin')
 ## List of paths to search for a host binary.
 HOST_BINARY_SEARCH_PATHS = [
     PERF_TOOLS_BIN_DIRECTORY,
-    os.path.join(PERF_TOOLS_DIRECTORY, 'tools', 'profile_chrome',
-                 'third_party'),
     os.path.join(PERF_TOOLS_DIRECTORY, 'tools', 'telemetry', 'telemetry',
-                 'core', 'platform', 'profiler'),
+                 'core', 'platform', 'profiler', 'perf_vis'),
 ]
 
 ## List of paths to search for a target (Android) binary.
@@ -112,6 +111,12 @@ PERF_MIN_API_LEVEL = 16
 
 ## Name of the perf binary that runs on the host machine.
 PERFHOST_BINARY = 'perfhost'
+
+## Binary which converts from a perf trace to JSON.
+PERF_TO_TRACING = 'perf_to_tracing_json.py'
+
+## Binary visualizes JSON output of PERF_TO_TRACING using HTML.
+PERF_VIS = 'perf-vis.py'
 
 ## Perf binaries not supported warning message.
 PERF_BINARIES_NOT_SUPPORTED = """
@@ -139,17 +144,36 @@ before attempting to use this command.
 
 ## Chrome web browser isn't found.
 CHROME_NOT_FOUND = """
-WARNING: %s is not Google Chrome and may not be able to display the resulting
-performance data.
+WARNING: %s is not Google Chrome and therefore may not be able
+to display the performance data.
 """
-
 
 ## Regular expression which matches the libraries referenced by
 ## "perf buildid-list --with-hits -i ${input_file}".
 PERF_BUILDID_LIST_MATCH_OBJ_RE = re.compile(r'^[^ ]* ([^\[][^ ]*[^\]])')
 
+## Regular expression which extracts the supported fields from
+## "perf script -h".
+PERF_SCRIPT_HELP_FIELDS = re.compile(r'.*-f.*--fields.*Fields: (.*)')
 
-class CommandFailedError(Exception):
+## Regular expression which extracts fields from an event in
+## run_perf_visualizer().
+PERF_REPORT_EVENT_RE = re.compile(r'^(.*)\s+(\d+)\s+(\d+\.\d+):\s([^:]+):.*')
+
+## Regular expression which extracts fields from a stack track in
+## run_perf_visualizer().
+PERF_REPORT_STACK_RE = re.compile(r'^\s+([0-9a-zA-Z]+)\s+(.*)\s+(\(.*\))$')
+
+## Regular expression which extracts the output html filename from PERF_VIS.
+PERF_VIS_OUTPUT_FILE_RE = re.compile(r'.*output:\s+(.*\.html).*')
+
+
+class Error(Exception):
+  """General error thrown by this module."""
+  pass
+
+
+class CommandFailedError(Error):
   """Thrown when a shell command fails.
 
   Attributes:
@@ -165,11 +189,6 @@ class CommandFailedError(Exception):
     """
     super(CommandFailedError, self).__init__(error_string)
     self.returncode = returncode
-
-
-class Error(Exception):
-  """General error thrown by this module."""
-  pass
 
 
 class BinaryNotFoundError(Error):
@@ -676,10 +695,15 @@ class PerfArgsCommand(object):
     verbose: Whether the command supports the verbose option.
     remote: Whether the command needs to be executed on a remote device.
     real_command: Whether this is a real perf command.
+    output_filename: Default output filename for this command or '' if
+      the command doesn't write to a file.
+    input_filename: Default input filename for this command or '' if
+      the command doesn't read from a file.
   """
 
   def __init__(self, name, sub_commands=None, value_options=None,
-               verbose=False, remote=False, real_command=True):
+               verbose=False, remote=False, real_command=True,
+               output_filename='', input_filename=''):
     """Initialize this instance.
 
     Args:
@@ -691,6 +715,10 @@ class PerfArgsCommand(object):
       verbose: Whether the command supports the verbose option.
       remote: Whether the command needs to be executed on a remote device.
       real_command: Whether this is a real perf command.
+      output_filename: Default output filename for this command or '' if
+        the command doesn't write to a file.
+      input_filename: Default input filename for this command or '' if
+        the command doesn't read from a file.
     """
     self.name = name
     self.sub_commands = (dict([(cmd.name, cmd) for cmd in sub_commands]) if
@@ -699,6 +727,8 @@ class PerfArgsCommand(object):
     self.verbose = verbose
     self.remote = remote
     self.real_command = real_command
+    self.input_filename = input_filename
+    self.output_filename = output_filename
 
   def __str__(self):
     """Get the name of the command.
@@ -731,55 +761,65 @@ class PerfArgs(object):
     pass
 
   SUPPORTED_COMMANDS = [
-      PerfArgsCommand('annotate', verbose=True),
+      PerfArgsCommand('annotate', verbose=True, input_filename='perf.data'),
       # May not be compiled in.
       PerfArgsCommand('archive', remote=True),
       # May not be compiled in.
       PerfArgsCommand('bench', remote=True),
       PerfArgsCommand('buildid-cache', verbose=True),
-      PerfArgsCommand('buildid-list', verbose=True),
+      PerfArgsCommand('buildid-list', verbose=True,
+                      input_filename='perf.data'),
       PerfArgsCommand('diff', verbose=True),
-      PerfArgsCommand('evlist'),
+      PerfArgsCommand('evlist', input_filename='perf.data'),
       PerfArgsCommand('help'),
       PerfArgsCommand('inject', verbose=True),
       PerfArgsCommand('kmem',
                       sub_commands=(PerfArgsCommand('record'),
                                     PerfArgsCommand('stat', remote=True)),
                       value_options=('-i', '--input', '-s', '--sort',
-                                     '-l', '--line')),
+                                     '-l', '--line'),
+                      input_filename='perf.data'),
       PerfArgsCommand('list', remote=True),
-      PerfArgsCommand('lock',
-                      sub_commands=(PerfArgsCommand('record', remote=True),
-                                    PerfArgsCommand('trace'),
-                                    PerfArgsCommand('report')),
-                      value_options=('-i', '--input'), verbose=True),
+      PerfArgsCommand(
+          'lock',
+          sub_commands=(PerfArgsCommand('record', remote=True,
+                                        output_filename='perf.data'),
+                        PerfArgsCommand('trace', input_filename='perf.data'),
+                        PerfArgsCommand('report', input_filename='perf.data')),
+          value_options=('-i', '--input'), verbose=True),
       PerfArgsCommand('probe', verbose=True, remote=True),
-      PerfArgsCommand('record', verbose=True, remote=True),
-      PerfArgsCommand('report', verbose=True),
+      PerfArgsCommand('record', verbose=True, remote=True,
+                      output_filename='perf.data'),
+      PerfArgsCommand('report', verbose=True, input_filename='perf.data'),
       PerfArgsCommand('sched',
                       sub_commands=(PerfArgsCommand('record', remote=True),
                                     PerfArgsCommand('latency'),
                                     PerfArgsCommand('map'),
                                     PerfArgsCommand('replay'),
                                     PerfArgsCommand('trace')),
-                      value_options=('-i', '--input'), verbose=True),
+                      value_options=('-i', '--input'), verbose=True,
+                      input_filename='perf.data'),
       PerfArgsCommand('script',
                       sub_commands=(PerfArgsCommand('record', remote=True),
                                     PerfArgsCommand('report')),
                       value_options=('-s', '--script', '-g', '--gen-script',
                                      '-i', '--input', '-k', '--vmlinux',
-                                     '--kallsyms', '--symfs'), verbose=True),
-      PerfArgsCommand('stat'),
+                                     '--kallsyms', '--symfs'), verbose=True,
+                      input_filename='perf.data'),
+      PerfArgsCommand('stat', output_filename='perf.data'),
       # May not be compiled in.
       PerfArgsCommand('test'),
       PerfArgsCommand('timechart',
                       sub_commands=(PerfArgsCommand('record'),),
                       value_options=('-i', '--input', '-o', '--output',
                                      '-w', '--width', '-p', '--process',
-                                     '--symfs')),
+                                     '--symfs'),
+                      output_filename='output.svg',
+                      input_filename='perf.data'),
       PerfArgsCommand('top', verbose=True),
       # Specific to this script.
-      PerfArgsCommand('visualize', real_command=False)]
+      PerfArgsCommand('visualize', real_command=False,
+                      input_filename='perf.data')]
 
   SUPPORTED_COMMANDS_DICT = dict([(cmd.name, cmd)
                                   for cmd in SUPPORTED_COMMANDS])
@@ -901,15 +941,15 @@ class PerfArgs(object):
       symbols_dir: Directory that contains symbols for perf data.
     """
     if not symbols_dir or self.command.name not in (
-        'annotate', 'diff', 'report', 'script', 'timechart'):
+        'annotate', 'diff', 'report', 'script', 'timechart', 'visualize'):
       return
-    if '--symfs' not in self.args:
+    if '--symfs' in self.args:
       return
     out_args = list(self.args)
     out_args.extend(('--symfs', symbols_dir))
     self.args = out_args
 
-  def _parse_value_option(self, options):
+  def parse_value_option(self, options):
     """Parse an argument with a value from the current argument list.
 
     Args:
@@ -927,6 +967,18 @@ class PerfArgs(object):
         break
     return index
 
+  def get_default_output_filename(self):
+    """Get the default output filename for the current command.
+
+    Returns:
+      String containing the default output filename for the current command
+      if the command results in an output file, empty string otherwise.
+    """
+    for command in (self.command, self.sub_command):
+      if command and command.output_filename:
+        return command.output_filename
+    return ''
+
   def get_output_filename(self, remote_output_filename=''):
     """Parse output filename from perf arguments.
 
@@ -941,7 +993,7 @@ class PerfArgs(object):
     if not output_filename:
       return ''
 
-    index = self._parse_value_option('-o')
+    index = self.parse_value_option(['-o'])
     if index >= 0:
       output_filename = self.args[index]
       if remote_output_filename:
@@ -950,38 +1002,37 @@ class PerfArgs(object):
       self.args.extend(('-o', remote_output_filename))
     return output_filename
 
-  def get_default_output_filename(self):
-    """Get the default output filename for the current command.
+  def get_default_input_filename(self):
+    """Get the default input filename for the current command.
 
     Returns:
-      String containing the default output filename for the current command
-      if the command results in an output file, empty string otherwise.
+      String containing the default input filename for the current command
+      if the command results in an input file, empty string otherwise.
     """
-    if (self.command.name == 'lock' and self.sub_command and
-        self.sub_command.name == 'record'):
-      return 'perf.data'
-    return  {'record': 'perf.data',
-             'stat': 'perf.txt',
-             'timechart': 'output.svg'}.get(self.command.name)
+    for command in (self.command, self.sub_command):
+      if command and command.input_filename:
+        return command.input_filename
+    return ''
 
   def get_input_filename(self):
     """Parse input filename from perf arguments.
 
     Returns:
-      Input filename string if found in the arguemnts or an empty string.
+      Input filename string if found in the arguments or the default input
+      filename for the command.
     """
-    if self.command.name not in (
-        'annotate', 'buildid-list', 'evlist', 'kmem', 'lock', 'report',
-        'sched', 'script', 'timechart'):
-      return ''
-    index = self._parse_value_option('-i')
-    return self.args[index] if index >= 0 else ''
+    index = self.parse_value_option(['-i'])
+    return (self.args[index] if index >= 0 else
+            self.get_default_input_filename())
 
-  def process_remote_args(self, remote_output_filename):
+  def process_remote_args(self, remote_output_filename,
+                          call_graph_recording, timestamp_recording):
     """Process arguments specifically for remote commands.
 
     Args:
       remote_output_filename: Output filename on the remote device.
+      call_graph_recording: Enable recording of call graphs.
+      timestamp_recording: Enable recording of time stamps.
 
     Returns:
       The local output filename string or an empty string if this doesn't
@@ -992,6 +1043,10 @@ class PerfArgs(object):
     # Use -m 4 due to certain devices not having mmap data pages.
     if self.command.name == 'record':
       self.args.extend(('-m', '4'))
+    if call_graph_recording:
+      self.args.append('-g')
+    if timestamp_recording:
+      self.args.append('-T')
     return self.get_output_filename(remote_output_filename)
 
 
@@ -1247,15 +1302,17 @@ def find_host_binary(name, adb_device=None):
   # Finally queue a search of the root directory of the host search path.
   search_paths.append('')
 
+  searched_paths = []
   for arch_path in search_paths:
     for search_path in HOST_BINARY_SEARCH_PATHS:
       for exe_extension in exe_extensions:
         binary_path = (os.path.join(search_path, arch_path, name) +
                        exe_extension)
+        searched_paths.append(binary_path)
         if os.path.exists(binary_path):
           return binary_path
-  raise BinaryNotFoundError('Unable to find host %s binary %s' % (
-      str(search_paths[:-1]), name))
+  raise BinaryNotFoundError('Unable to find host binary %s in %s' % (
+      name, os.linesep.join(searched_paths)))
 
 
 def execute_command(executable, executable_args, error,
@@ -1296,8 +1353,11 @@ def execute_command(executable, executable_args, error,
     sigint = SignalHandler()
     sigint.acquire(interrupt_signal)
 
-  process = subprocess.Popen([executable] + executable_args,
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  try:
+    process = subprocess.Popen([executable] + executable_args,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  except OSError, e:
+    raise CommandFailedError(' '.join((str(e), error)), 1)
 
   # Read output of the command and optionally mirror the captured stdout and
   # stderr streams to stderr and stdout respectively.
@@ -1326,13 +1386,16 @@ def execute_command(executable, executable_args, error,
   return (str(stdout_reader), str(stderr_reader), kbdint)
 
 
-def run_perf_remotely(adb_device, apk_directory, perf_args):
+def run_perf_remotely(adb_device, apk_directory, perf_args,
+                      call_graph_recording, timestamp_recording):
   """Run perf remotely.
 
   Args:
     adb_device: The device that perf is run on.
     apk_directory: The directory of the apk file to profile.
     perf_args: PerfArgs instance referencing the arguments used to run perf.
+    call_graph_recording: Whether to enable recording of call graphs.
+    timestamp_recording: Whether to enable recording of timestamps.
 
   Returns:
     1 for error, 0 for success.
@@ -1365,7 +1428,8 @@ def run_perf_remotely(adb_device, apk_directory, perf_args):
                           os.path.basename(output_filename)])
   else:
     perf_data = output_filename
-  perf_args.process_remote_args(perf_data)
+  perf_args.process_remote_args(perf_data, call_graph_recording,
+                                timestamp_recording)
 
   try:
     if package_name:
@@ -1387,6 +1451,7 @@ def run_perf_remotely(adb_device, apk_directory, perf_args):
         # Wait for the thread to complete or SIGINT (ctrl-c).
         perf_thread.join()
       except KeyboardInterrupt:
+        print >> sys.stderr, 'Finishing, please wait..'
         keyboard_interrupt = True
         adb_device.shell_command(
             r'pkg_user=$(ps | grep %(pkg)s | while read l; do '
@@ -1444,86 +1509,197 @@ def run_perf_remotely(adb_device, apk_directory, perf_args):
   return 0
 
 
-def run_perf_visualizer(browser, perf_args, adb_device, verbose=False):
+def run_perf_visualizer(browser, perf_args, adb_device, output_filename,
+                        verbose):
   """Generate the visualized html.
 
   Args:
     browser: The browser to use for display
-    perf_args: The arguments to run the visualizer with.
+    perf_args: PerfArgs instance which contains arguments used to run the
+      visualizer.
     adb_device: Device used to determine which perf binary should be used.
+    output_filename: Name of the report file to write to.
     verbose: Whether to display all shell commands executed by this function.
 
   Returns:
     1 for error, 0 for success
+
+  Raises:
+    Error: If an error occurs.
+    CommandFailedError: If a command fails to execute.
   """
   perf_host = find_host_binary(PERFHOST_BINARY, adb_device)
-  perf_to_tracing = find_host_binary('perf_to_tracing_json.py')
-  perf_vis = find_host_binary('perf-vis.py')
+  perf_to_tracing = find_host_binary(PERF_TO_TRACING)
+  perf_vis = find_host_binary(PERF_VIS)
+
+  # Get the list of support fields from perf.
+  out, err, _ = execute_command(perf_host, ['script', '-h'], '',
+                                verbose=verbose, ignore_error=True)
+  supported_script_fields = None
+  for l in (out + err).splitlines():
+    m = PERF_SCRIPT_HELP_FIELDS.match(l)
+    if m:
+      supported_script_fields = set(m.groups()[0].split(','))
+  if not supported_script_fields:
+    raise Error('Unable to retrieve supported fields from perf script.')
 
   # Output samples and stacks while including specific attributes that are
-  # read by the visualizer
-  out, _, _ = execute_command(
-      perf_host, ('script', '-f' 'comm,tid,time,cpu,event,ip,sym,dso,period'),
-      'Cannot visualize perf data. Please run record using -R',
-      verbose=verbose)
+  # read by the visualizer.
+  symfs_index = perf_args.parse_value_option(['--symfs'])
+  perf_script_args_list = [
+      'script', '-f', ','.join(('comm',
+                                'tid',
+                                # 'cpu',  # Need root on Android.
+                                'time',
+                                'event',
+                                'sym')),
+      '-i', perf_args.get_input_filename(),
+      '--symfs', (perf_args.args[symfs_index] if symfs_index >= 0 else
+                  os.dirname(perf_args.get_input_filename()))]
 
-  # TODO(smiles): Replace with temporary file
-  SCRIPT_OUTPUT = 'perf_script.txt'
-  # TODO(smiles): Replace with temporary file
-  JSON_OUTPUT = 'perf_json.json'
+  # If the version of perf supports the ip and dso fields, they'll need to be
+  # specified to print stack traces.
+  if 'ip' in supported_script_fields and 'dso' in supported_script_fields:
+    perf_script_args_list[-1] += ',ip,dso'
 
-  try:
-    with open(SCRIPT_OUTPUT, 'w') as f:
-      f.write(out)
+  perf_script_args = PerfArgs(perf_script_args_list, verbose)
+  out, _, _ = execute_command(perf_host, perf_script_args.args,
+                              'Cannot visualize perf data.  '
+                              'Try specifying input data using -i.',
+                              verbose=verbose)
 
-    # Generate a common json format from the outputted sample data
-    out, _, _ = execute_command(
-        perf_to_tracing, [SCRIPT_OUTPUT],
-        'Unable to convert perf script output to JSON.', verbose=verbose)
-    with open(JSON_OUTPUT, 'w') as f:
-      f.write(out)
+  # Add fields required by PERF_TO_TRACING that are not supported by the
+  # Android version of perf (API level 16-19).
+  processed_script_output = []
+  event_line = ''
+  stack_lines = []
+  for line in out.splitlines():
+    # Parse event lines.
+    if line and not line.startswith('\t'):
+      m = PERF_REPORT_EVENT_RE.match(line)
+      if not m:
+        raise Error('Unexpected format of event line reported by perf script.'
+                    ' (%s)' % line)
+      comm, tid, time, event = m.groups()
+      event_line = '\t'.join([
+          comm,
+          tid,
+          '[000]',
+          time + ':',
+          event + ':',
+          # Sample period, since this isn't stored in perf.data just leave
+          # samples normalized.
+          # TODO(smiles): Store this is metadata pulled along with the
+          # trace from the device.
+          '1'])
+    elif line.startswith('\t'):
+      # This is a stack trace.
+      m = PERF_REPORT_STACK_RE.match(line)
+      if not m:
+        raise Error('Unexpected fields reported in perf script '
+                    'stack trace. (%s)' % line)
+      ip, symbol, dso = m.groups()
+      symbol = symbol if symbol.strip() else '[unknown]'
+      dso = '([unknown])' if dso == '()' else dso
+      stack_lines.append(''.join((line[:line.find(ip)],
+                                  ' '.join((ip, symbol, dso)))))
+    else:
+      # PERF_TO_TRACING requires a stack trace for each event so filter events
+      # without stack traces.
+      if event_line and stack_lines:
+        processed_script_output.append(event_line)
+        processed_script_output.extend(stack_lines)
+        # End of a stack track.
+        processed_script_output.append(line.rstrip())
+      event_line = ''
+      stack_lines = []
+  out = os.linesep.join(processed_script_output)
+  script_output = tempfile.NamedTemporaryFile()
+  script_output.write(out)
+  script_output.flush()
 
-    # Generate the html file from the json data
-    perf_vis_args = list(perf_args.args[1:])
-    perf_vis_args.append(JSON_OUTPUT)
-    out, _, _ = execute_command(
-        perf_vis, perf_vis_args,
-        'Unable to generate HTML report from JSON data', verbose=verbose)
+  # Generate a common json format from the outputted sample data.
+  out, _, _ = execute_command(perf_to_tracing, [script_output.name],
+                              'Unable to convert perf script output to JSON.',
+                              verbose=verbose)
+  json_output = tempfile.NamedTemporaryFile()
+  json_output.write(out)
+  json_output.flush()
 
-  finally:
-    if os.path.exists(SCRIPT_OUTPUT):
-      os.remove(SCRIPT_OUTPUT)
-    if os.path.exists(JSON_OUTPUT):
-      os.remove(JSON_OUTPUT)
+  # Generate the html file from the json data.
+  out, _, _ = execute_command(perf_vis, [json_output.name],
+                              'Unable to generate HTML report from JSON '
+                              'data', verbose=verbose)
+  m = PERF_VIS_OUTPUT_FILE_RE.search(out)
+  generated_filename = m.groups()[0]
+  if os.path.exists(output_filename):
+    os.remove(output_filename)
+  os.rename(generated_filename, output_filename)
+  execute_command(browser, [output_filename],
+                  'Cannot start browser %s' % browser, verbose=verbose)
 
-  url = re.sub(r'.*output: ', r'', out.replace('\n', ' ')).strip()
-  execute_command(browser, [url], 'Cannot start browser %s' % browser,
-                  verbose=verbose)
-  return 0
+
+def get_browser(verbose):
+  """Try to get the browser executable / command to open a URL.
+
+  Args:
+    verbose: Whether verbose output is enabled.
+
+  Returns:
+    (executable, name) tuple where executable is the executable or command
+    required to open a URL and name is the name of the browser.
+  """
+  browser = None
+  browser_name = None
+  if platform.system() == 'Linux':
+    try:
+      browser_name, _, _ = execute_command(
+          'xdg-settings', ['get', 'default-web-browser'],
+          'Unable to retrieve browser name.', verbose=verbose)
+      browser_name = browser_name.strip()
+      browser = 'xdg-open'
+    except CommandFailedError as e:
+      print >> sys.stderr, str(e)
+  elif platform.system() == 'Darwin':
+    browser = 'open'
+    browser_name = '<unknown browser>'
+  elif platform.system() == 'Windows':
+    browser = 'start'
+    browser_name = '<unknown browser>'
+  return (browser, browser_name)
 
 
-def display_help(parser, perf_args, adb_device, verbose):
+def display_help(parser, sub_command_parsers, perf_args, adb_device, verbose):
   """Display help for command referenced by perf_args.
 
   Args:
     parser: argparse.ArgumentParser instance which is used to print the
       global help string.
+    sub_command_parsers: Dictionary of argparse.ArgumentParser instances
+      indexed by subcommand, for each subcommand this script provides.
     perf_args: PerfArgs instance which is used to determine which perf command
       help to display.
     adb_device: Device used to determine which perf binary should be used.
     verbose: Whether verbose output is enabled.
   """
   parser.print_help()
-  if perf_args.command and perf_args.command.real_command:
-    out, err, _ = execute_command(
-        find_host_binary(PERFHOST_BINARY, adb_device), perf_args.args,
-        'Unable to get %s help' % PERFHOST_BINARY, verbose=verbose,
-        ignore_error=True)
-    command_name = perf_args.command.name
-    command_header = 'perf help%s' % (
+  command = perf_args.command
+  if command:
+    command_name = command.name
+    command_header = '%s help%s' % (
+        'perf' if command.real_command else os.path.basename(sys.argv[0]),
         ' %s' % command_name if command_name != 'help' else '')
-    print os.linesep.join(('', command_header +
-                           ('-' * (80 - len(command_header))), out + err))
+    print os.linesep.join(
+        ('', command_header + ('-' * (80 - len(command_header)))))
+    sub_command_parser = sub_command_parsers.get(command_name)
+    if sub_command_parser:
+      sub_command_parser.print_help()
+    elif perf_args.command.real_command:
+      out, err, _ = execute_command(
+          find_host_binary(PERFHOST_BINARY, adb_device), perf_args.args,
+          'Unable to get %s help' % PERFHOST_BINARY, verbose=verbose,
+          ignore_error=True)
+      print out + err
 
 
 def main():
@@ -1543,10 +1719,40 @@ def main():
                             'host.'))
   parser.add_argument('--apk-directory',
                       help='The directory of the package to profile.')
-  parser.add_argument('--browser',
-                      help='Web browser to use for visualization.')
   parser.add_argument('--verbose', help='Display verbose output.',
                       action='store_true', default=False)
+  parser.add_argument('--no-record-call-graph',
+                      help=('By default the call graph will be captured on'
+                            'record so the trace can be visualized with '
+                            'stacks.  Use this option to disable call graph '
+                            'recording (effectively removing -g from the '
+                            '"perf record" command line.'))
+  parser.add_argument('--no-record-timestamp',
+                      help=('By default the timestamp will be captured on'
+                            'for each recorded event so the trace can be '
+                            'visualized with timing information.  Use this '
+                            'option to disable timestamp recording '
+                            '(effectively removing -T from the "perf record"'
+                            ' command line.'))
+
+  visualizer_parser = argparse.ArgumentParser(
+      description=('visualize converts a perf trace to a HTML visualization '
+                   'and opens the page in a web browser.'), add_help=False)
+  visualizer_parser.add_argument(
+      '--browser', help='Web browser to use for visualization.')
+  visualizer_parser.add_argument(
+      '-i', '--input-file',
+      help=('perf.data file to visualize.  If this isn\'t specified, '
+            'the command will attempt to read perf.data from the current '
+            'directory.'))
+  visualizer_parser.add_argument(
+      '--symfs', help=('Look for symbols relative to this directory.  '
+                       'If this is not specified, the input file directory '
+                       'is searched for symbols.'))
+  visualizer_parser.add_argument(
+      '-o', '--output-file', help=('Name of the HTML report file to '
+                                   'generate.'),
+      required=True)
 
   args, perf_arg_list = parser.parse_known_args()
   verbose = args.verbose
@@ -1561,6 +1767,12 @@ def main():
   # Preprocess perf arguments.
   perf_args.insert_symfs_dir(os.path.dirname(
       perf_args.get_input_filename()))
+
+  if perf_args.command and perf_args.command.name == 'visualize':
+    visualizer_args, _ = visualizer_parser.parse_known_args(
+        args=perf_args.args[1:])
+  else:
+    visualizer_args = []
 
   try:
     # Construct a class to communicate with the ADB device.
@@ -1577,27 +1789,30 @@ def main():
 
   # If requested, display the help text and exit.
   if perf_args.get_help_enabled():
-    display_help(parser, perf_args, adb_device, verbose)
+    display_help(parser, {'visualize': visualizer_parser}, perf_args,
+                 adb_device, verbose)
     return 1
 
+  # Run visualization command.
   if perf_args.command.name == 'visualize':
-    # TODO(smiles): Move into a function which retrieves the browser.
-    if args.browser:
-      browser = args.browser
-      browser_name = args.browser
-    else:
-      # TODO(smiles): This does *not* work on OSX or Windows
-      browser = 'xdg-open'
-      browser_name, _ = execute_command(
-          'xdg-settings', ('get', 'default-web-browser'),
-          'Cannot find default browser. Please specify using --browser.',
-          verbose=verbose)
-      browser_name = browser_name.strip()
-
-    if not re.match(r'.*chrom.*', browser_name):
-      print CHROME_NOT_FOUND % browser_name
-
-    return run_perf_visualizer(browser, perf_args.args[1:], adb_device)
+    browser, browser_name = (
+        (visualizer_args.browser, visualizer_args.browser)
+        if visualizer_args.browser else get_browser(verbose))
+    if not browser:
+      print >> sys.stderr, ('Cannot find default browser. '
+                            'Please specify using --browser.')
+      return 1
+    if not re.match(r'.*chrom.*', browser_name, re.IGNORECASE):
+      print >> sys.stderr, CHROME_NOT_FOUND % browser_name
+    try:
+      return run_perf_visualizer(browser, perf_args, adb_device,
+                                 visualizer_args.output_file, verbose)
+    except CommandFailedError as error:
+      print >> sys.stderr, str(error)
+      return error.returncode
+    except Error as error:
+      print >> sys.stderr, str(error)
+      return 1
 
   try:
     # Run perf remotely
@@ -1616,7 +1831,9 @@ def main():
       if perf_args.requires_root() and user != 'root':
         print >> sys.stderr, DEVICE_NOT_ROOTED % perf_args.command.name
 
-      return run_perf_remotely(adb_device, args.apk_directory, perf_args)
+      return run_perf_remotely(adb_device, args.apk_directory, perf_args,
+                               not args.no_record_call_graph,
+                               not args.no_record_timestamp)
     # Run perf locally
     else:
       execute_command(
@@ -1625,7 +1842,7 @@ def main():
                                        ' '.join(perf_args.args)),
           verbose=verbose, display_output=True)
 
-  except CommandFailedError, error:
+  except CommandFailedError as error:
     print >> sys.stderr, str(error)
     return error.returncode
   return 0
