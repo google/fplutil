@@ -4,29 +4,35 @@
     <meta charset="utf-8">
     <title>fplutil perf</title>
     <style type="text/css">
+      html {
+        width: 100%;
+        height: 100%;
+      }
       body {
         font-family: 'Open Sans', sans-serif;
         font-size: 12px;
         font-weight: 400;
         background-color: #fff;
-        width: 960px;
-        height: 700px;
+        width: 100%;
+        height: 100%;
         margin-top: 10px;
       }
 
       #main {
         float: left;
-        width: 750px;
+        width: 100%;
+        height: 85%;
       }
 
       #sidebar {
         float: left;
-        width: 50px;
+        width: 7em;
       }
 
       #sequence {
-        width: 600px;
-        height: 70px;
+        float: left;
+        width: 50%;
+        height: 100%;
       }
 
       #legend {
@@ -39,7 +45,11 @@
       }
 
       #chart {
+        float: left;
         position: relative;
+        display: block;
+        width: 40%;
+        height: 80%;
       }
 
       #chart path {
@@ -47,11 +57,7 @@
       }
 
       #explanation {
-        position: absolute;
-        top: 375px;
-        left: 410px;
-        width: 100px;
-        height: 100px;
+        float: left;
         text-align: center;
         vertical-align:middle;
         color: #666;
@@ -62,6 +68,11 @@
         font-size: 1.5em;
       }
       #summary {
+        float: left;
+        position: relative;
+        z-index: 1;
+        padding-top: 2em;
+        width: 100%;
         font-size: 1.0em;
         font-family: "Courier New";
       }
@@ -70,17 +81,18 @@
       href="https://fonts.googleapis.com/css?family=Open+Sans:400,600">
   </head>
   <body>
-    <div id="main" style="height:800px;width:1850px">
+    <div id="main">
       <div id="sidebar">
         <div id="legend"></div>
       </div>
-      <div id="chart" style="height:800px;width:800px;float:left";></div>
-      <div id="sequence" style="height:800px;width:1000px;float:right";></div>
+      <div id="chart">
+        <div id="explanation" style="visibility: hidden;">
+          <span id="percentage"></span><br/>
+        </div>
+      </div>
+      <div id="sequence"></div>
     </div>
-    <div id="explanation" style="visibility: hidden;">
-      <span id="percentage"></span><br/>
-    </div>
-    <div id="summary" style="width:1850px">Summary here</div>
+    <div id="summary">Summary here</div>
     <script type="text/javascript">
       <jquery-1.11.0.min.js>
       <sammy-latest.min.js>

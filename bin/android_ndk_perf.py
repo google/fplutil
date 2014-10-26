@@ -2178,7 +2178,8 @@ def run_perf_visualizer(browser, perf_args, adb_device, output_filename,
   """Generate the visualized html.
 
   Args:
-    browser: The browser to use for display
+    browser: The browser to use for display, if this is an empty string
+      no browser is open.
     perf_args: PerfArgs instance which contains arguments used to run the
       visualizer.
     adb_device: Device used to determine which perf binary should be used.
@@ -2233,8 +2234,9 @@ def run_perf_visualizer(browser, perf_args, adb_device, output_filename,
   if os.path.exists(output_filename):
     os.remove(output_filename)
   os.rename(generated_filename, output_filename)
-  execute_command(browser, [output_filename],
-                  'Cannot start browser %s' % browser, verbose=verbose)
+  if browser:
+    execute_command(browser, [output_filename],
+                    'Cannot start browser %s' % browser, verbose=verbose)
 
 
 def get_browser(verbose):
@@ -2381,6 +2383,9 @@ def main():
       '-f', '--frames', default=1,
       help=('Number of application specific "frames" (e.g visual frames) '
             'associated with the perf trace.'))
+  visualizer_parser.add_argument(
+      '--no-browser', action='store_true', default=False,
+      help=('Specify to disable opening the generated report in a browser.'))
   args, perf_arg_list = parser.parse_known_args()
   verbose = args.verbose
 
@@ -2425,15 +2430,15 @@ def main():
     browser, browser_name = (
         (visualizer_args.browser, visualizer_args.browser)
         if visualizer_args.browser else get_browser(verbose))
-    if not browser:
+    if not browser and not visualizer_args.no_browser:
       print >> sys.stderr, ('Cannot find default browser. '
                             'Please specify using --browser.')
       return 1
     if not re.match(r'.*chrom.*', browser_name, re.IGNORECASE):
       print >> sys.stderr, CHROME_NOT_FOUND % browser_name
     try:
-      run_perf_visualizer(browser, perf_args, adb_device,
-                          visualizer_args.output_file,
+      run_perf_visualizer('' if visualizer_args.no_browser else browser,
+                          perf_args, adb_device, visualizer_args.output_file,
                           visualizer_args.frames, verbose)
     except CommandFailedError as error:
       print >> sys.stderr, str(error)

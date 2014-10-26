@@ -1,11 +1,39 @@
-// Dimensions of sunburst.
-var width = 800;
-var height = 800;
-var radius = Math.min(width, height) / 2;
+
+var legend_width = document.getElementById("sidebar").clientWidth;
+
+// Area excluding the legend.
+var body_width = document.body.clientWidth - legend_width;
+var body_height = document.body.clientHeight;
+
+// Dimensions of sunburst element.
+var chart_element = document.getElementById("chart");
+var chart_width = chart_element.clientWidth;
+var chart_height = chart_element.clientHeight;
+var chart_radius = Math.min(chart_width, chart_height) * 0.85;
+var chart_diameter = chart_radius * 2;
+var chart_center_radius = chart_radius / 8;
+var chart_center_x = chart_radius / 2 + legend_width;
+var chart_center_y = chart_radius / 2 * 1.3;
+
+// Dimensions of the stack trace when mousing over the sunburst.
+var sequence_element = document.getElementById("sequence");
+var sequence_width = sequence_element.clientWidth;
+var sequence_height = sequence_element.clientHeight;
+
+// Set the position of the explanation element in the center of the chart.
+var explanation_element = document.getElementById("explanation");
+var explanation_style = explanation_element.style;
+var explanation_size = chart_center_radius;
+explanation_style.position = "absolute";
+explanation_style.width = explanation_size + "px";
+explanation_style.height = explanation_size + "px";
+explanation_style.left = (chart_center_x - (explanation_size * 0.75)) + "px";
+explanation_style.top = (chart_center_y - (explanation_size * 0.40)) + "px";
+explanation_style.fontSize = (explanation_size / 5) + "px";
 
 // Breadcrumb dimensions: width, height, spacing, width of tip/tail.
 var b = {
-  w: 1000, h: 16, s: 1, t: 10
+  w: sequence_width, h: 16, s: 1, t: 10
 };
 
 // Mapping of step names to colors.
@@ -57,11 +85,12 @@ function createVisualization(json) {
   drawLegend();
 
   var vis = d3.select("#chart").append("svg:svg")
-      .attr("width", width)
-      .attr("height", height)
+      .attr("width", chart_diameter)
+      .attr("height", chart_diameter)
       .append("svg:g")
       .attr("id", "container")
-      .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+      .attr("transform", "translate(" + chart_center_x +
+            "," + chart_center_y + ")");
 
   var clickedNode = null;
   var click_stack = new Array();
@@ -75,7 +104,7 @@ function createVisualization(json) {
   // Bounding circle underneath the sunburst, to make it easier to detect
   // when the mouse leaves the parent g.
   vis.append("svg:circle")
-      .attr("r", radius)
+      .attr("r", chart_radius)
       .style("opacity", 0)
       .on("click", zoomout);
 
@@ -100,7 +129,7 @@ function createVisualization(json) {
 
   var y = d3.scale.sqrt()
       .domain([yDomainMin, yDomainMax])
-      .range([50, radius]);
+      .range([chart_center_radius, chart_radius]);
 
   var arc = d3.svg.arc()
       .startAngle(function(d) {
@@ -119,12 +148,12 @@ function createVisualization(json) {
     if (minY > 0) {
       xd = d3.interpolate(x.domain(), [minX, maxX]);
       yd = d3.interpolate(y.domain(), [minY, minY + yDomainMin * 40]);
-      yr = d3.interpolate(y.range(), [50, radius]);
+      yr = d3.interpolate(y.range(), [chart_center_radius, chart_radius]);
     }
     else {
       xd = d3.interpolate(x.domain(), [minX, maxX]);
       yd = d3.interpolate(y.domain(), [yDomainMin, yDomainMin + yDomainMin * 40]);
-      yr = d3.interpolate(y.range(), [50, radius]);
+      yr = d3.interpolate(y.range(), [chart_center_radius, chart_radius]);
     }
 
     return function(d, i) {
@@ -282,12 +311,12 @@ function createVisualization(json) {
     if (minY > 0) {
       xd = d3.interpolate(x.domain(), [minX, maxX]);
       yd = d3.interpolate(y.domain(), [minY, yDomainMax]);
-      yr = d3.interpolate(y.range(), [50, radius]);
+      yr = d3.interpolate(y.range(), [chart_center_radius, chart_radius]);
     }
     else {
       xd = d3.interpolate(x.domain(), [minX, maxX]);
       yd = d3.interpolate(y.domain(), [yDomainMin, yDomainMax]);
-      yr = d3.interpolate(y.range(), [50, radius]);
+      yr = d3.interpolate(y.range(), [chart_center_radius, chart_radius]);
     }
 
     return function(d, i) {
@@ -348,8 +377,8 @@ function createVisualization(json) {
   function initializeBreadcrumbTrail() {
     // Add the svg area.
     var trail = d3.select("#sequence").append("svg:svg")
-        .attr("width", width)
-        .attr("height", 2000)
+        .attr("width", sequence_width)
+        .attr("height", sequence_height)
         .attr("id", "trail");
     // Add the label at the end, for the percentage.
     trail.append("svg:text")
@@ -395,7 +424,7 @@ function createVisualization(json) {
 
     // Set position for entering and updating nodes.
     g.attr("transform", function(d, i) {
-      return "translate(0, " + i * (b.h + b.s) + ")";
+      return "translate(" + legend_width + ", " + i * (b.h + b.s) + ")";
     });
 
     // Remove exiting nodes.
@@ -421,7 +450,7 @@ function createVisualization(json) {
 
     // Dimensions of legend item: width, height, spacing, radius of rounded rect.
     var li = {
-      w: 75, h: 30, s: 3, r: 3
+      w: legend_width, h: 30, s: 3, r: 3
     };
 
     var legend = d3.select("#legend").append("svg:svg")
