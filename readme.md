@@ -1,56 +1,31 @@
-FPLUtil Version 1.0
+fplutil version 1.0    {#fplutil_readme}
+===================
 
-# FPL Utility Libraries
+# FPL Utilities
 
 fplutil is a set of small libraries and tools that can be useful when
 developing applications for Android and other platforms.
 
-All code in this distribution, unless specifically noted otherwise, is released
-under the Apache License, Version 2.0. Please see LICENSE.txt for details.
+   * [build_all_android.py][] is a tool simplifies the process of building /
+     installing / executing native (C/C++) applications on Android.
+   * [buildutil][] contains a set of [Python][] modules which can simplify the
+     process of automating builds of C/C++ application for Android and Linux.
+   * [android_ndk_perf.py][] is a tool which makes it easier to profile
+     native (C/C++) applications on Android.
+   * [libfplutil][] consists of a set of libraries that make it easier to
+     develop C/C++ applications for Android.
 
-# Prerequisites
 
-To use this package you must first ensure you have a Python version compatible
-with Python 2.7 installed on your system. For Android functionality you must
-also install the Android SDK and NDK, available here:
+For applications on Google Play that integrate these libraries, usage is
+tracked.  This tracking is done automatically using the embedded version string
+(kFplUtilVersionString). Aside from consuming a few extra bytes in your
+application binary, it shouldn't affect your application at all. We use this
+information to let us know if fplutil libraries are useful and if we should
+continue to invest in them. Since this is open source, you are free to remove
+the version string but we would appreciate if you would leave it in.
 
-http://developer.android.com/sdk/index.html
-http://developer.android.com/tools/sdk/ndk/index.html
-
-These tools have been tested on Linux and OSX targeting Android, and Linux
-targeting itself for Linux build functionality.
-
-# Documentation
-
-Nearly everything in this package is intended to be as self-documenting as
-possible. All python tooling contains docstrings describing usage, and
-the C/C++ header files attempt to fully describe library usage. We recommend
-starting with the examples as functional documentation of the build tooling,
-and with libfplutil's header files and example for the C++ library. The build
-script in autobuild/build_android.py will drive an android build of the entire
-project, including examples.
-
-# Package Contents
-
-## fplutil/autobuild
-
-The Android build script for our internal automatic build of this project.
-
-## fplutil/bin
-
-Various useful scripts for direct use or as examples for your own scripts.
-
-## fplutil/buildutil
-
-A python module which helps to automate builds for Android and Linux. It
-allows writing simple python build scripts to drive builds and package output
-in projects containing multiple heterogeneous targets.
-
-## fplutil/examples
-
-Examples illustrating buildutil, libfplutil, and other parts of this project.
-
-## fplutil/libfplutil
-
-Android libraries providing easier access to stdio output and use of
-traditional C main() style functions.
+  [android_ndk_perf.py]: @ref android_ndk_perf
+  [build_all_android.py]: @ref build_all_android
+  [buildutil]: @ref buildutil_overview
+  [libfplutil]: @ref libfplutil_overview
+  [Python]: http://www.python.org

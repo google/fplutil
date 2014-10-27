@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <sys/uio.h>
 #include "fplutil/print.h"
+#include "fplutil/version.h"
 
 // Output function.
 static AndroidLogOutputFunction g_output_function = __android_log_vprint;
@@ -34,6 +35,7 @@ static size_t g_print_buffer_offset = 0;
 // Synchronization to ensure thread safety and flushing on exit.
 static pthread_once_t g_once = PTHREAD_ONCE_INIT;
 static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
+const char kFplUtilPrintVersionString[] = FPLUTIL_VERSION_STRING;
 
 extern void AndroidPrintfCxxInit();
 

@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include "fplutil/main.h"
+#include "fplutil/version.h"
 
 // See android.app.Activity.
 enum AndroidAppActivityResults {
@@ -30,6 +31,7 @@ enum AndroidAppActivityResults {
 
 static struct android_app* gApp = 0;
 static pthread_t gMainTID;
+const char kFplUtilMainVersionString[] = FPLUTIL_VERSION_STRING;
 
 //
 // Wait for and process any pending Android events from NativeActivity.
