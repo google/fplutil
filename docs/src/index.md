@@ -27,8 +27,6 @@ platform applications that also target Android.  Currently this consists of:
      installing / executing native (C/C++) applications on Android.
    * [android_ndk_perf.py][] native (C/C++) performance analysis tool for
      Android.
-   * [update_code_snippets.py][] application which will update markdown
-     files with code snippets.  This is useful for documentation.
 
 [build_all_android.py][] is an application that will find and build all native
 (C/C++) Android applications within a specified directory.  Using this
@@ -52,7 +50,6 @@ process of automating builds of C/C++ application for Android and Linux.
   [buildutil]: @ref buildutil_overview
   [android_ndk_perf.py]: TODO
   [build_all_android.py]: @ref build_all_android
-  [update_code_snippets.py]: TODO
   [Python]: http://www.python.org
 
 TODO reference from android_ndk_perf.py page https://perf.wiki.kernel.org
