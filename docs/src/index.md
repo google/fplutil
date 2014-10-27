@@ -45,11 +45,22 @@ process of automating builds of C/C++ application for Android and Linux.
 `autobuild` contains a build script for this suite of libraries and
 `examples/buildutil_example` contains a demonstration build script.
 
+## C/C++ Library Prerequisites
+
+For Android functionality you must install the Android SDK and NDK,
+available here:
+
+   * http://developer.android.com/sdk/index.html
+   * http://developer.android.com/tools/sdk/ndk/index.html
+
+## Python Tools and Build Module Prerequisites
+
+To use the Python scripts in this package you must first ensure you have a
+Python version compatible with Python 2.7 installed on your system.
 
   [libfplutil]: @ref libfplutil_overview
   [buildutil]: @ref buildutil_overview
-  [android_ndk_perf.py]: TODO
+  [android_ndk_perf.py]: @ref android_ndk_perf
   [build_all_android.py]: @ref build_all_android
   [Python]: http://www.python.org
 
-TODO reference from android_ndk_perf.py page https://perf.wiki.kernel.org

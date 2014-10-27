@@ -37,6 +37,24 @@
              title="libfplutil_print" />
       </tab>
     </tab>
+    <tab type="usergroup" url="@ref android_ndk_perf"
+         title="android_ndk_perf.py">
+      <tab type="user" url="@ref android_ndk_perf_sampling"
+           title="Sampling vs. Intrusive Profiling" />
+      <tab type="usergroup" url="@ref android_ndk_perf_building"
+           title="Building Applications for Profiling">
+        <tab type="user" url="@ref android_ndk_perf_building_fplutil"
+             title="Building and Installing using build_all_android.py" />
+        <tab type="user" url="@ref android_ndk_perf_building_manual"
+             title="Building using ndk-build and ant" />
+      </tab>
+      <tab type="user" url="@ref android_ndk_perf_record"
+           title="Capturing a Trace" />
+      <tab type="user" url="@ref android_ndk_perf_visualize"
+           title="Visualizing a Trace" />
+      <tab type="user" url="@ref android_ndk_perf_report"
+           title="Trace Reports" />
+    </tab>
     <tab type="usergroup" url="@ref build_all_android"
          title="build_all_android.py">
       <tab type="user" url="@ref build_all_android_build"
@@ -101,5 +119,6 @@
         </tab>
       </tab>
     </tab>
+    <tab type="usergroup" url="@ref fplutil_readme" title="readme"/>
   </navindex>
 </doxygenlayout>
