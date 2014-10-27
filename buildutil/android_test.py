@@ -1020,6 +1020,13 @@ class AndroidBuildUtilTest(unittest.TestCase):
     build_environment = android.BuildEnvironment(
         android.BuildEnvironment.build_defaults())
 
+    logoutput = ('Random log output\n'
+                 'Some other log output\n'
+                 'Another application log output.\n'
+                 'Displayed com.google.fpl.libfplutil_test/'
+                 'android.app.NativeActivity\n'
+                 'Line noise\n')
+
     # Configure the set of expected commands executed by run_android_apk.
     os.path.exists = lambda unused_filename: True
     build_environment.sdk_home = 'sdk_home'
@@ -1038,15 +1045,12 @@ class AndroidBuildUtilTest(unittest.TestCase):
                          'android.app.NativeActivity' % adb_path)),
          common_test.RunCommandMock(
              self, args='%s -s 123456 logcat -d' % adb_path,
-             stdout=('Random log output\n'
-                     'Some other log output\n'
-                     'Another application log output.\n'
-                     'Displayed com.google.fpl.libfplutil_test/'
-                     'android.app.NativeActivity\n'
-                     'Line noise\n'))])
+             stdout=logoutput)])
     build_environment.run_subprocess = run_command_mock
 
-    build_environment.run_android_apk(adb_device='123456')
+    self.assertEquals(logoutput,
+                      build_environment.run_android_apk(adb_device='123456'))
+    
 
 
 if __name__ == '__main__':
