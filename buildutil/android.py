@@ -1283,7 +1283,7 @@ class BuildEnvironment(common.BuildEnvironment):
         if gtest:
           for line in logoutput.splitlines():
             if _GTEST_FAILED.match(line):
-              raise common.Error('Test %s failed.' % apk_dir)
+              raise common.Error(error_message=('Test %s failed.' % apk_dir))
       except common.Error as e:
         errmsg = 'buildutil error: %s' % e.error_message
         retval = e.error_code

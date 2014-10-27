@@ -76,11 +76,15 @@ class Error(Exception):
 
   CODE = -1
 
-  def __init__(self):
-    """Initializes base exception values."""
+  def __init__(self, error_message=None):
+    """Initializes base exception values.
+
+    Args:
+      error_message: An error message composited by specific error subclasses.
+    """
     super(Error, self).__init__()
     ## An error message composited by specific error subclasses.
-    self._error_message = 'Unknown Error'
+    self._error_message = error_message if error_message else 'Unknown Error'
     ## An error integer unique to each error subclass, suitable for return
     ## from main()
     self._error_code = Error.CODE

@@ -1050,7 +1050,7 @@ class AndroidBuildUtilTest(unittest.TestCase):
 
     self.assertEquals(logoutput,
                       build_environment.run_android_apk(adb_device='123456'))
-    
+
 
 
 if __name__ == '__main__':

@@ -168,7 +168,7 @@ def main():
   if '@' in adb_devices:
     adb_devices = [d.serial for d in env.get_adb_devices()[0]]
 
-  if env.apk_install:
+  if env.apk_install and not env.clean:
     for adb_device in adb_devices:
       (rc, errmsg) = env.install_all(
           path=args.search_path, adb_device=adb_device, exclude_dirs=[
@@ -177,7 +177,7 @@ def main():
         print >> sys.stderr, errmsg
         return rc
 
-  if env.apk_run:
+  if env.apk_run and not env.clean:
     failed_targets = []
     for adb_device in adb_devices:
       (rc, errmsg, failures) = env.run_all(
