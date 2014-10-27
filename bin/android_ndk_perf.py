@@ -28,6 +28,7 @@ Caveats:
 
 import argparse
 import distutils.spawn
+import json
 import os
 import platform
 import re
@@ -36,6 +37,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import xml.dom.minidom as minidom
 
 ## Directory containing this script.
@@ -148,24 +150,61 @@ WARNING: %s is not Google Chrome and therefore may not be able
 to display the performance data.
 """
 
+## Unable to collect CPU frequency data.
+CPU_FREQ_NOT_AVAILABLE = """
+WARNING: Unable to collect CPU frequency data.
+%s
+"""
+
+## Unable to get process ID message.
+UNABLE_TO_GET_PROCESS_ID = 'Unable to get process ID of package %s'
+
 ## Regular expression which matches the libraries referenced by
 ## "perf buildid-list --with-hits -i ${input_file}".
 PERF_BUILDID_LIST_MATCH_OBJ_RE = re.compile(r'^[^ ]* ([^\[][^ ]*[^\]])')
 
-## Regular expression which extracts the supported fields from
-## "perf script -h".
-PERF_SCRIPT_HELP_FIELDS = re.compile(r'.*-f.*--fields.*Fields: (.*)')
+## Regular expression which extracts the CPU number from a path in
+## /sys/devices/system/cpu.
+SYS_DEVICES_CPU_NUMBER_RE = re.compile(
+    r'/sys/devices/system/cpu/cpu([0-9]+)/.*')
 
-## Regular expression which extracts fields from an event in
-## run_perf_visualizer().
-PERF_REPORT_EVENT_RE = re.compile(r'^(.*)\s+(\d+)\s+(\d+\.\d+):\s([^:]+):.*')
+## Regular expression which parses a sample even header from a perf trace dump
+## e.g the output of "perf script -D".
+PERF_DUMP_EVENT_SAMPLE_RE = re.compile(
+    r'^(?P<unknown>\d+)\s+'
+    r'(?P<file_offset>0x[0-9a-fA-F]+)\s+'
+    r'\[(?P<event_header_size>[^\]]+)\]:\s+'
+    r'(?P<perf_event_type>PERF_RECORD_[^(]+)'
+    r'(?P<perf_event_misc>\([^\)]+\)):\s+'
+    r'(?P<pid>\d+)/'
+    r'(?P<tid>\d+):\s+'
+    r'(?P<ip>0x[0-9a-fA-F]+)\s+'
+    r'period:\s+(?P<period>\d+)')
+
+## Regular expression which parses the perf report output from a trace dump.
+PERF_DUMP_EVENT_SAMPLE_REPORT_RE = re.compile(
+    r'(?P<comm>.*)\s+'
+    r'(?P<tid>[0-9]+)\s+'
+    r'(?P<time>[0-9]+\.[0-9]+):\s+'
+    r'(?P<event>.*):\s*$')
 
 ## Regular expression which extracts fields from a stack track in
 ## run_perf_visualizer().
-PERF_REPORT_STACK_RE = re.compile(r'^\s+([0-9a-zA-Z]+)\s+(.*)\s+(\(.*\))$')
+PERF_REPORT_STACK_RE = re.compile(
+    r'^\t\s+(?P<ip>[0-9a-zA-Z]+)\s+(?P<symbol>.*)\s+(?P<dso>\(.*\))$')
+
+## Prefix of each stack line in a perf report or dump.
+PERF_REPORT_STACK_PREFIX = '\t       '
 
 ## Regular expression which extracts the output html filename from PERF_VIS.
 PERF_VIS_OUTPUT_FILE_RE = re.compile(r'.*output:\s+(.*\.html).*')
+
+## Name of the file used to hold CPU frequency data.
+CPUFREQ_JSON = 'cpufreq.json'
+
+## Parses a string attribute from the manifest output of aapt list.
+AAPT_MANIFEST_ATTRIBUTE_RE = re.compile(
+    r'\s*A:\s+(?P<attribute>[^(=]*)[^=]*=[^"(]*[^")]*[")@](?P<value>[^"]*)')
 
 
 class Error(Exception):
@@ -213,6 +252,7 @@ class Adb(object):
     _MATCH_DEVICES: Regular expression which matches connected devices.
     _MATCH_PROPERTY: Regular expression which matches properties returned by
       the getprop shell command.
+    _GET_PID: Shell script fragment which retrieves the PID of a package.
   """
 
   class Error(Exception):
@@ -256,6 +296,8 @@ class Adb(object):
 
   _MATCH_DEVICES = re.compile(r'^(List of devices attached\s*\n)|(\n)$')
   _MATCH_PROPERTY = re.compile(r'^\[([^\]]*)\]: *\[([^\]]*)\]$')
+  _GET_PID = ' && '.join((r'fields=( $(ps | grep -F %s) )',
+                          r'echo ${fields[1]}'))
 
   def __init__(self, serial, command_handler, adb_path=None, verbose=False):
     """Initialize this instance.
@@ -542,13 +584,33 @@ class Adb(object):
     package_activity = '%s/%s' % (package, activity)
     out, _, _ = self.shell_command(
         ' && '.join(['am start -S -n %s' % package_activity,
-                     r'fields=( $(ps | grep -F %s) )' % package,
-                     r'echo ${fields[1]}']),
+                     Adb._GET_PID % package]),
         'Unable to start Android application %s' % package_activity)
     try:
       return int(out.splitlines()[-1])
-    except ValueError:
-      raise Error('Unable to get the PID of %s' % package_activity)
+    except (ValueError, IndexError):
+      raise Error(UNABLE_TO_GET_PROCESS_ID % package_activity)
+
+  def get_package_pid(self, package):
+    """Get the process ID of a package.
+
+    Args:
+      package: Package containing the activity that will be started.
+
+    Returns:
+      The process id of the process for the package containing the activity
+      if found.
+
+    Raises:
+      CommandFailedError: If the activity fails to start.
+      Error: If it's possible to get the PID of the process.
+    """
+    out, _, _ = self.shell_command(
+        Adb._GET_PID % package, UNABLE_TO_GET_PROCESS_ID % package)
+    try:
+      return int(out.splitlines()[-1])
+    except (ValueError, IndexError):
+      raise Error(UNABLE_TO_GET_PROCESS_ID % package)
 
   def push(self, local_file, remote_path):
     """Push a local file to the device.
@@ -1144,6 +1206,111 @@ class CommandThread(threading.Thread):
       self.returncode = e.returncode
 
 
+class ProgressDisplay(object):
+  """Displays a simple percentage progress display.
+
+  Args:
+    previous_progress: Value of the progress display the last time it was
+      displayed.
+    interval: How often to update the progress display e.g 0.1 will
+      update the display each time the difference between the current
+      progress value and previous_progress exceeds 0.1.
+  """
+
+  def __init__(self, previous_progress=0.0, interval=0.1):
+    """Initialize the instance.
+
+    Args:
+      previous_progress: Value of the progress display the last time it was
+        displayed.
+      interval: How often to update the progress display e.g 0.1 will
+        update the display each time the difference between the current
+        progress value and previous_progress exceeds 0.1.
+    """
+    self.previous_progress = previous_progress
+    self.interval = interval
+
+  def update(self, progress):
+    """Display a basic percentage progress display.
+
+    Args:
+      progress: Progress value to display, 0.1 == 10% etc.
+    """
+    if progress - self.previous_progress > self.interval or int(progress) == 1:
+      self.previous_progress = progress
+      sys.stderr.write('\r%d%%' % int(progress * 100.0))
+      sys.stderr.flush()
+      if int(progress) == 1:
+        sys.stderr.write(os.linesep)
+
+
+class PerfIp(object):
+  """Perf instruction pointer.
+
+  Attributes:
+    ip: Instruction pointer.
+    symbol: Symbol at the address.
+    dso: Object (shared library, executable etc.) symbol was located in.
+  """
+
+  def __init__(self, ip, symbol, dso):
+    """Initialize the instance.
+
+    Args:
+      ip: Instruction pointer.
+      symbol: Symbol at the address.
+      dso: Object (shared library, executable etc.) symbol was located in.
+    """
+    self.ip = ip
+    self.symbol = symbol
+    self.dso = dso
+
+
+class PerfRecordSample(object):
+  """Subset of a perf record sample.
+
+  Attributes:
+    file_offset: Offset of the sample in the source file.
+    event_type: Perf event type (should be PERF_RECORD_SAMPLE).
+    pid: ID of the process sampled.
+    tid: ID of the thread sampled.
+    ip: Instruction pointer at the time of the sample.
+    period: Period of the sample, if this was a recorded at a fixed frequency
+      this will be 1.
+    command: Name of the executable sampled.
+    time: Time sample was taken.
+    event: Type of record event.
+    stack: List of PerfIp instances which represent the stack of this sample.
+  """
+
+  def __init__(self, file_offset, event_type, pid, tid, ip, period,
+               command, sample_time, event):
+    """Initialize the instance.
+
+    Args:
+      file_offset: Offset of the sample in the source file.
+      event_type: Perf event type (should be PERF_RECORD_SAMPLE).
+      pid: ID of the process sampled.
+      tid: ID of the thread sampled.
+      ip: Instruction pointer at the time of the sample.
+      period: Period of the sample, if this was a recorded at a fixed frequency
+        this will be 1.
+      command: Name of the executable sampled.
+      sample_time: Time sample was taken.
+      event: Type of record event.
+    """
+    self.file_offset = file_offset
+    self.event_type = event_type
+    self.pid = pid
+    self.tid = tid
+    self.ip = ip
+    self.period = period
+    self.command = command
+    self.time = sample_time
+    self.event = event
+    self.stack = []
+
+
 def version_to_tuple(version):
   """Convert a version to a tuple of ints.
 
@@ -1169,17 +1336,36 @@ def is_version_less_than(version1, version2):
   return version_to_tuple(version1) < version_to_tuple(version2)
 
 
-def get_package_name_from_manifest(name):
+def get_package_name_from_manifest(manifest_filename):
   """Gets the name of the apk package to profile from the Manifest.
 
   Args:
-    name: The name of the AndroidManifest file to search through.
+    manifest_filename: The name of the AndroidManifest file to search through.
 
   Returns:
-    The name of the apk package.
+    (package_name, activity_name) tuple where package_name is the name of the
+    package and activity is the main activity from the first application in
+    the package.
+
+  Raises:
+    Error: If it's not possible to parse the manifest.
   """
-  xml = minidom.parse(name)
-  return xml.getElementsByTagName('manifest')[0].getAttribute('package')
+  if not os.path.isfile(manifest_filename):
+    raise Error('Cannot find Manifest %s, please specify the directory '
+                'where the manifest is located with --apk-directory.' % (
+                    manifest_filename))
+  xml = minidom.parse(manifest_filename)
+  manifest_tag = xml.getElementsByTagName('manifest')[0]
+  package_name = manifest_tag.getAttribute('package')
+  application_tag = manifest_tag.getElementsByTagName('application')[0]
+  for activity_tag in application_tag.getElementsByTagName('activity'):
+    for intent_filter_tag in activity_tag.getElementsByTagName(
+        'intent-filter'):
+      for action_tag in intent_filter_tag.getElementsByTagName('action'):
+        if (action_tag.getAttribute('android:name') ==
+            'android.intent.action.MAIN'):
+          activity = activity_tag.getAttribute('android:name')
+  return (package_name, activity)
 
 
 def get_host_os_name_architecture():
@@ -1254,6 +1440,21 @@ def find_target_binary(name, adb_device):
       arch_paths[0], name))
 
 
+def get_host_executable_extensions():
+  """Get a list of executable file extensions.
+
+  Returns:
+    A list of executable file extensions.
+  """
+  # On Windows search for filenames that have executable extensions.
+  exe_extensions = ['']
+  if platform.system() == 'Windows':
+    extensions = os.environ('PATHEXT')
+    if extensions:
+      exe_extensions.extend(extensions.split(';'))
+  return exe_extensions
+
+
 def find_host_binary(name, adb_device=None):
   """Find the path of the specified host binary.
 
@@ -1269,12 +1470,7 @@ def find_host_binary(name, adb_device=None):
   Raises:
     BinaryNotFoundError: If the specified binary isn't found.
   """
-  # On Windows search for filenames that have executable extensions.
-  exe_extensions = ['']
-  if platform.system() == 'Windows':
-    extensions = os.environ('PATHEXT')
-    if extensions:
-      exe_extensions.extend(extensions.split(';'))
+  exe_extensions = get_host_executable_extensions()
 
   # Get the set of compatible architectures for the current OS.
   search_paths = []
@@ -1287,9 +1483,10 @@ def find_host_binary(name, adb_device=None):
   if adb_device:
     api_levels = range(adb_device.get_api_level(), PERF_MIN_API_LEVEL - 1, -1)
   else:
-    api_levels = [int(filename[len(api_level_dir_prefix):])
-                  for filename in os.listdir(PERF_TOOLS_BIN_DIRECTORY) if
-                  filename.startswith(api_level_dir_prefix)]
+    api_levels = sorted([
+        int(filename[len(api_level_dir_prefix):])
+        for filename in os.listdir(PERF_TOOLS_BIN_DIRECTORY) if
+        filename.startswith(api_level_dir_prefix)], reverse=True)
 
   # Build the list of OS specific search paths.
   os_paths = []
@@ -1359,17 +1556,19 @@ def execute_command(executable, executable_args, error,
   except OSError, e:
     raise CommandFailedError(' '.join((str(e), error)), 1)
 
-  # Read output of the command and optionally mirror the captured stdout and
-  # stderr streams to stderr and stdout respectively.
-  stdout, stderr = ((sys.stdout, sys.stderr) if display_output else
-                    (None, None))
-  stdout_reader = ThreadedReader(process.stdout, stdout)
-  stdout_reader.start()
-  stderr_reader = ThreadedReader(process.stderr, stderr)
-  stderr_reader.start()
-  stdout_reader.join()
-  stderr_reader.join()
-  process.wait()
+  if display_output:
+    # Read output of the command and optionally mirror the captured stdout and
+    # stderr streams to stderr and stdout respectively.
+    stdout_reader = ThreadedReader(process.stdout, sys.stdout)
+    stdout_reader.start()
+    stderr_reader = ThreadedReader(process.stderr, sys.stderr)
+    stderr_reader.start()
+    stdout_reader.join()
+    stderr_reader.join()
+    process.wait()
+  else:
+    # Read output into strings.
+    stdout_reader, stderr_reader = process.communicate()
 
   kbdint = False
   if catch_sigint:
@@ -1386,35 +1585,321 @@ def execute_command(executable, executable_args, error,
   return (str(stdout_reader), str(stderr_reader), kbdint)
 
 
-def run_perf_remotely(adb_device, apk_directory, perf_args,
-                      call_graph_recording, timestamp_recording):
+def parse_cpufreq_stats_time_in_state(string_to_parse):
+  """Parse time in each CPU frequency state.
+
+  Args:
+    string_to_parse: String to parse read from
+      /sys/devices/system/cpu/cpu[0-9]+/stats/time_in_state.
+
+  Returns:
+    Dictionary of times_frequency dictionaries keyed by CPU index.  Where
+    times_frequency is a dictionary of times in usertime units keyed by
+    CPU frequency in Hz.  For each CPU with no available stats, an empty
+    times_frequency dictionary is present.
+  """
+  cpu_number_to_stats = {}
+  time_in_frequency = {}
+  for line in string_to_parse.splitlines():
+    m = SYS_DEVICES_CPU_NUMBER_RE.match(line)
+    if m:
+      time_in_frequency = {}
+      cpu_number_to_stats[int(m.groups()[0])] = time_in_frequency
+    else:
+      frequency, cpu_time = line.split()
+      time_in_frequency[int(frequency)] = int(cpu_time)
+  return cpu_number_to_stats
+
+
+def get_cpufreq_stats_time_in_state(adb_device, package_name):
+  """Read the amount of time spent in each CPU frequency state.
+
+  Args:
+    adb_device: The device to query.
+    package_name: Name of the package to run-as.
+
+  Returns:
+    Dictionary of times_frequency dictionaries keyed by CPU index.  Where
+    times_frequency is a dictionary of times in usertime units keyed by
+    CPU frequency in Hz.  For each CPU with no available stats, an empty
+    times_frequency dictionary is present.
+
+  Raises:
+    CommandFailedError: If it's not possible to retrieve the CPU frequency
+      stats from the device.
+  """
+  out, _, _ = adb_device.shell_command(
+      r'run-as %s sh -c ''\''
+      r'for cpu in /sys/devices/system/cpu/cpu[0-9]*; do '
+      r'time_in_state_file="${cpu}/cpufreq/stats/time_in_state"; '
+      r'echo "${time_in_state_file}"; '
+      r'if [[ -e ${time_in_state_file} ]]; then '
+      r'  cat ${time_in_state_file}; '
+      r'fi; '
+      r'done''\'' % package_name,
+      'Failed to get CPU frequency.')
+  return parse_cpufreq_stats_time_in_state(out)
+
+
+def calculate_cpufreq_weighted_time_in_state(
+    final_time_in_cpufreq_state_by_cpu, time_in_cpufreq_state_by_cpu):
+  """Calculate the weighted average in each CPU frequency state.
+
+  Args:
+    final_time_in_cpufreq_state_by_cpu: Final time in each CPU frequency
+      state.  See the return value of parse_cpufreq_stats_time_in_state() for
+      the format.
+    time_in_cpufreq_state_by_cpu: Initial time in each CPU frequency
+      state.  See the return value of parse_cpufreq_stats_time_in_state() for
+      the format.
+
+  Returns:
+    (weighted_time_in_cpufreq_state, weighted_average_cpufreq) tuple where
+    weighted_time_in_cpufreq_state is a dictionary that contains the
+    fractional time (0..1) in each CPU frequency state keyed by CPU number and
+    weighted_average_cpufreq is a dictionary containing the overall weighted
+    average CPU frequency keyed by CPU number.
+  """
+  weighted_average_cpufreq = dict([(c, 0.0)
+                                   for c in time_in_cpufreq_state_by_cpu])
+  weighted_time_in_cpufreq_state_by_cpu = {}
+  for cpu, time_in_cpufreq_state in time_in_cpufreq_state_by_cpu.iteritems():
+    final_time_in_cpufreq_state = final_time_in_cpufreq_state_by_cpu[cpu]
+    weighted_time_in_cpufreq_state = {}
+    delta_time_in_cpufreq_state = {}
+    total_time = 0.0
+    for freq in time_in_cpufreq_state:
+      delta_time_in_cpufreq_state[freq] = (
+          final_time_in_cpufreq_state.get(freq, 0) -
+          time_in_cpufreq_state.get(freq, 0))
+      total_time += delta_time_in_cpufreq_state[freq]
+    for freq, cpu_time in delta_time_in_cpufreq_state.iteritems():
+      weight = float(cpu_time) / total_time
+      weighted_time_in_cpufreq_state[freq] = weight
+      weighted_average_cpufreq[cpu] += freq * weight
+    weighted_time_in_cpufreq_state_by_cpu[cpu] = weighted_time_in_cpufreq_state
+  return (weighted_time_in_cpufreq_state_by_cpu, weighted_average_cpufreq)
+
+
+def find_aapt():
+  """Find the aapt (Android Asset Packaging Tool).
+
+  Returns:
+    Path to aapt if successful, empty string otherwise.
+  """
+  # NOTE: This is far from perfect since this will pick up the first instance
+  # of aapt installed and not necessarily the newest version.
+  # Use the path to the "android" SDK tool to determine the SDK path.
+  build_tools_dir = os.path.realpath(
+      os.path.join(distutils.spawn.find_executable('android'),
+                   os.path.pardir, os.path.pardir, 'build-tools'))
+  for dirpath, unused_dirnames, filenames in os.walk(build_tools_dir):
+    for filename in filenames:
+      if os.path.splitext(filename)[0] == 'aapt':
+        return os.path.join(dirpath, filename)
+  return ''
+
+
+def aapt_manifest_output_to_xml(aapt_lines, stack_depth=0):
+  """Parse the manifest output of aapt list into XML.
+
+  Args:
+    aapt_lines: List of lines to parse from "aapt list -a"
+    stack_depth: Number of tags in a stack of tags parsed.
+
+  Returns:
+    (line_list, lines_consumed) where line_list is a list of strings
+    (one per manifest) which contains an XML representation of the manifest
+    and lines_consumed is the number of lines read from aapt_lines.
+  """
+  if not aapt_lines:
+    return []
+
+  def start_tag(tag, indent, output_lines):
+    """Add the current tag to output_lines.
+
+    Args:
+      tag: Tag list.
+      indent: Indentation.
+      output_lines: List of strings to append to.
+    """
+    if tag:
+      output_lines.append(''.join(('  ' * indent,
+                                   '<%s ' % tag[0],
+                                   ' '.join(tag[1:]), '>')))
+
+  def end_tag(tag, indent, output_lines):
+    """Close the current tag to output_lines.
+
+    Args:
+      tag: Tag list.
+      indent: Indentation.
+      output_lines: List of strings to append to.
+    """
+    if tag:
+      output_lines.append(('  ' * indent) + ('</%s>' % tag[0]))
+
+  output_lines = []
+  line_number = 0
+  indent = len(aapt_lines[0]) - len(aapt_lines[0].lstrip())
+  tag = None
+
+  while line_number < len(aapt_lines):
+    line = aapt_lines[line_number]
+    stripped_line = line.lstrip()
+    tag_line = stripped_line.startswith('E:')
+    attribute_line = stripped_line.startswith('A:')
+    current_indent = len(line) - len(stripped_line)
+
+    if current_indent < indent:
+      break
+    elif current_indent > indent and tag_line:
+      start_tag(tag, stack_depth, output_lines)
+      lines, consumed = aapt_manifest_output_to_xml(aapt_lines[line_number:],
+                                                    stack_depth + 1)
+      output_lines.extend(lines)
+      line_number += consumed
+      end_tag(tag, stack_depth, output_lines)
+      tag = None
+      continue
+
+    if tag_line:
+      start_tag(tag, stack_depth, output_lines)
+      end_tag(tag, stack_depth, output_lines)
+      tag = [stripped_line.split()[1]]
+      if tag[0] == 'manifest':
+        tag.append('xmlns:android='
+                   '"http://schemas.android.com/apk/res/android"')
+    elif attribute_line and tag:
+      m = AAPT_MANIFEST_ATTRIBUTE_RE.match(stripped_line)
+      if m:
+        groups = m.groupdict()
+        tag.append('%s="%s"' % (groups['attribute'], groups['value']))
+
+    line_number += 1
+
+  start_tag(tag, stack_depth, output_lines)
+  end_tag(tag, stack_depth, output_lines)
+  return (output_lines, line_number)
+
+
+def apk_get_packge_activity_name(local_package_path):
+  """Parse the package and main activity name from an APK.
+
+  Args:
+    local_package_path: Path to a local APK to parse.
+
+  Returns:
+    (package_name, activity_name) tuple where package_name is the name of the
+    package and activity is the main activity from the first application in
+    the package.
+
+  Raises:
+    CommandFailedError: If there is a problem running aapt
+      (Android Asset Packaging Tool).
+    Error: If aapt can't be found.
+  """
+  # Find the SDK directory from the android SDK manager path.
+  aapt_path = find_aapt()
+  if not aapt_path:
+    raise Error('Unable to find aapt executable.')
+  out, _, _, = execute_command(
+      aapt_path, ['list', '-a', local_package_path],
+      'Unable to list contents of APK %s' % local_package_path)
+
+  manifest = tempfile.NamedTemporaryFile()
+  manifest.write(os.linesep.join(aapt_manifest_output_to_xml(
+      out.splitlines())[0]))
+  manifest.flush()
+  return get_package_name_from_manifest(manifest.name)
+
+
+def get_package_activity_name(adb_device, local_package_path,
+                              package_name, activity_name, manifest_path):
+  """Determine the name of the package and activity to run.
+
+  The package and activity name are searched for in the following order...
+  1. local_package_path
+  2. package_name
+  3. manifest_path
+
+  Args:
+    adb_device: Adb device instance to query.
+    local_package_path: Path to a local APK to parse or an empty string if
+      the package name should be derived from an APK pulled from the device
+      or the specified manifest.
+    package_name: Name of the package to pull from the device used to determine
+      the activity name.
+    activity_name: Name of the activity to use in the package, if this isn't
+      specified the activity that responds to the android.intent.action.MAIN
+      intent will be parsed from the APK or manifest.
+    manifest_path: Manifest to parse for the package and activity names.
+
+  Returns:
+    (package_name, activity_name) tuple where package_name is the name of the
+    package and activity_name is the activity name.
+
+  Raises:
+    CommandFailedError: If an ADB command fails.
+    Error: If it's not possible to retrieve the package or activity name.
+  """
+  if not (package_name and activity_name):
+    activity = ''
+    if local_package_path:
+      package_name, activity = apk_get_packge_activity_name(local_package_path)
+    elif package_name:
+      remote_package_file, _, _ = adb_device.shell_command(
+          r'( IFS=":"; t=( $(pm path %s) ); echo ${t[1]}; )' % package_name,
+          'Unable to retrieve path to package %s' % package_name)
+      if not remote_package_file:
+        raise Error('Unable to find %s on device' % package_name)
+
+      (local_package_file, local_package_filename) = tempfile.mkstemp()
+      os.close(local_package_file)
+      try:
+        adb_device.pull(remote_package_file, local_package_filename)
+        package_name, activity = apk_get_packge_activity_name(
+            local_package_filename)
+      finally:
+        os.remove(local_package_filename)
+    elif manifest_path:
+      package_name, activity_name = get_package_name_from_manifest(
+          manifest_path)
+    if not activity_name:
+      activity_name = activity
+
+  # If this isn't a fully qualified activity name, use a shorthand to reference
+  # the activity as part of the package.
+  if '.' not in activity_name:
+    activity_name = '.' + activity_name
+
+  return (package_name, activity_name)
+
+
+def run_perf_remotely(adb_device, package_name, activity_name, perf_args,
+                      call_graph_recording, timestamp_recording,
+                      start_application, kill_application_on_stop,
+                      record_time):
   """Run perf remotely.
 
   Args:
     adb_device: The device that perf is run on.
-    apk_directory: The directory of the apk file to profile.
+    package_name: Name of the package to profile.
+    activity_name: Name of the activity to profile in the package.
     perf_args: PerfArgs instance referencing the arguments used to run perf.
     call_graph_recording: Whether to enable recording of call graphs.
     timestamp_recording: Whether to enable recording of timestamps.
+    start_application: Whether to start / restart the application prior to
+      recording.
+    kill_application_on_stop: Whether to kill the application prior to stopping
+      recording.
+    record_time: Time to record the application, 0 records until an interrupt
+      signal (e.g Ctrl-C) is pressed.
 
-  Returns:
-    1 for error, 0 for success.
-
-  # TODO(smiles): Change this to raise on error.
+  Raises:
+    CommandFailedError: If subprocess execution fails.
+    Error: If this method encounters an error.
   """
-  # TODO(smiles): Optionally install the apk on the device.
-  # TODO(smiles): Optionally profile a package by name on the device.
-  # TODO(smiles): Read main activity and package name from APK using aapt.
-  package_name = ''
-  if apk_directory:
-    manifest_filename = os.path.join(apk_directory, MANIFEST_NAME)
-    if not os.path.isfile(manifest_filename):
-      print >> sys.stderr, (
-          'Cannot find Manifest %s, please specify the directory where the '
-          'manifest is located with --apk-directory.') % manifest_filename
-      return 1
-    package_name = get_package_name_from_manifest(manifest_filename)
-
   # Push perf and wrapper script to the device.
   android_perf = find_target_binary('perf', adb_device)
   android_perf_remote = os.path.join(REMOTE_TEMP_DIRECTORY,
@@ -1431,12 +1916,46 @@ def run_perf_remotely(adb_device, apk_directory, perf_args,
   perf_args.process_remote_args(perf_data, call_graph_recording,
                                 timestamp_recording)
 
+  perf_recording = (os.path.splitext(
+      perf_args.get_default_output_filename())[1] == '.data')
+
+  if perf_recording and not package_name:
+    raise Error('perf record commands require the specification of a package '
+                'name to profile.')
+
   try:
-    if package_name:
-      # TODO(smiles): Parse the main activity name from the package.
-      perf_args.insert_process_option(
-          adb_device.start_activity(package_name,
-                                    'android.app.NativeActivity'))
+    if perf_recording:
+      # If a package name isn't specified, quit.
+      if not package_name:
+        raise Error('No package name specified, unable to record.')
+      if not activity_name and start_application:
+        raise Error('No activity name specified, unable to start '
+                    'application %s.' % package_name)
+
+      # If data will be pulled from the device, create the target directory.
+      output_directory = ''
+      if output_filename:
+        output_directory = os.path.dirname(output_filename)
+        if output_directory and not os.path.exists(output_directory):
+          os.makedirs(output_directory)
+
+      # It's not possible to directly access the current CPU frequency without
+      # root so derive it from the stats.
+      # Save the CPU frequency statistics before profiling.
+      time_in_cpufreq_state = None
+      try:
+        if output_filename and perf_recording:
+          time_in_cpufreq_state = get_cpufreq_stats_time_in_state(
+              adb_device, package_name)
+      except CommandFailedError as e:
+        print >> sys.stderr, CPU_FREQ_NOT_AVAILABLE % str(e)
+
+      # Start the application or retrieve the package's PID.
+      if start_application:
+        package_pid = adb_device.start_activity(package_name, activity_name)
+      else:
+        package_pid = adb_device.get_package_pid(package_name)
+      perf_args.insert_process_option(package_pid)
 
       # Start perf in a seperate thread so that it's possible to relay signals
       # to the remote process from the main thread.
@@ -1448,8 +1967,12 @@ def run_perf_remotely(adb_device, apk_directory, perf_args,
 
       keyboard_interrupt = False
       try:
-        # Wait for the thread to complete or SIGINT (ctrl-c).
-        perf_thread.join()
+        if record_time:
+          time.sleep(record_time)
+          raise KeyboardInterrupt()
+        else:
+          # Wait for the thread to complete or SIGINT (ctrl-c).
+          perf_thread.join()
       except KeyboardInterrupt:
         print >> sys.stderr, 'Finishing, please wait..'
         keyboard_interrupt = True
@@ -1460,36 +1983,55 @@ def run_perf_remotely(adb_device, apk_directory, perf_args,
             r'echo "kill -s SIGINT ${pid[1]}" | run-as %(pkg)s sh' % {
                 'pkg': package_name, 'perf': android_perf_remote},
             'Unable to stop %s' % android_perf_remote)
+        if kill_application_on_stop:
+          adb_device.shell_command(r'am force-stop %s' % package_name,
+                                   'Unable to stop %s' % package_name)
 
       # If a keyboard interrupt occurred, ignore the status code.
       if keyboard_interrupt:
         perf_thread.join()
         perf_thread.stdout = 0
 
-      if output_filename:
-        # Create the output directory if it doesn't exist.
-        output_directory = os.path.dirname(output_filename)
-        if output_directory and not os.path.exists(output_directory):
-          os.makedirs(output_directory)
+      # Grab the CPU frequency stats again, take the weighted average of
+      # of the time in each CPU state as the overall CPU frequency for
+      # visualization purposes.
+      if output_filename and perf_recording and time_in_cpufreq_state:
+        try:
+          weighted_time_in_cpufreq_state, weighted_average_cpufreq = (
+              calculate_cpufreq_weighted_time_in_state(
+                  get_cpufreq_stats_time_in_state(adb_device, package_name),
+                  time_in_cpufreq_state))
+          # Write the results to the output directory.
+          with open(os.path.join(output_directory, CPUFREQ_JSON), 'w') as f:
+            json.dump({
+                'weighted_time_in_cpufreq_state_by_cpu':
+                weighted_time_in_cpufreq_state,
+                'weighted_average_cpufreq_by_cpu':
+                weighted_average_cpufreq}, f, indent=2, sort_keys=True)
+        except CommandFailedError as e:
+          print >> sys.stderr, CPU_FREQ_NOT_AVAILABLE % str(e)
 
+      # Copy the output file back to the host.
+      if output_filename:
         adb_device.pull_package_file(package_name, perf_data, output_filename)
 
-        if (os.path.splitext(perf_args.get_default_output_filename())[1] ==
-            '.data'):
-          # Parse dependencies from the trace.
-          out, _, _ = execute_command(
-              find_host_binary(PERFHOST_BINARY, adb_device),
-              ['buildid-list', '-i', output_filename, '--with-hits'],
-              'Unable to retrieve the set of dependencies for perf '
-              'trace %s' % output_filename, verbose=adb_device.verbose)
-          # Pull all dependencies from the device.
-          for dep in [s.groups()[0] for s in [
-              PERF_BUILDID_LIST_MATCH_OBJ_RE.match(l)
-              for l in out.splitlines()] if s]:
-            try:
-              adb_device.pull(dep, os.path.join(output_directory, dep[1:]))
-            except CommandFailedError as e:
-              print >> sys.stderr, 'WARNING: ' + str(e)
+      # If a trace was collected, pull dependencies from the device to the
+      # host directory.
+      if perf_recording and output_filename:
+        # Parse dependencies from the trace.
+        out, _, _ = execute_command(
+            find_host_binary(PERFHOST_BINARY, adb_device),
+            ['buildid-list', '-i', output_filename, '--with-hits'],
+            'Unable to retrieve the set of dependencies for perf '
+            'trace %s' % output_filename, verbose=adb_device.verbose)
+        # Pull all dependencies from the device.
+        for dep in [s.groups()[0] for s in [
+            PERF_BUILDID_LIST_MATCH_OBJ_RE.match(l)
+            for l in out.splitlines()] if s]:
+          try:
+            adb_device.pull(dep, os.path.join(output_directory, dep[1:]))
+          except CommandFailedError as e:
+            print >> sys.stderr, 'WARNING: ' + str(e)
 
     else:
       adb_device.shell_command(
@@ -1506,11 +2048,133 @@ def run_perf_remotely(adb_device, apk_directory, perf_args,
                  if package_name and perf_data else '')),
         'Unable to remove temporary files %s from the device.' % (
             temporary_files), display_output=True)
-  return 0
+
+
+def process_perf_script_dump(dump_output, progress_display_max_value):
+  """Parse perf script -D output and generate a data structure with the output.
+
+  Args:
+    dump_output: Output of the perf script -D command to parse.
+    progress_display_max_value: Maximum value to display in the
+      progress display.
+
+  Returns:
+    List of PerfRecordSample instances, one per recorded sample.  If samples
+    were recorded at a fixed frequency PerfRecordSample.period is fixed up
+    for each sample with the time delta between each sample in the trace.
+  """
+  samples = []
+  sample_data = None
+  sample = None
+  progress_display = ProgressDisplay()
+  lines = dump_output.splitlines()
+  num_lines = len(lines)
+  # Parse lines
+  for line_number, line in enumerate(lines):
+    # This could take a while, so display the progress.
+    progress_display.update((float(line_number + 1) / num_lines) *
+                            progress_display_max_value)
+    # End of the stack trace?
+    if not line:
+      if sample:
+        if not sample.stack:
+          # PERF_TO_TRACING requires a stack trace for each event so
+          # mark all events without a stack trace as "idle" at the end of
+          # 32-bit address space, since it's likely the sample simply
+          # captured the perf interrupt handler.
+          sample.stack.append(PerfIp(0xffffffff, '[idle]', '([idle])'))
+        samples.append(sample)
+        sample = None
+        sample_data = None
+
+    # Aggregating stack for sample.
+    elif sample:
+      # This is a stack trace.
+      m = PERF_REPORT_STACK_RE.match(line)
+      if m:
+        groups = m.groupdict()
+        symbol = groups['symbol']
+        dso = groups['dso']
+        sample.stack.append(PerfIp(
+            int(groups['ip'], 16),
+            symbol if symbol.strip() else '[unknown]',
+            '([unknown])' if dso == '()' else dso))
+
+    # If a sample is being parsed, merge the report line and create a sample.
+    elif sample_data:
+      m = PERF_DUMP_EVENT_SAMPLE_REPORT_RE.match(line)
+      if m:
+        sample_data.update(m.groupdict())
+        sample = PerfRecordSample(
+            int(sample_data['file_offset'][2:], 16),
+            sample_data['perf_event_type'],
+            int(sample_data['pid']),
+            int(sample_data['tid']),
+            int(sample_data['ip'][2:], 16),
+            int(sample_data['period']),
+            sample_data['comm'],
+            float(sample_data['time']),
+            sample_data['event'])
+
+    # Searching the start of a new sample.
+    else:
+      m = PERF_DUMP_EVENT_SAMPLE_RE.match(line)
+      if m:
+        sample_data = m.groupdict()
+
+  # If period is 1 across all samples, derive the sample period from the time
+  # delta between samples.
+  if samples and sum([s.period for s in samples]) == len(samples):
+    delta_times = [samples[i].time - samples[i - 1].time
+                   for i in range(1, len(samples))]
+    # There is no delta for the last sample so duplicate the previous sample
+    # period, assuming a fixed sampling frequency.
+    delta_times.append(delta_times[-1])
+    # Fix up sampling periods.
+    for sample, delta_time in zip(samples, delta_times):
+      sample.period = delta_time
+  return samples
+
+
+def process_perf_script_dump_for_json_generator(dump_output):
+  """Parse perf script -D output and generate report for PERF_TO_TRACING.
+
+  This script add fields required by PERF_TO_TRACING that are not supported by
+  the Android version of perf (API level 16-19) in addition to delimiting
+  fields with tabs.
+
+  Args:
+    dump_output: Output of the perf script -D command to parse.
+
+  Returns:
+    A string containg a report similar to
+    "perf script -f comm,tid,time,event,ip,sym,dso"
+    in a form that can be parsed by PERF_TO_TRACING.
+  """
+  output_lines = []
+  progress_display = ProgressDisplay()
+  samples = process_perf_script_dump(dump_output, 0.5)
+  num_samples = len(samples)
+  for i, sample in enumerate(samples):
+    progress_display.update(((float(i + 1) / num_samples) * 0.5) + 0.5)
+    output_lines.append(
+        '\t'.join([sample.command, str(sample.tid),
+                   '[000]',  # cpu requires root on Android.
+                   str(sample.time) + ':',
+                   sample.event + ':',
+                   # Convert the sample period to microseconds.
+                   str(int(sample.period * 1000000))]))
+    for entry in sample.stack:
+      output_lines.append(' '.join((PERF_REPORT_STACK_PREFIX,
+                                    hex(entry.ip)[2:], entry.symbol,
+                                    entry.dso)))
+    # End of a stack track.
+    output_lines.append('')
+  return os.linesep.join(output_lines)
 
 
 def run_perf_visualizer(browser, perf_args, adb_device, output_filename,
-                        verbose):
+                        frames, verbose):
   """Generate the visualized html.
 
   Args:
@@ -1519,10 +2183,8 @@ def run_perf_visualizer(browser, perf_args, adb_device, output_filename,
       visualizer.
     adb_device: Device used to determine which perf binary should be used.
     output_filename: Name of the report file to write to.
+    frames: Number of application specific "frames" in the perf trace.
     verbose: Whether to display all shell commands executed by this function.
-
-  Returns:
-    1 for error, 0 for success
 
   Raises:
     Error: If an error occurs.
@@ -1532,90 +2194,19 @@ def run_perf_visualizer(browser, perf_args, adb_device, output_filename,
   perf_to_tracing = find_host_binary(PERF_TO_TRACING)
   perf_vis = find_host_binary(PERF_VIS)
 
-  # Get the list of support fields from perf.
-  out, err, _ = execute_command(perf_host, ['script', '-h'], '',
-                                verbose=verbose, ignore_error=True)
-  supported_script_fields = None
-  for l in (out + err).splitlines():
-    m = PERF_SCRIPT_HELP_FIELDS.match(l)
-    if m:
-      supported_script_fields = set(m.groups()[0].split(','))
-  if not supported_script_fields:
-    raise Error('Unable to retrieve supported fields from perf script.')
-
-  # Output samples and stacks while including specific attributes that are
-  # read by the visualizer.
+  # Dump the entire trace as ASCII so that we can accesss the period field.
   symfs_index = perf_args.parse_value_option(['--symfs'])
   perf_script_args_list = [
-      'script', '-f', ','.join(('comm',
-                                'tid',
-                                # 'cpu',  # Need root on Android.
-                                'time',
-                                'event',
-                                'sym')),
-      '-i', perf_args.get_input_filename(),
+      'script', '-D', '-i', perf_args.get_input_filename(),
       '--symfs', (perf_args.args[symfs_index] if symfs_index >= 0 else
                   os.dirname(perf_args.get_input_filename()))]
-
-  # If the version of perf supports the ip and dso fields, they'll need to be
-  # specified to print stack traces.
-  if 'ip' in supported_script_fields and 'dso' in supported_script_fields:
-    perf_script_args_list[-1] += ',ip,dso'
-
   perf_script_args = PerfArgs(perf_script_args_list, verbose)
   out, _, _ = execute_command(perf_host, perf_script_args.args,
                               'Cannot visualize perf data.  '
                               'Try specifying input data using -i.',
                               verbose=verbose)
-
-  # Add fields required by PERF_TO_TRACING that are not supported by the
-  # Android version of perf (API level 16-19).
-  processed_script_output = []
-  event_line = ''
-  stack_lines = []
-  for line in out.splitlines():
-    # Parse event lines.
-    if line and not line.startswith('\t'):
-      m = PERF_REPORT_EVENT_RE.match(line)
-      if not m:
-        raise Error('Unexpected format of event line reported by perf script.'
-                    ' (%s)' % line)
-      comm, tid, time, event = m.groups()
-      event_line = '\t'.join([
-          comm,
-          tid,
-          '[000]',
-          time + ':',
-          event + ':',
-          # Sample period, since this isn't stored in perf.data just leave
-          # samples normalized.
-          # TODO(smiles): Store this is metadata pulled along with the
-          # trace from the device.
-          '1'])
-    elif line.startswith('\t'):
-      # This is a stack trace.
-      m = PERF_REPORT_STACK_RE.match(line)
-      if not m:
-        raise Error('Unexpected fields reported in perf script '
-                    'stack trace. (%s)' % line)
-      ip, symbol, dso = m.groups()
-      symbol = symbol if symbol.strip() else '[unknown]'
-      dso = '([unknown])' if dso == '()' else dso
-      stack_lines.append(''.join((line[:line.find(ip)],
-                                  ' '.join((ip, symbol, dso)))))
-    else:
-      # PERF_TO_TRACING requires a stack trace for each event so filter events
-      # without stack traces.
-      if event_line and stack_lines:
-        processed_script_output.append(event_line)
-        processed_script_output.extend(stack_lines)
-        # End of a stack track.
-        processed_script_output.append(line.rstrip())
-      event_line = ''
-      stack_lines = []
-  out = os.linesep.join(processed_script_output)
   script_output = tempfile.NamedTemporaryFile()
-  script_output.write(out)
+  script_output.write(process_perf_script_dump_for_json_generator(out))
   script_output.flush()
 
   # Generate a common json format from the outputted sample data.
@@ -1627,7 +2218,14 @@ def run_perf_visualizer(browser, perf_args, adb_device, output_filename,
   json_output.flush()
 
   # Generate the html file from the json data.
-  out, _, _ = execute_command(perf_vis, [json_output.name],
+  perf_vis_args = [json_output.name,
+                   # process_perf_script_dump() calculated sample periods in
+                   # microseconds so perf-vis.py needs to scale samples
+                   # back to seconds before converting up to milliseconds.
+                   '-c', '1000000']
+  if frames:
+    perf_vis_args.extend(('-f', str(frames)))
+  out, _, _ = execute_command(perf_vis, perf_vis_args,
                               'Unable to generate HTML report from JSON '
                               'data', verbose=verbose)
   m = PERF_VIS_OUTPUT_FILE_RE.search(out)
@@ -1717,8 +2315,18 @@ def main():
                       help=('The serial_number of the device to profile if '
                             'multiple Android devices are connected to the '
                             'host.'))
-  parser.add_argument('--apk-directory',
-                      help='The directory of the package to profile.')
+  parser.add_argument('--manifest-directory',
+                      help=('Directory containing the manifest of the '
+                            'application to profile.'))
+  parser.add_argument('--package-name',
+                      help=('Name of the package to profile.  When specified '
+                            '--manifest-directory is ignored.'))
+  parser.add_argument('--activity-name',
+                      help=('Name of the activity to start in the specified '
+                            'package.'))
+  parser.add_argument('--apk', help=('Filename of the APK to profile.  '
+                                     'Used to derive the package name and '
+                                     'activity name.'))
   parser.add_argument('--verbose', help='Display verbose output.',
                       action='store_true', default=False)
   parser.add_argument('--no-record-call-graph',
@@ -1726,14 +2334,30 @@ def main():
                             'record so the trace can be visualized with '
                             'stacks.  Use this option to disable call graph '
                             'recording (effectively removing -g from the '
-                            '"perf record" command line.'))
+                            '"perf record" command line.'),
+                      action='store_true', default=False)
   parser.add_argument('--no-record-timestamp',
                       help=('By default the timestamp will be captured on'
                             'for each recorded event so the trace can be '
                             'visualized with timing information.  Use this '
                             'option to disable timestamp recording '
                             '(effectively removing -T from the "perf record"'
-                            ' command line.'))
+                            ' command line.'),
+                      action='store_true', default=False)
+  parser.add_argument('--no-launch-on-start',
+                      help=('By default the application being profiled will '
+                            'be started before profiling starts.  This option '
+                            'disables this behavior'),
+                      action='store_true', default=False)
+  parser.add_argument('--no-kill-on-stop',
+                      help=('By default the application being profiled will '
+                            'be killed when profiling is stopped.  This '
+                            'option disables this behavior'),
+                      action='store_true', default=False)
+  parser.add_argument('--record-time',
+                      help=('Amount of time (in seconds) to profile an '
+                            'application when using a record command.'),
+                      default=0)
 
   visualizer_parser = argparse.ArgumentParser(
       description=('visualize converts a perf trace to a HTML visualization '
@@ -1753,7 +2377,10 @@ def main():
       '-o', '--output-file', help=('Name of the HTML report file to '
                                    'generate.'),
       required=True)
-
+  visualizer_parser.add_argument(
+      '-f', '--frames', default=1,
+      help=('Number of application specific "frames" (e.g visual frames) '
+            'associated with the perf trace.'))
   args, perf_arg_list = parser.parse_known_args()
   verbose = args.verbose
 
@@ -1805,18 +2432,18 @@ def main():
     if not re.match(r'.*chrom.*', browser_name, re.IGNORECASE):
       print >> sys.stderr, CHROME_NOT_FOUND % browser_name
     try:
-      return run_perf_visualizer(browser, perf_args, adb_device,
-                                 visualizer_args.output_file, verbose)
+      run_perf_visualizer(browser, perf_args, adb_device,
+                          visualizer_args.output_file,
+                          visualizer_args.frames, verbose)
     except CommandFailedError as error:
       print >> sys.stderr, str(error)
-      return error.returncode
-    except Error as error:
-      print >> sys.stderr, str(error)
-      return 1
+      return getattr(error, 'returncode', 1)
+    return 0
 
   try:
     # Run perf remotely
     if perf_args.requires_remote():
+      # Check the device configuration.
       android_version = adb_device.get_version()
       if is_version_less_than(android_version, '4.1'):
         print >> sys.stderr, PERF_BINARIES_NOT_SUPPORTED % {
@@ -1831,9 +2458,22 @@ def main():
       if perf_args.requires_root() and user != 'root':
         print >> sys.stderr, DEVICE_NOT_ROOTED % perf_args.command.name
 
-      return run_perf_remotely(adb_device, args.apk_directory, perf_args,
-                               not args.no_record_call_graph,
-                               not args.no_record_timestamp)
+      # Parse the package and activity name.
+      if args.manifest_directory:
+        manifest = os.path.join(args.manifest_directory, MANIFEST_NAME)
+      else:
+        manifest = ''
+      package_name, activity_name = get_package_activity_name(
+          adb_device, args.apk, args.package_name, args.activity_name,
+          manifest)
+
+      run_perf_remotely(adb_device, package_name, activity_name, perf_args,
+                        not args.no_record_call_graph,
+                        not args.no_record_timestamp,
+                        not args.no_launch_on_start,
+                        not args.no_kill_on_stop,
+                        float(args.record_time))
+
     # Run perf locally
     else:
       execute_command(
@@ -1842,10 +2482,11 @@ def main():
                                        ' '.join(perf_args.args)),
           verbose=verbose, display_output=True)
 
-  except CommandFailedError as error:
+  except (Error, CommandFailedError) as error:
     print >> sys.stderr, str(error)
-    return error.returncode
+    return getattr(error, 'returncode', 1)
   return 0
+
 
 if __name__ == '__main__':
   sys.exit(main())
