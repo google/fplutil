@@ -4,6 +4,11 @@ fplutil    {#fplutil}
 fplutil is a set of small libraries and tools that can be useful when
 developing applications for Android and other platforms.
 
+Discuss fplutil with other developers and users on the
+[fplutil Google Group][].  File issues on the [fplutil Issues Tracker][]
+or post your questions to [stackoverflow.com][] with a mention of
+**fplutil**.
+
 ## C/C++ Libraries
 
 [libfplutil][] consists of a set of libraries that make it easier to develop
@@ -55,9 +60,12 @@ available here:
 
 ## Python Tools and Build Module Prerequisites
 
-To use the Python scripts in this package you must first ensure you have a
+To use the [Python][] scripts in this package you must first ensure you have a
 Python version compatible with Python 2.7 installed on your system.
 
+  [fplutil Google Group]: http://group.google.com/group/fplutil
+  [fplutil Issues Tracker]: http://github.com/google/fplutil/issues
+  [stackoverflow.com]: http://www.stackoverflow.com
   [libfplutil]: @ref libfplutil_overview
   [buildutil]: @ref buildutil_overview
   [android_ndk_perf.py]: @ref android_ndk_perf
