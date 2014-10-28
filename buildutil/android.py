@@ -105,7 +105,6 @@ class XMLFile(object):
 
 
 class AndroidManifest(XMLFile):
-
   """Class that extracts build information from an AndroidManifest.xml.
 
   Attributes:
@@ -116,6 +115,24 @@ class AndroidManifest(XMLFile):
     activity_name: Name of the activity from the android:name element.
     lib_name: Name of the library loaded by android.app.NativeActivity.
   """
+
+  class MissingActivityError(common.ConfigurationError):
+    """Raised if the activity element isn't present in a manifest.
+
+    Attribtues:
+      manifest: Manifest instance which detected an error.
+    """
+
+    def __init__(self, path, error, manifest):
+      """Initialize this instance.
+
+      Args:
+        path: Path to file that generated the error.
+        error: The specific error to report.
+        manifest: Manifest instance which detected an error.
+      """
+      super(AndroidManifest.MissingActivityError, self).__init__(path, error)
+      self.manifest = manifest
 
   def __init__(self, path):
     """Constructs the AndroidManifest for a specified path.
@@ -142,6 +159,8 @@ class AndroidManifest(XMLFile):
 
     Raises:
       ConfigurationError: Required elements were missing or incorrect.
+      MissingActivityError: If the activity element isn't present.  This
+        instance will be completely populated when this exception is thrown.
     """
     root = etree.getroot()
 
@@ -160,12 +179,11 @@ class AndroidManifest(XMLFile):
     app_element = root.find('application')
     if app_element is None:
       raise common.ConfigurationError(self.path, 'application missing')
-    activity_element = app_element.find('activity')
-    if activity_element is None:
-      raise common.ConfigurationError(self.path, 'activity missing')
 
-    self.activity_name = AndroidManifest.__get_schema_attribute_value(
-        activity_element, 'name')
+    activity_element = app_element.find('activity')
+    if activity_element:
+      self.activity_name = AndroidManifest.__get_schema_attribute_value(
+          activity_element, 'name')
 
     if not min_sdk_version:
       raise common.ConfigurationError(self.path, 'minSdkVersion missing')
@@ -173,9 +191,9 @@ class AndroidManifest(XMLFile):
       target_sdk_version = min_sdk_version
     if not self.package_name:
       raise common.ConfigurationError(self.path, 'package missing')
-    if not self.activity_name:
-      raise common.ConfigurationError(self.path,
-                                      'activity android:name missing')
+
+    self.min_sdk = int(min_sdk_version)
+    self.target_sdk = int(target_sdk_version)
 
     if self.activity_name == _NATIVE_ACTIVITY:
       for metadata_element in activity_element.findall('meta-data'):
@@ -188,8 +206,9 @@ class AndroidManifest(XMLFile):
         raise common.ConfigurationError(
             self.path, 'meta-data android.app.lib_name missing')
 
-    self.min_sdk = int(min_sdk_version)
-    self.target_sdk = int(target_sdk_version)
+    elif not self.activity_name:
+      raise AndroidManifest.MissingActivityError(
+          self.path, 'activity android:name missing', self)
 
   @staticmethod
   def __get_schema_attribute_value(xml_element, attribute):
@@ -616,6 +635,10 @@ class BuildEnvironment(common.BuildEnvironment):
 
     Returns:
       AndroidManifest instance parsed from the project manifest.
+
+    Raises:
+      ConfigurationError: Required elements were missing or incorrect.
+      MissingActivityError: If the activity element isn't present.
     """
     manifest = AndroidManifest(self.get_manifest_path(path=path))
     manifest.parse()
@@ -705,17 +728,30 @@ class BuildEnvironment(common.BuildEnvironment):
       IOError: An error occurred writing or copying the APK.
     """
     ant = self._find_binary(BuildEnvironment.ANT)
+    build_apk = True
+
+    try:
+      if not manifest:
+        manifest = self.parse_manifest(path=path)
+    except AndroidManifest.MissingActivityError as e:
+      # If the activity is missing it's still possible to build the project.
+      print >> sys.stderr, str(e)
+      manifest = e.manifest
+      build_apk = False
 
     # Create or update build.xml for ant.
     buildxml = self.create_update_build_xml(
-      manifest if manifest else self.parse_manifest(path=path),
-      path=path)
+        manifest if manifest else self.parse_manifest(path=path),
+        path=path)
 
     acmd = [ant, 'clean' if self.clean else self.ant_target]
     if self.ant_flags:
       acmd += shlex.split(self.ant_flags, posix=self._posix)
 
     self.run_subprocess(acmd, cwd=path)
+
+    if not build_apk:
+      return
 
     signed_apkpath, unsigned_apkpath = self.get_apk_filenames(
         buildxml.project_name, path=path)
@@ -1059,7 +1095,11 @@ class BuildEnvironment(common.BuildEnvironment):
     adb_path = self._find_binary(BuildEnvironment.ADB)
     device = self.check_adb_devices(adb_device=adb_device)
     adb_device_arg = self.get_adb_device_argument(adb_device=device.serial)
-    manifest = self.parse_manifest(path=path)
+    try:
+      manifest = self.parse_manifest(path=path)
+    except AndroidManifest.MissingActivityError as e:
+      print >>sys.stderr, str(e)
+      return
     buildxml = self.create_update_build_xml(manifest, path=path)
     apks = [f for f in self.get_apk_filenames(buildxml.project_name,
                                               path=path) if os.path.exists(f)]
@@ -1123,8 +1163,15 @@ class BuildEnvironment(common.BuildEnvironment):
       wait: Optional argument to tell the function to wait until the process
         completes and dump the output.
     """
-    manifest = self.parse_manifest(path=path)
-    full_name = '%s/%s' % (manifest.package_name, manifest.activity_name)
+    try:
+      manifest = self.parse_manifest(path=path)
+    except AndroidManifest.MissingActivityError as e:
+      print >>sys.stderr, str(e)
+      return
+    activity_name = manifest.activity_name
+    if '.' not in manifest.activity_name:
+      activity_name = '.' + manifest.activity_name
+    full_name = '%s/%s' % (manifest.package_name, activity_name)
     adb_path = self._find_binary(BuildEnvironment.ADB)
     device = self.check_adb_devices(adb_device=adb_device)
     adb_device_arg = self.get_adb_device_argument(adb_device=device.serial)
