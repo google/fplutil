@@ -1,10 +1,13 @@
 build_all_android.py    {#build_all_android}
 ====================
 
-[build_all_android.py][] is an application that uses [buildutil][] to build
-Android projects that primarily use a native (C/C++) component.  This
-application can be used from a build automation system or by developers from
-their workstations.
+[build_all_android.py][] is an all-in-one build script that allows you to
+build, install and run native (C/C++) Android apps from the command line.
+This is ideal for build automation, but can also be in a developer’s
+compile/run loop.
+
+In order to use this tool, all [prerequisites](@ref fplutil_prerequisites)
+should be installed.
 
 # Building Applications    {#build_all_android_build}
 

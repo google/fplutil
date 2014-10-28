@@ -6,14 +6,19 @@ fplutil Version 1.0
 fplutil is a set of small libraries and tools that can be useful when
 developing applications for Android and other platforms.
 
-   * [build_all_android.py][] is a tool that simplifies the process of
-     building / installing / executing native (C/C++) applications on Android.
-   * [buildutil][] contains a set of [Python][] modules which can simplify the
-     process of automating builds of C/C++ application for Android and Linux.
-   * [android_ndk_perf.py][] is a tool which makes it easier to profile
-     native (C/C++) applications on Android.
-   * [libfplutil][] consists of a set of libraries that make it easier to
-     develop C/C++ applications for Android.
+   * [build_all_android.py][] is an all-in-one build script that allows you to
+     build, install and run native (C/C++) Android apps from the command line.
+     This is ideal for build automation, but can also be in a developer’s
+     compile/run loop.
+   * [buildutil][] performs the configuration, build and archive steps
+     of [Android][] and [Linux][] C/C++ applications using a suite of
+     [Python][] modules.  This suite of modules can automate builds in a
+     continuous integration environment.
+   * [android_ndk_perf.py][] is a desktop tool that enables native (C/C++)
+     developers to measure the CPU utilization of their applications on
+     [Android][], guiding their optimization efforts.
+   * [libfplutil][] enables C/C++ developers to write traditional applications
+     (like [Hello World][]) using "main()" and "printf()" on [Android][].
 
 Goto fplutil's [landing page][] for documentation.
 
@@ -30,13 +35,16 @@ information to let us know if fplutil libraries are useful and if we should
 continue to invest in them. Since this is open source, you are free to remove
 the version string but we would appreciate if you would leave it in.
 
+  [Android]: http://www.android.com
   [android_ndk_perf.py]: @ref android_ndk_perf
   [build_all_android.py]: @ref build_all_android
   [buildutil]: @ref buildutil_overview
   [libfplutil]: @ref libfplutil_overview
+  [Linux]: http://en.m.wikipedia.org/wiki/Linux
   [Python]: http://www.python.org
   [fplutil Google Group]: http://group.google.com/group/fplutil
   [fplutil Issues Tracker]: http://github.com/google/fplutil/issues
   [stackoverflow.com]: http://www.stackoverflow.com
   [landing page]: http://google.github.io/mathfu
   [1.0.0]: http://google.github.io/fplutil/releases
+  [Hello World]: http://en.wikipedia.org/wiki/%22Hello,_world!%22_program

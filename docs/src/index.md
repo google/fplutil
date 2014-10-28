@@ -9,66 +9,33 @@ Discuss fplutil with other developers and users on the
 or post your questions to [stackoverflow.com][] with a mention of
 **fplutil**.
 
-## C/C++ Libraries
+Before getting started, make sure all
+[prerequisites](@ref fplutil_prerequisites) are installed and configured.
 
-[libfplutil][] consists of a set of libraries that make it easier to develop
-C/C++ applications for Android:
+# Components
 
-   * `libfplutil_main` makes it easy to build traditional C/C++
-     applications for Android that use an `int main()` entry point.
-   * `libfplutil_print` transparently redirects `printf()` and other writes to
-      the `stdout` stream to the Android log.
+   * [build_all_android.py][] is an all-in-one build script that allows you to
+     build, install and run native (C/C++) Android apps from the command line.
+     This is ideal for build automation, but can also be in a developer’s
+     compile/run loop.
+   * [buildutil][] performs the configuration, build and archive steps
+     of [Android][] and [Linux][] C/C++ applications using a suite of
+     [Python][] modules.  This suite of modules can automate builds in a
+     continuous integration environment.
+   * [android_ndk_perf.py][] is a desktop tool that enables native (C/C++)
+     developers to measure the CPU utilization of their applications on
+     [Android][], guiding their optimization efforts.
+   * [libfplutil][] enables C/C++ developers to write traditional applications
+     (like [Hello World][]) using "main()" and "printf()" on [Android][].
 
-Using both `libfplutil_main` and `libfplutil_print` make it easy to take
-existing C/C++ command line applications like tests and run them on Android
-devices.
-
-## Tools
-
-`bin` contains a set of tools that can be useful when developing cross
-platform applications that also target Android.  Currently this consists of:
-
-   * [build_all_android.py][] which simplifies the process of building /
-     installing / executing native (C/C++) applications on Android.
-   * [android_ndk_perf.py][] native (C/C++) performance analysis tool for
-     Android.
-
-[build_all_android.py][] is an application that will find and build all native
-(C/C++) Android applications within a specified directory.  Using this
-application it's also possible to deploy and run Android applications to a set
-of Android devices which makes it easy to use from a developer's workstation
-or integrate with build automation systems.
-
-[android_ndk_perf.py][] can be used to analyze the performance of native
-(C/C++) applications.
-
-## Python Build Modules
-
-[buildutil][] contains a set of [Python][] modules which can simplify the
-process of automating builds of C/C++ application for Android and Linux.
-
-`autobuild` contains a build script for this suite of libraries and
-`examples/buildutil_example` contains a demonstration build script.
-
-## C/C++ Library Prerequisites
-
-For Android functionality you must install the Android SDK and NDK,
-available here:
-
-   * http://developer.android.com/sdk/index.html
-   * http://developer.android.com/tools/sdk/ndk/index.html
-
-## Python Tools and Build Module Prerequisites
-
-To use the [Python][] scripts in this package you must first ensure you have a
-Python version compatible with Python 2.7 installed on your system.
-
-  [fplutil Google Group]: http://group.google.com/group/fplutil
-  [fplutil Issues Tracker]: http://github.com/google/fplutil/issues
-  [stackoverflow.com]: http://www.stackoverflow.com
-  [libfplutil]: @ref libfplutil_overview
-  [buildutil]: @ref buildutil_overview
+  [Android]: http://www.android.com
+  [Linux]: http://en.m.wikipedia.org/wiki/Linux
+  [Python]: http://www.python.org
   [android_ndk_perf.py]: @ref android_ndk_perf
   [build_all_android.py]: @ref build_all_android
-  [Python]: http://www.python.org
-
+  [buildutil]: @ref buildutil_overview
+  [fplutil Google Group]: http://group.google.com/group/fplutil
+  [fplutil Issues Tracker]: http://github.com/google/fplutil/issues
+  [fplutil]: index.html
+  [libfplutil]: @ref libfplutil_overview
+  [stackoverflow.com]: http://www.stackoverflow.com

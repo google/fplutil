@@ -1,16 +1,22 @@
 android_ndk_perf.py    {#android_ndk_perf}
 ===================
 
-[android_ndk_perf.py][] is an application that uses [Linux Perf][] to profile
-the native (C/C++) components of applications on Android.
-[android_ndk_perf.py][] is
-intended to be used on developer's workstations to collect traces of
-applications running on Android devices.  After application traces are
-collected the data can be examined using [Linux Perf][]'s commands or a
-HTML visualization can be generated for inspection in a web browser.
+[android_ndk_perf.py][] is a desktop tool that enables native (C/C++)
+developers to measure the CPU utilization of their applications on
+[Android][], guiding their optimization efforts.
+
+[android_ndk_perf.py][] uses [Linux Perf][] to profile the native (C/C++)
+components of applications on Android.  [android_ndk_perf.py][] can be
+run on developer's workstations to collect traces of applications running on
+Android devices.  After application traces are collected the data can be
+examined using [Linux Perf][]'s commands or a HTML visualization can be
+generated for inspection in a web browser.
 
 Examples in the following sections reference the [LiquidFun][] Testbed
 application as it's moderately complex and provides interesting traces.
+
+In order to use this tool, all [prerequisites](@ref fplutil_prerequisites)
+should be installed.
 
 # Sampling vs. Intrusive Profiling    {#android_ndk_perf_sampling}
 
@@ -190,6 +196,7 @@ time spent in each function over the profiling period:
 
 <br>
 
+  [Android]: http://www.android.com
   [android_ndk_perf.py]: @ref android_ndk_perf
   [build_all_android.py]: @ref build_all_android
   [Linux Perf]: http://perf.wiki.kernel.org

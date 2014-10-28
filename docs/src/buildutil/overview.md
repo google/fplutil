@@ -1,13 +1,13 @@
 buildutil    {#buildutil_overview}
 =========
 
-`buildutil` contains a set of python modules which can simplify the process
+`buildutil` contains a set of [Python][] modules which can simplify the process
 of automating builds of C/C++ applications for [Android][] and [Linux][].
 
 Many builds require the following steps to be performed:
-* Configuration
-* Build
-* Archive of artifacts
+   * Configuration
+   * Build
+   * Archive of artifacts
 
 Some build environments - like [autoconf][], [automake][] and [make][] -
 require each of these steps to be executed manually, others - like [CMake][] -
@@ -22,6 +22,9 @@ continuous automation scripts that use [CMake][] to support [Linux][],
 [Android][].  This allows developers to write cross-platform turnkey scripts
 that are trivial to execute from a continuous automation system like
 [Jenkins][], [Buildbot][], [Travis-CI][] etc.
+
+In order to use this module, all [prerequisites](@ref fplutil_prerequisites)
+should be installed.
 
 For more information about this module see the following:
 
@@ -45,3 +48,4 @@ For more information about this module see the following:
   [autoconf]: http://www.gnu.org/software/autoconf
   [automake]: http://www.gnu.org/software/automake
   [make]: http://www.gnu.org/software/make
+  [Python]: http://www.python.org

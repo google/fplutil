@@ -1,5 +1,32 @@
 <doxygenlayout version="1.0">
   <navindex>
+    <tab type="usergroup" url="@ref fplutil_prerequisites"
+         title="Prerequisites">
+      <tab type="usergroup" url="@ref fplutil_install_sdk"
+           title="Android SDK">
+        <tab type="user" url="@ref fplutil_install_sdk_linux" title="Linux"/>
+        <tab type="user" url="@ref fplutil_install_sdk_osx_windows"
+             title="OSX / Windows"/>
+      </tab>
+      <tab type="user" url="@ref fplutil_install_ndk" title="Android NDK"/>
+      <tab type="usergroup" url="@ref fplutil_install_python"
+           title="Python">
+        <tab type="user" url="@ref fplutil_install_python_linux"
+             title="Linux"/>
+        <tab type="user" url="@ref fplutil_install_python_osx_windows"
+             title="OSX / Windows"/>
+      </tab>
+      <tab type="usergroup" url="@ref fplutil_command_line"
+           title="Configure Command Line">
+        <tab type="user" url="@ref fplutil_command_line_linux"
+             title="Linux"/>
+        <tab type="user" url="@ref fplutil_command_line_osx"
+             title="OSX"/>
+        <tab type="user" url="@ref fplutil_command_line_windows"
+             title="Windows"/>
+      </tab>
+
+    </tab>
     <tab type="usergroup" url="@ref libfplutil_overview"
          title="libfplutil" >
       <tab type="usergroup" url="@ref libfplutil_main"
