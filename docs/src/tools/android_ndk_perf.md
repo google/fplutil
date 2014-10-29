@@ -15,7 +15,7 @@ application as it's moderately complex and provides interesting traces.
 # Sampling vs. Intrusive Profiling    {#android_ndk_perf_sampling}
 
 [Linux Perf][] is a sampling profiler that by default will sample the
-location of the instruction pointer 1KHz.  The tool can be used to configure
+location of the instruction pointer at 1KHz.  The tool can be used to configure
 the perf events subsystem in the Linux kernel to sample a wide variety of
 counters in the system.
 
@@ -34,8 +34,9 @@ of time with a high frequency sampling profiler like [Linux Perf][].
 
 # Building Applications for Profiling    {#android_ndk_perf_building}
 
-In order to profile application they must be:
-   * Built as [debuggable APK][].
+Application to be profiled must be:
+   * Built as [debuggable APK][] (It's still possible to package release
+     executables in a debuggable APK).
    * Compiled with symbols making it possible to convert instruction pointers
      in stack traces to function names.
    * If the target ABI is ARM the application should be compiled with
@@ -149,7 +150,7 @@ percent of time spent in each function on the bottom left of the screen:
      alt="Visualizer Stack Details" style="width: 80%"/>
 
 An example [report][] generated from a profile of [LiquidFun][]'s Testbed
-application, captured on a Nexus 5, is available to browse [here][report.html].
+application, captured on a Nexus 5, is available to browse [here](report.html).
 
 # Trace Reports    {#android_ndk_perf_report}
 
