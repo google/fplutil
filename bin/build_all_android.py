@@ -36,6 +36,8 @@ _EXCLUDE_DIRS = 'exclude_dirs'
 _APK_INSTALL = 'apk_install'
 _APK_RUN = 'apk_run'
 _ADB_DEVICES = 'adb_devices'
+_CONTINUE_RUN_ON_FAILURE = 'continue_run_on_failure'
+_GTEST = 'gtest'
 
 class BuildAllEnvironment(buildutil.android.BuildEnvironment):
 
@@ -79,6 +81,8 @@ class BuildAllEnvironment(buildutil.android.BuildEnvironment):
     args[_APK_INSTALL] = False
     args[_APK_RUN] = False
     args[_ADB_DEVICES] = []
+    args[_CONTINUE_RUN_ON_FAILURE] = False
+    args[_GTEST] = False
     return args
 
   @staticmethod
@@ -127,8 +131,25 @@ class BuildAllEnvironment(buildutil.android.BuildEnvironment):
                               'attached devices are selected.'),
                         dest=_ADB_DEVICES, default=defaults[_ADB_DEVICES],
                         nargs='+')
+    parser.add_argument('--' + _CONTINUE_RUN_ON_FAILURE,
+                        help=('When set, this script will continue to attempt '
+                              'to run all built packages when a package fails '
+                              'to launch.'),
+                        dest=_CONTINUE_RUN_ON_FAILURE, action='store_true',
+                        default=defaults[_CONTINUE_RUN_ON_FAILURE])
+    parser.add_argument('--' + _GTEST,
+                        help=('When set, the output of each executed package '
+                              'is scraped for test failure messages.'),
+                        dest=_GTEST, action='store_true',
+                        default=defaults[_GTEST])
+
 
 def main():
+  """Entry point for the application, see the module help for more information.
+
+  Returns:
+    0 if successful, non-zero if an error occurs.
+  """
   parser = argparse.ArgumentParser()
   BuildAllEnvironment.add_arguments(parser)
   args = parser.parse_args()
@@ -157,13 +178,21 @@ def main():
         return rc
 
   if env.apk_run:
+    failed_targets = []
     for adb_device in adb_devices:
-      (rc, errmsg) = env.run_all(
+      (rc, errmsg, failures) = env.run_all(
           path=args.search_path, adb_device=adb_device, exclude_dirs=[
-              args.apk_output_dir, args.lib_output_dir] + args.exclude_dirs)
+              args.apk_output_dir, args.lib_output_dir] + args.exclude_dirs,
+          continue_on_failure=args.continue_run_on_failure, gtest=args.gtest)
+      failed_targets.extend(failures)
       if (rc != 0):
         print >> sys.stderr, errmsg
-        return rc
+        if not args.continue_run_on_failure:
+          return rc
+    if failed_targets:
+      print >> sys.stderr, 'The following targets failed:'
+      print >> sys.stderr, os.linesep.join(failed_targets)
+      return 1
 
   return 0
 

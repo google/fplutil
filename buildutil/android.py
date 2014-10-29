@@ -1,4 +1,4 @@
-# Copyright 2014 Google Inc. All rights reserved.
+# Copyright 2014 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ on the command line.
 command line.
 """
 
+import datetime
 import distutils.spawn
 import errno
 import os
@@ -36,6 +37,7 @@ import shlex
 import shutil
 import stat
 import sys
+import time
 import xml.etree.ElementTree
 sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
 import buildutil.common as common
@@ -58,6 +60,7 @@ _ALWAYS_MAKE = 'always_make'
 
 _MATCH_DEVICES = re.compile(r'^List of devices attached\s*')
 _MATCH_PACKAGE = re.compile(r'^package:(.*)')
+_GTEST_FAILED = re.compile(r'(\[\s*FAILEDs\*\]|.*FAILED TESTS)')
 
 _NATIVE_ACTIVITY = 'android.app.NativeActivity'
 _ANDROID_MANIFEST_SCHEMA = 'http://schemas.android.com/apk/res/android'
@@ -279,7 +282,7 @@ class AdbDevice(object):
   """
 
   def __init__(self, adb_device_line=None):
-    """Initialize this instance from a device line from "adb devices -l"
+    """Initialize this instance from a device line from "adb devices -l".
 
     Args:
       adb_device_line: Device line from "adb devices -l".
@@ -759,8 +762,12 @@ class BuildEnvironment(common.BuildEnvironment):
     source_apkpath = unsigned_apkpath
 
     if self.sign_apk:
-      source_apkpath = signed_apkpath
-      self._sign_apk(unsigned_apkpath, signed_apkpath)
+      if self.ant_target != 'debug':
+        source_apkpath = signed_apkpath
+        self._sign_apk(unsigned_apkpath, signed_apkpath)
+      else:
+        print >>sys.stderr, 'Signing not required for debug target %s.' % (
+            unsigned_apkpath)
 
     if output:
       out_abs = self.get_project_directory(path=output)
@@ -1053,6 +1060,9 @@ class BuildEnvironment(common.BuildEnvironment):
     Args:
       adb_device: The device to query.
 
+    Returns:
+      List of package strings.
+
     Raises:
       AdbError: If it's not possible to query the device.
     """
@@ -1078,7 +1088,7 @@ class BuildEnvironment(common.BuildEnvironment):
     """
     return str(device) if self.verbose else device.serial
 
-  def install_android_apk(self, path='.', adb_device=None):
+  def install_android_apk(self, path='.', adb_device=None, force_install=True):
     """Install an android apk on the given device.
 
     This function will attempt to install an unsigned APK if a signed APK is
@@ -1088,6 +1098,8 @@ class BuildEnvironment(common.BuildEnvironment):
       path: Relative path from project directory to project to run.
       adb_device: The device to run the apk on. If none it will use the only
         device connected.
+      force_install: Whether to install the package if it's older than the
+        package on the target device.
 
     Raises:
       ConfigurationError: If no APKs are found.
@@ -1111,9 +1123,33 @@ class BuildEnvironment(common.BuildEnvironment):
 
     print 'Installing %s on %s' % (apks[0], self.get_adb_device_name(device))
 
-    # If the project is installed, uninstall it.
+    # If the project is installed and it's older than the current APK,
+    # uninstall it.
     if manifest.package_name in self.list_installed_packages(
         adb_device=adb_device):
+
+      if not force_install:
+        # Get the modification time of the package on the device.
+        get_package_modification_date_args = [adb_path]
+        if adb_device_arg:
+          get_package_modification_date_args.extend(adb_device_arg.split())
+        get_package_modification_date_args.extend([
+            'shell',
+            r'f=( $(ls -l $( IFS=":"; p=( $(pm path %s) ); echo ${p[1]} )) ); '
+            r'echo "${f[4]} ${f[5]}"' % manifest.package_name])
+        out, _ = self.run_subprocess(get_package_modification_date_args,
+                                     capture=True)
+        if out:
+          remote_modification_time = int(time.mktime(
+              datetime.datetime.strptime(out.splitlines()[0],
+                                         '%Y-%m-%d %H:%M').timetuple()))
+          local_modification_time = os.stat(apks[0]).st_mtime
+          if local_modification_time < remote_modification_time:
+            print 'Not installing %s, already up to date (%d vs. %d)' % (
+                manifest.package_name, local_modification_time,
+                remote_modification_time)
+            return
+
       self.run_subprocess('%s %s uninstall %s' % (
           adb_path, adb_device_arg, manifest.package_name), shell=True)
     # Install the APK.
@@ -1148,7 +1184,7 @@ class BuildEnvironment(common.BuildEnvironment):
       try:
         self.install_android_apk(path=apk_dir, adb_device=adb_device)
       except common.Error as e:
-        errmsg  = 'buildutil error: %s' % e.error_message
+        errmsg = 'buildutil error: %s' % e.error_message
         retval = e.error_code
         break
 
@@ -1163,6 +1199,9 @@ class BuildEnvironment(common.BuildEnvironment):
         device connected.
       wait: Optional argument to tell the function to wait until the process
         completes and dump the output.
+
+    Returns:
+      String containing adb logcat output for the run.
     """
     try:
       manifest = self.parse_manifest(path=path)
@@ -1190,6 +1229,7 @@ class BuildEnvironment(common.BuildEnvironment):
         (r'.*(Displayed|Activity destroy timeout|'
          r'Force finishing activity).*%s.*' % full_name))
 
+    logdata = []
     while wait:
       # Use logcat -d so that it can be parsed easily in order to determine
       # when the process ends. An alternative is to read the stream as it gets
@@ -1198,13 +1238,15 @@ class BuildEnvironment(common.BuildEnvironment):
       out, unused_err = self.run_subprocess(
           ('%s %s logcat -d' % (adb_path, adb_device_arg)),
           capture=True, shell=True)
-
+      logdata.append(out)
       for line in out.splitlines():
         if end_match.match(line):
           print out
           wait = False
+    return ''.join(logdata)
 
-  def run_all(self, path='.', adb_device=None, exclude_dirs=None, wait=True):
+  def run_all(self, path='.', adb_device=None, exclude_dirs=None, wait=True,
+              continue_on_failure=False, gtest=False):
     """Locate and run all Android APKs.
 
     This function recursively scans a directory tree for Android application
@@ -1217,24 +1259,37 @@ class BuildEnvironment(common.BuildEnvironment):
       exclude_dirs: List of directory names to exclude from project
         detection (see find_projects() for more information).
       wait: Whether to wait for the application to start.
+      continue_on_failure: Whether to continue trying to execute all
+        projects if a failure occurs.
+      gtest: Whether the target is a googletest and the output should be
+        scraped for test failures.
 
     Returns:
-      (retval, errmsg) tuple of an integer return value suitable for
-      returning to the invoking shell, and an error string (if any) or None
-      (on success).
+      (retval, errmsg, failures) tuple of an integer return value suitable for
+      returning to the invoking shell, an error string (if any) and a list
+      of packages that failed to launch or None (on success).
     """
     retval = 0
     errmsg = None
+    failures = []
 
     apk_dirs, unused_lib_dirs = self.find_projects(path=path,
                                                    exclude_dirs=exclude_dirs)
 
     for apk_dir in apk_dirs:
       try:
-        self.run_android_apk(path=apk_dir, adb_device=adb_device, wait=wait)
+        logoutput = self.run_android_apk(path=apk_dir, adb_device=adb_device,
+                                         wait=wait)
+        if gtest:
+          for line in logoutput.splitlines():
+            if _GTEST_FAILED.match(line):
+              raise common.Error('Test %s failed.' % apk_dir)
       except common.Error as e:
-        errmsg  = 'buildutil error: %s' % e.error_message
+        errmsg = 'buildutil error: %s' % e.error_message
         retval = e.error_code
+        failures.append(apk_dir)
+        if continue_on_failure:
+          continue
         break
 
-    return (retval, errmsg)
+    return (retval, errmsg, failures)
