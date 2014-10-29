@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright 2014 Google Inc. All rights reserved.
+# Copyright 2014 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Generate html documentation from markdown and doxygen comments."""
+
+import argparse
 import distutils.spawn
 import os
 import re
@@ -20,10 +23,10 @@ import shutil
 import subprocess
 import sys
 
-# Matches output directory statement in doxyfile.
-DOXYFILE_OUTPUT_DIRECTORY_RE = re.compile('OUTPUT_DIRECTORY *= *(.*)')
-# Determines whether py_filter is being used.
-DOXYFILE_FILTER_PATTERNS = re.compile('FILTER_PATTENS *= *\*.py=py_filter')
+## Matches output directory statement in doxyfile.
+DOXYFILE_OUTPUT_DIRECTORY_RE = re.compile(r'OUTPUT_DIRECTORY *= *(.*)')
+## Determines whether py_filter is being used.
+DOXYFILE_FILTER_PATTERNS = re.compile(r'FILTER_PATTERNS *= *\*.py=py_filter')
 
 
 class CommandFailedError(Exception):
@@ -34,13 +37,14 @@ class CommandFailedError(Exception):
     status: Error code.
   """
 
-  def __init__(command, status):
+  def __init__(self, command, status):
     """Initialize this instance.
 
     Args:
       command: Command that failed.
       status: Error code.
     """
+    super(CommandFailedError, self).__init__(command)
     self.command = command
     self.status = status
 
@@ -84,7 +88,7 @@ def clean_index(output_dir):
   index_html = os.path.join(output_dir, 'index.html')
   lines = []
   with open(index_html) as f:
-    for l in f.readlines():
+    for l in f:
       if ' Documentation</div>' in l:
         l = l.replace(' Documentation</div>', '</div>')
       lines.append(l)
@@ -97,13 +101,18 @@ def clean_index(output_dir):
 def link_lint(output_dir, results_dir):
   """Run linklint if it's found in the PATH.
 
+  Get this from http://www.linklint.org/.
+
   Args:
     output_dir: Directory to run linklint in.
     results_dir: Directory to store linklink results.
+
+  Raises:
+    LinkLintError: If linklint finds a problem.
   """
   linklint = distutils.spawn.find_executable('linklint')
   if linklint:
-    run_command([linklint, '-no_anchors', '-orphan',  '-root',
+    run_command([linklint, '-no_anchors', '-orphan', '-root',
                  output_dir, '/@', '-doc', results_dir], cwd=output_dir)
     with open(os.path.join(results_dir, 'index.html')) as f:
       lines = f.readlines()
@@ -113,15 +122,18 @@ def link_lint(output_dir, results_dir):
       if [l for l in lines if 'https' in l]:
         raise LinkLintError('linklint detected https links, github does not '
                             'support https')
+  else:
+    print >>sys.stderr, 'WARNING: linklint not found.'
+
 
 def doxyfile_check_py_filter(source_dir):
-  """If py_filter is used in the doxygen configuration file.
+  """Verify py_filter is installed if it's used in the doxygen config file.
 
   Args:
     source_dir: Directory which contains the doxyfile.
 
   Raises:
-    PyFilterNotFoundError if py_filter isn't found in the PATH.
+    PyFilterNotFoundError: If py_filter isn't found in the PATH.
   """
   doxyfile = os.path.join(source_dir, 'doxyfile')
   using_py_filter = False
@@ -143,11 +155,11 @@ def doxyfile_get_output_dir(source_dir):
     Doxygen output_directory.
 
   Raises:
-    DoxyfileError if the output directory isn't found.
+    DoxyfileError: If the output directory isn't found.
   """
   doxyfile = os.path.join(source_dir, 'doxyfile')
   with open(doxyfile) as f:
-    for l in f.readlines():
+    for l in f:
       m = DOXYFILE_OUTPUT_DIRECTORY_RE.match(l)
       if m:
         value = m.groups()[0]
@@ -167,17 +179,36 @@ def main():
     - cd doxypypy
     - python -m setup install
   * linklink (optional)
+
+  Returns:
+    0 if successful, non-zero otherwise.
   """
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--linklint-dir', help=(
+      'Directory where the results of linklint are stored.  If this isn\'t '
+      'specified it defaults to the directory containing this script.'))
+  parser.add_argument('--source-dir', help=(
+      'Doxygen documentation source directory.  If this isn\'t specified '
+      'it defaults to the src/ directory under the directory containing this '
+      'script.'))
+  args = parser.parse_args()
+
   this_dir = os.path.realpath(os.path.dirname(__file__))
-  project_root = os.path.realpath(os.path.join(this_dir, os.pardir))
-  docs_dir = os.path.join(project_root, 'docs')
-  source_dir = os.path.join(docs_dir, 'src')
-  output_dir = doxyfile_get_output_dir(source_dir)
-  doxyfile_check_py_filter(source_dir)
+
+  # Process the arguments.
+  linklint_dir = os.path.realpath(
+      args.linklint_dir if args.linklint_dir else this_dir)
+  source_dir = os.path.realpath(
+      args.source_dir if args.source_dir else os.path.join(this_dir, 'src'))
 
   # Add this module's directory to the path so that doxygen will find the
   # py_filter scripts.
-  os.putenv('PATH', os.pathsep.join([this_dir, os.getenv('PATH')]))
+  os.environ['PATH'] = os.pathsep.join([this_dir, os.getenv('PATH')])
+
+  # Get the documentation output directory.
+  output_dir = doxyfile_get_output_dir(source_dir)
+  # If py_filter is referenced by doxyfile, verify py_filter is installed.
+  doxyfile_check_py_filter(source_dir)
 
   # Clean the output directory.
   if os.path.exists(output_dir):
@@ -186,12 +217,12 @@ def main():
   try:
     run_command('doxygen', shell=True, cwd=source_dir)
     clean_index(output_dir)
-    link_lint(output_dir, os.path.join(docs_dir, 'linklint_results'))
+    link_lint(output_dir, os.path.join(linklint_dir, 'linklint_results'))
   except CommandFailedError, e:
-    print >> sys.stderr,  'Error %d while running %s' % (e.status, e.command)
+    print >> sys.stderr, 'Error %d while running %s' % (e.status, e.command)
     return e.status
   except LinkLintError, e:
-    print >> sys.stderr,  'Error %s' % str(e)
+    print >> sys.stderr, 'Error %s' % str(e)
     return 1
 
   return 0
