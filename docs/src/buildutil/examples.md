@@ -90,4 +90,4 @@ env.make_archive(['Hello'], 'output.zip')
   [make]: http://www.gnu.org/software/make
   [CMake]: http://www.cmake.org
   [Linux]: http://en.m.wikipedia.org/wiki/Linux
-  [OSX]: http;//www.apple.com/osx
+  [OSX]: http://www.apple.com/osx

@@ -120,5 +120,5 @@ For example:
 
   [adb]: http://developer.android.com/tools/help/adb.html
   [logcat]: http://developer.android.com/tools/help/logcat.html
-  [Linking]: md_libfplutil_linking.html
+  [Linking]: @ref libfplutil_linking
   [NativeActivity]: http://developer.android.com/reference/android/app/NativeActivity.html

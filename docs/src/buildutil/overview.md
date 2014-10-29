@@ -39,9 +39,9 @@ For more information about this module see the following:
   [Jenkins]: htttp://www.jenkins-ci.org
   [Linux]: http://en.m.wikipedia.org/wiki/Linux
   [NDK Build]: http://developer.android.com/tools/sdk/ndk/index.html
-  [OSX]: http;//www.apple.com/osx
+  [OSX]: http://www.apple.com/osx
   [Travis-CI]: http://www.travis-ci.org
-  [Windows]: http;//windows.microsoft.com
+  [Windows]: http://windows.microsoft.com
   [autoconf]: http://www.gnu.org/software/autoconf
   [automake]: http://www.gnu.org/software/automake
   [make]: http://www.gnu.org/software/make
