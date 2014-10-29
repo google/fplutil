@@ -14,6 +14,7 @@
 #
 
 """@file buildutil/common.py Common BuildEnvironment.
+@namespace buildutil.common
 
 This is the base implementation for target-specific build environments.
 Common utility classes are assembled here as well.
@@ -25,6 +26,7 @@ Optional environment variables:
 or not passed on command line.
 @li MAKE_FLAGS = String to override the default make flags with.
 """
+
 
 import datetime
 import distutils.spawn

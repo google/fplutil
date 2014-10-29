@@ -14,6 +14,7 @@
 #
 
 """@file buildutil/linux.py Linux-specific BuildEnvironment sub-module.
+@namespace buildutil.linux
 
 Optional environment variables:
 

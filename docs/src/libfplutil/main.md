@@ -47,5 +47,5 @@ For example:
 <br>
 
   [ANR]: http://developer.android.com/training/articles/perf-anr.html
-  [Linking]: md_libfplutil_linking.html
+  [Linking]: @ref libfplutil_linking
   [NativeActivity]: http://developer.android.com/reference/android/app/NativeActivity.html

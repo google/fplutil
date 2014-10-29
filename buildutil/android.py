@@ -14,6 +14,7 @@
 #
 
 """@file buildutil/android.py Android-specific BuildEnvironment.
+@namespace buildutil.android
 
 Optional environment variables:
 
