@@ -19,6 +19,8 @@ import argparse
 import distutils.spawn
 import os
 import platform
+import StringIO
+import subprocess
 import sys
 import unittest
 sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
@@ -233,6 +235,21 @@ class OsWalkMock(object):
       nodes += [d for d in n.dirs if os.path.basename(d.name) in dirs]
 
 
+class SubprocessMockStdOut(object):
+
+  def __init__(self, test, args=None, stdout=''):
+    self.test = test
+    self.stdout = StringIO.StringIO(stdout)
+    self.expected_args = args
+
+  def __call__(self, args=None, bufsize=None, stdout=None):
+    self.test.assertEquals(self.expected_args, args)
+    return self
+
+  def kill(self):
+    pass
+
+
 class AndroidBuildUtilTest(unittest.TestCase):
   """Android-specific unit tests."""
 
@@ -243,6 +260,7 @@ class AndroidBuildUtilTest(unittest.TestCase):
     self.os_path_getmtime = os.path.getmtime
     self.distutils_spawn_find_executable = distutils.spawn.find_executable
     self.file_open = __builtin__.open
+    self.subprocess_popen = subprocess.Popen
     # Mock out find_executable so all binaries are found.
     distutils.spawn.find_executable = (
         lambda name, path=None: (
@@ -256,6 +274,7 @@ class AndroidBuildUtilTest(unittest.TestCase):
     os.path.getmtime = self.os_path_getmtime
     distutils.spawn.find_executable = self.distutils_spawn_find_executable
     __builtin__.open = self.file_open
+    subprocess.Popen = self.subprocess_popen
 
   def test_build_defaults(self):
     d = android.BuildEnvironment.build_defaults()
@@ -268,6 +287,8 @@ class AndroidBuildUtilTest(unittest.TestCase):
     self.assertIn(android._APK_KEYSTORE, d)
     self.assertIn(android._APK_PASSFILE, d)
     self.assertIn(android._APK_KEYALIAS, d)
+    self.assertIn(android._APK_KEYPK8, d)
+    self.assertIn(android._APK_KEYPEM, d)
     self.assertIn(android._SIGN_APK, d)
     # Verify that a mandatory superclass one gets set.
     self.assertIn(common._PROJECT_DIR, d)
@@ -305,6 +326,8 @@ class AndroidBuildUtilTest(unittest.TestCase):
             '--' + android._APK_KEYSTORE, 'f',
             '--' + android._APK_PASSFILE, 'g',
             '--' + android._APK_KEYALIAS, 'h',
+            '--' + android._APK_KEYPK8, 'i',
+            '--' + android._APK_KEYPEM, 'j',
             '--' + android._SIGN_APK]
     argobj = p.parse_args(args)
     d = vars(argobj)
@@ -317,6 +340,8 @@ class AndroidBuildUtilTest(unittest.TestCase):
     self.assertEqual('f', d[android._APK_KEYSTORE])
     self.assertEqual('g', d[android._APK_PASSFILE])
     self.assertEqual('h', d[android._APK_KEYALIAS])
+    self.assertEqual('i', d[android._APK_KEYPK8])
+    self.assertEqual('j', d[android._APK_KEYPEM])
     self.assertTrue(d[android._SIGN_APK])
 
     self.assertEqual(os.getcwd(), d[common._PROJECT_DIR])
@@ -1020,12 +1045,14 @@ class AndroidBuildUtilTest(unittest.TestCase):
     build_environment = android.BuildEnvironment(
         android.BuildEnvironment.build_defaults())
 
-    logoutput = ('Random log output\n'
-                 'Some other log output\n'
-                 'Another application log output.\n'
-                 'Displayed com.google.fpl.libfplutil_test/'
-                 'android.app.NativeActivity\n'
-                 'Line noise\n')
+    expected_logoutput = (
+        'Random log output\n'
+        'Some other log output\n'
+        'Another application log output.\n')
+    logoutput = expected_logoutput + (
+        'Displayed com.google.fpl.libfplutil_test/'
+        'android.app.NativeActivity\n'
+        'Line noise\n')
 
     # Configure the set of expected commands executed by run_android_apk.
     os.path.exists = lambda unused_filename: True
@@ -1042,13 +1069,13 @@ class AndroidBuildUtilTest(unittest.TestCase):
          common_test.RunCommandMock(
              self, args=('%s -s 123456 shell am start -S -n '
                          'com.google.fpl.libfplutil_test/'
-                         'android.app.NativeActivity' % adb_path)),
-         common_test.RunCommandMock(
-             self, args='%s -s 123456 logcat -d' % adb_path,
-             stdout=logoutput)])
+                         'android.app.NativeActivity' % adb_path))])
     build_environment.run_subprocess = run_command_mock
 
-    self.assertEquals(logoutput,
+    subprocess.Popen = SubprocessMockStdOut(
+        self, args=[adb_path, '-s', '123456', 'logcat'],
+        stdout=logoutput)
+    self.assertEquals(expected_logoutput,
                       build_environment.run_android_apk(adb_device='123456'))
 
 

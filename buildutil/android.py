@@ -36,7 +36,9 @@ import re
 import shlex
 import shutil
 import stat
+import subprocess
 import sys
+import tempfile
 import time
 import xml.etree.ElementTree
 sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
@@ -53,10 +55,14 @@ _ANT_TARGET = 'ant_target'
 _APK_KEYSTORE = 'apk_keystore'
 _APK_PASSFILE = 'apk_passfile'
 _APK_KEYALIAS = 'apk_keyalias'
+_APK_KEYPK8 = 'apk_keypk8'
+_APK_KEYPEM = 'apk_keypem'
 _SIGN_APK = 'sign_apk'
 _MANIFEST_FILE = 'AndroidManifest.xml'
 _NDK_MAKEFILE = 'Android.mk'
 _ALWAYS_MAKE = 'always_make'
+_ADB_LOGCAT_ARGS = 'adb_logcat_args'
+_ADB_LOGCAT_MONITOR = 'adb_logcat_monitor'
 
 _MATCH_DEVICES = re.compile(r'^List of devices attached\s*')
 _MATCH_PACKAGE = re.compile(r'^package:(.*)')
@@ -185,7 +191,7 @@ class AndroidManifest(XMLFile):
       raise common.ConfigurationError(self.path, 'application missing')
 
     activity_element = app_element.find('activity')
-    if activity_element:
+    if activity_element is not None:
       self.activity_name = AndroidManifest.__get_schema_attribute_value(
           activity_element, 'name')
 
@@ -334,6 +340,12 @@ class BuildEnvironment(common.BuildEnvironment):
     apk_keyalias: Alias of key to use when signing an APK.
     apk_passfile: Path to file containing a password to use when signing an
       APK.
+    apk_keycertpair: (key, cert) tuple where Key is a .pk8 key file and
+      cert is a .pem certificate file.
+    adb_logcat_args: List of additional arguments passed to logcat when
+      monitoring the application's output.
+    adb_logcat_monitor: Whether to continue to monitor the application's
+      output after it has launched or has been destroyed.
     always_make: Whether to build when the project is already up to date.
   """
 
@@ -376,7 +388,12 @@ class BuildEnvironment(common.BuildEnvironment):
     self.apk_keystore = args[_APK_KEYSTORE]
     self.apk_keyalias = args[_APK_KEYALIAS]
     self.apk_passfile = args[_APK_PASSFILE]
+    self.apk_keycertpair = None
+    if args[_APK_KEYPK8] and args[_APK_KEYPEM]:
+      self.apk_keycertpair = (args[_APK_KEYPK8], args[_APK_KEYPEM])
     self.always_make = args[_ALWAYS_MAKE]
+    self.adb_logcat_args = args[_ADB_LOGCAT_ARGS]
+    self.adb_logcat_monitor = args[_ADB_LOGCAT_MONITOR]
 
   @staticmethod
   def build_defaults():
@@ -400,8 +417,12 @@ class BuildEnvironment(common.BuildEnvironment):
     args[_APK_KEYSTORE] = None
     args[_APK_KEYALIAS] = None
     args[_APK_PASSFILE] = None
+    args[_APK_KEYPK8] = None
+    args[_APK_KEYPEM] = None
     args[_SIGN_APK] = False
     args[_ALWAYS_MAKE] = False
+    args[_ADB_LOGCAT_ARGS] = []
+    args[_ADB_LOGCAT_MONITOR] = False
 
     return args
 
@@ -444,8 +465,18 @@ class BuildEnvironment(common.BuildEnvironment):
     parser.add_argument('-P', '--' + _APK_PASSFILE,
                         help='Path to file containing keystore password',
                         dest=_APK_PASSFILE, default=defaults[_APK_PASSFILE])
+    parser.add_argument('--' + _APK_KEYPK8,
+                        help=('.pk8 key file used to sign an APK.  To use '
+                              'this option %s must also specified a '
+                              'certificate file.' % _APK_KEYPEM),
+                        dest=_APK_KEYPK8, default=defaults[_APK_KEYPK8])
+    parser.add_argument('--' + _APK_KEYPEM,
+                        help=('.pem certificate file used to sign an APK.  '
+                              'To use this option %s must also specified a '
+                              'key file.' % _APK_KEYPK8),
+                        dest=_APK_KEYPEM, default=defaults[_APK_KEYPEM])
     parser.add_argument('-S', '--' + _SIGN_APK,
-                        help='Enable signing of Android APKs',
+                        help='Enable signing of Android APKs.',
                         dest=_SIGN_APK, action='store_true',
                         default=defaults[_SIGN_APK])
     parser.add_argument('-B', '--' + _ALWAYS_MAKE,
@@ -454,6 +485,17 @@ class BuildEnvironment(common.BuildEnvironment):
     parser.add_argument('--no-' + _ALWAYS_MAKE,
                         help='Only build out of date targets.',
                         dest=_ALWAYS_MAKE, action='store_false')
+    parser.add_argument('--' + _ADB_LOGCAT_ARGS,
+                        help='Additonal arguments to pass to logcat',
+                        dest=_ADB_LOGCAT_ARGS,
+                        default=defaults[_ADB_LOGCAT_ARGS], nargs='+')
+    parser.add_argument('--' + _ADB_LOGCAT_MONITOR,
+                        help=('Whether to continue to monitor logcat output '
+                              'after the application has been displayed or '
+                              'destroyed.'),
+                        dest=_ADB_LOGCAT_MONITOR, action='store_true',
+                        default=defaults[_ADB_LOGCAT_MONITOR])
+
     parser.set_defaults(
         **{_ALWAYS_MAKE: defaults[_ALWAYS_MAKE]})  # pylint: disable=star-args
 
@@ -777,6 +819,15 @@ class BuildEnvironment(common.BuildEnvironment):
         print 'Copying apk %s to: %s' % (source_apkpath, out_abs)
       shutil.copy2(source_apkpath, out_abs)
 
+  @staticmethod
+  def generate_password():
+    """Generate a psuedo random password.
+
+    Returns:
+      8 character hexadecimal string.
+    """
+    return '%08x' % (random.random() * 16 ** 8)
+
   def _sign_apk(self, source, target):
     """This function signs an Android APK, optionally generating a key.
 
@@ -798,19 +849,50 @@ class BuildEnvironment(common.BuildEnvironment):
     if self.ant_target is 'debug':
       return
 
+    keystore = self.apk_keystore
+    passfile = self.apk_passfile
+    alias = self.apk_keyalias
+
     # If any of keystore, passwdfile, or alias are None we will create a
     # temporary keystore with a random password and alias and remove it after
     # signing. This facilitates testing release builds when the release
     # keystore is not available (such as in a continuous testing environment).
-    keystore = self.apk_keystore
-    passfile = self.apk_passfile
-    alias = self.apk_keyalias
     ephemeral = False
 
     # Only sign if the source file is newer than the target.
     if os.path.exists(target):
       if os.path.getmtime(source) > os.path.getmtime(target):
         return
+
+    # If a key / cert pair is specified, generate a temporary key store to sign
+    # the APK.
+    temp_directory = ''
+    if self.apk_keycertpair:
+      key = tempfile.NamedTemporaryFile()
+      self.run_subprocess(('openssl', 'pkcs8', '-inform', 'DER', '-nocrypt',
+                           '-in', self.apk_keycertpair[0], '-out', key.name))
+
+      p12 = tempfile.NamedTemporaryFile()
+      password_file = tempfile.NamedTemporaryFile()
+      password = BuildEnvironment.generate_password()
+      passfile = password_file.name
+      password_file.write(password)
+      password_file.flush()
+
+      alias = BuildEnvironment.generate_password()
+      self.run_subprocess(('openssl', 'pkcs12', '-export', '-in',
+                           self.apk_keycertpair[1], '-inkey', key.name,
+                           '-out', p12.name, '-password', 'pass:' + password,
+                           '-name', alias))
+      key.close()
+
+      temp_directory = tempfile.mkdtemp()
+      keystore = os.path.join(temp_directory, 'temp.keystore')
+      self.run_subprocess(('keytool', '-importkeystore', '-deststorepass',
+                           password, '-destkeystore', keystore,
+                           '-srckeystore', p12.name, '-srcstoretype', 'PKCS12',
+                           '-srcstorepass', password))
+      p12.close()
 
     try:
       if not keystore or not passfile or not alias:
@@ -835,7 +917,7 @@ class BuildEnvironment(common.BuildEnvironment):
           print ('Creating ephemeral keystore file %s and password file %s' %
                  (keystore, passfile))
 
-        password = '%08x' % (random.random() * 16 ** 8)
+        password = BuildEnvironment.generate_password()
         with open(passfile, 'w') as pf:
           os.fchmod(pf.fileno(), stat.S_IRUSR | stat.S_IWUSR)
           pf.write(password)
@@ -886,6 +968,8 @@ class BuildEnvironment(common.BuildEnvironment):
       self.run_subprocess(acmd)
 
     finally:
+      if temp_directory and os.path.exists(temp_directory):
+        shutil.rmtree(temp_directory)
       if ephemeral:
         if self.verbose:
           print 'Removing ephemeral keystore and password files'
@@ -1229,20 +1313,32 @@ class BuildEnvironment(common.BuildEnvironment):
         (r'.*(Displayed|Activity destroy timeout|'
          r'Force finishing activity).*%s.*' % full_name))
 
+    # Build list of arguments for logcat.
+    logcat_args = [adb_path]
+    logcat_args.extend(adb_device_arg.split())
+    logcat_args.append('logcat')
+    if self.adb_logcat_args:
+      logcat_args.extend([shlex.split(a)[0] for a in self.adb_logcat_args])
+
+    # We only need to capture stdout so use subprocess directly rather than
+    # run_subprocess() to simplify the process of reading the stdout pipe.
+    process = subprocess.Popen(args=logcat_args, bufsize=-1,
+                               stdout=subprocess.PIPE)
+    stdout = process.stdout
     logdata = []
-    while wait:
-      # Use logcat -d so that it can be parsed easily in order to determine
-      # when the process ends. An alternative is to read the stream as it gets
-      # written but this leads to delays in reading the stream and is difficult
-      # to get working propery on windows.
-      out, unused_err = self.run_subprocess(
-          ('%s %s logcat -d' % (adb_path, adb_device_arg)),
-          capture=True, shell=True)
-      logdata.append(out)
-      for line in out.splitlines():
-        if end_match.match(line):
-          print out
+    try:
+      wait = True
+      while wait or self.adb_logcat_monitor:
+        line = stdout.readline()
+        stripped_line = line.rstrip()
+        print stripped_line
+        if end_match.match(stripped_line):
           wait = False
+        else:
+          logdata.append(line)
+    except KeyboardInterrupt:
+      pass
+    process.kill()
     return ''.join(logdata)
 
   def run_all(self, path='.', adb_device=None, exclude_dirs=None, wait=True,
