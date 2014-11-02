@@ -859,9 +859,9 @@ class BuildEnvironment(common.BuildEnvironment):
     # keystore is not available (such as in a continuous testing environment).
     ephemeral = False
 
-    # Only sign if the source file is newer than the target.
+    # Exit and don't sign if the source file is older than the target.
     if os.path.exists(target):
-      if os.path.getmtime(source) > os.path.getmtime(target):
+      if os.path.getmtime(source) < os.path.getmtime(target):
         return
 
     # If a key / cert pair is specified, generate a temporary key store to sign
