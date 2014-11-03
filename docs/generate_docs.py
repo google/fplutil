@@ -143,6 +143,11 @@ def doxyfile_check_py_filter(source_dir):
   if using_py_filter:
     if not distutils.spawn.find_executable('py_filter'):
       raise PyFilterNotFoundError()
+    try:
+      import doxypypy.doxypypy
+    except Exception:
+      raise PyFilterNotFoundError(
+        'Doxpy not found, install https://github.com/Feneric/doxypypy')
 
 
 def doxyfile_get_output_dir(source_dir):
