@@ -119,3 +119,4 @@ See [Setting Windows Environment Variables][].
   [PATH variable]: http://en.wikipedia.org/wiki/PATH_(variable)
   [Python 2.7]: https://www.python.org/download/releases/2.7/
   [Setting Windows Environment Variables]: http://www.computerhope.com/issues/ch000549.htm
+  [fplutil]: @ref fplutil_readme
