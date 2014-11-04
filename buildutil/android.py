@@ -1122,7 +1122,7 @@ class BuildEnvironment(common.BuildEnvironment):
     elif number_of_devices > 1:
       raise common.AdbError(
           'Multiple Android devices are connected to this host. '
-          'Please specify a device using --adb-device <serial>. '
+          'Please specify a device using --adb_devices <serial>. '
           'The devices connected are: %s' % (os.linesep + out))
     return devices[0]
 
