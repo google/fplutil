@@ -18,6 +18,9 @@ application as it's moderately complex and provides interesting traces.
 In order to use this tool, all [prerequisites](@ref fplutil_prerequisites)
 should be installed.
 
+**NOTE:** At the moment perfhost binaries are only provided for Linux and OSX.
+Windows is not yet supported!
+
 # Sampling vs. Intrusive Profiling    {#android_ndk_perf_sampling}
 
 [Linux Perf][] is a sampling profiler that by default will sample the
