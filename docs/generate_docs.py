@@ -29,26 +29,6 @@ DOXYFILE_OUTPUT_DIRECTORY_RE = re.compile(r'OUTPUT_DIRECTORY *= *(.*)')
 DOXYFILE_FILTER_PATTERNS = re.compile(r'FILTER_PATTERNS *= *\*.py=py_filter')
 
 
-class CommandFailedError(Exception):
-  """Error raised when a command returns a non-zero error code.
-
-  Attributes:
-    command: Command that failed.
-    status: Error code.
-  """
-
-  def __init__(self, command, status):
-    """Initialize this instance.
-
-    Args:
-      command: Command that failed.
-      status: Error code.
-    """
-    super(CommandFailedError, self).__init__(command)
-    self.command = command
-    self.status = status
-
-
 class LinkLintError(Exception):
   """Raised if linklint finds errors."""
   pass
@@ -62,21 +42,6 @@ class DoxyfileError(Exception):
 class PyFilterNotFoundError(Exception):
   """Raised if py_filter isn't found."""
   pass
-
-
-def run_command(*popenargs, **kwargs):
-  """Run a command, raising CommandFailedError if it fails.
-
-  Args:
-    *popenargs: Non-keyword arguments passed to subprocess.Popen().
-    **kwargs: Keyword arguments passed to subprocess.Popen().
-
-  Raises:
-    CommandFailedError: If the command returns a non-zero error code.
-  """
-  ret = subprocess.call(*popenargs, **kwargs)
-  if ret != 0:
-    raise CommandFailedError(repr(popenargs), ret)
 
 
 def clean_index(output_dir):
@@ -112,8 +77,9 @@ def link_lint(output_dir, results_dir):
   """
   linklint = distutils.spawn.find_executable('linklint')
   if linklint:
-    run_command([linklint, '-no_anchors', '-orphan', '-root',
-                 output_dir, '/@', '-doc', results_dir], cwd=output_dir)
+    subprocess.check_call(
+        [linklint, '-no_anchors', '-orphan', '-root',
+         output_dir, '/@', '-doc', results_dir], cwd=output_dir)
     with open(os.path.join(results_dir, 'index.html')) as f:
       lines = f.readlines()
       if [l for l in lines if 'ERROR' in l]:
@@ -196,6 +162,9 @@ def main():
       'Doxygen documentation source directory.  If this isn\'t specified '
       'it defaults to the src/ directory under the directory containing this '
       'script.'))
+  parser.add_argument('--project-dir', help=(
+      'Root of the project containing documentation. Filenames are generated '
+      'from paths to files relative to this directory.'), default=os.getcwd())
   args = parser.parse_args()
 
   this_dir = os.path.realpath(os.path.dirname(__file__))
@@ -219,16 +188,23 @@ def main():
   if os.path.exists(output_dir):
     shutil.rmtree(output_dir)
 
+  # Change into the common directory for the docs so that doxygen doesn't
+  # embed the complete path into generated filenames.
+  cwd = os.getcwd()
+  os.chdir(args.project_dir)
+
   try:
-    run_command('doxygen', shell=True, cwd=source_dir)
+    subprocess.check_call(['doxygen'], shell=True, cwd=source_dir)
     clean_index(output_dir)
     link_lint(output_dir, os.path.join(linklint_dir, 'linklint_results'))
-  except CommandFailedError, e:
-    print >> sys.stderr, 'Error %d while running %s' % (e.status, e.command)
+  except subprocess.CalledProcessError as e:
+    print >> sys.stderr, 'Error %d while running %s' % (e.returncode, e.cmd)
     return e.status
   except LinkLintError, e:
     print >> sys.stderr, 'Error %s' % str(e)
     return 1
+  finally:
+    os.chdir(cwd)
 
   return 0
 
