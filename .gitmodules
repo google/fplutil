@@ -1,0 +1,3 @@
+[submodule "dependencies/googletest"]
+	path = dependencies/googletest
+	url = http://github.com/google/fplutil.git
