@@ -45,6 +45,6 @@ the version string but we would appreciate if you would leave it in.
   [fplutil Google Group]: http://group.google.com/group/fplutil
   [fplutil Issues Tracker]: http://github.com/google/fplutil/issues
   [stackoverflow.com]: http://www.stackoverflow.com
-  [landing page]: http://google.github.io/mathfu
+  [landing page]: http://google.github.io/fplutil
   [1.0.0]: http://google.github.io/fplutil/releases
   [Hello World]: http://en.wikipedia.org/wiki/%22Hello,_world!%22_program
