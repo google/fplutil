@@ -32,6 +32,7 @@ import datetime
 import distutils.spawn
 import multiprocessing
 import os
+import platform
 import shlex
 import shutil
 import subprocess
@@ -250,12 +251,10 @@ class BuildEnvironment(object):
     self.verbose = args[_VERBOSE]
     self.clean = args[_CLEAN]
 
-    (sysname, unused_node, unused_release, unused_version,
-     machine) = os.uname()
-    self.host_os_name = sysname.lower()
-    self.host_architecture = machine.lower()
-
-    self._posix = self.host_os_name is not 'windows'
+    platform_info = platform.uname()
+    self.host_os_name = platform_info[0].lower()
+    self.host_architecture = platform_info[4].lower()
+    self._posix = self.host_os_name != 'windows'
 
     if self.verbose:
       print 'Build environment set up from: %s' % str(args)
@@ -282,7 +281,7 @@ class BuildEnvironment(object):
     Returns:
       Path to binary nth parent directory, or None if not found or invalid.
     """
-    path = distutils.spawn.find_executable(name)
+    path = _find_executable(name)
     if path and (levels > 0):
       directories = path.split(os.path.sep)
 
@@ -308,9 +307,9 @@ class BuildEnvironment(object):
     args[_PROJECT_DIR] = os.getcwd()
     args[_GIT_CLEAN] = False
     args[_MAKE_PATH] = (os.getenv(_MAKE_PATH_ENV_VAR) or
-                        distutils.spawn.find_executable('make'))
+                        _find_executable('make'))
     args[_GIT_PATH] = (os.getenv(_GIT_PATH_ENV_VAR) or
-                       distutils.spawn.find_executable('git'))
+                       _find_executable('git'))
     args[_MAKE_FLAGS] = os.getenv(_MAKE_FLAGS_ENV_VAR)
     args[_CPU_COUNT] = str(multiprocessing.cpu_count())
     args[_VERBOSE] = False
@@ -380,6 +379,8 @@ class BuildEnvironment(object):
     filenames = []
     directories = []
     for p in paths:
+      if not p:
+        continue
       if p.endswith(os.path.sep):
         directories.append(p)
       else:
@@ -390,8 +391,7 @@ class BuildEnvironment(object):
         return f
 
     search_path = os.pathsep.join(directories)
-    path = distutils.spawn.find_executable(
-        name, path=search_path if search_path else None)
+    path = _find_executable(name, path=search_path if search_path else None)
     if not path:
       raise ToolPathError(name, repr(paths))
     return path
@@ -620,3 +620,26 @@ class BuildEnvironment(object):
       Absolute path of the specified directory.
     """
     return os.path.abspath(os.path.join(self.project_directory, path))
+
+
+def _find_executable(name, path=None):
+  """Find an executable.
+
+  This searches for executables based upon OS specific rules.
+
+  Args:
+    name: Name of the executable to search for.
+    path: Path to search, if None this searches the system path.
+
+  Returns:
+    Full executable path if found, None otherwise.
+  """
+  filename = distutils.spawn.find_executable(name, path=path)
+  if not filename and platform.uname()[0] == "Windows":
+    for directory in ([path] if path else
+                      os.getenv('PATH').split(os.pathsep)):
+      for extension in os.getenv('PATHEXT').split(os.pathsep):
+        fname = os.path.join(directory, name + extension)
+        if os.path.exists(fname):
+          return fname
+  return filename

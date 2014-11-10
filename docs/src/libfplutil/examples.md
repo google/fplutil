@@ -27,14 +27,14 @@ consists of the following steps:
 
    * Open a command line.
    * Change into the example directory.
-   * Run [fplutil][]'s [build_all_android.py][]
+   * Run [fplutil][]'s [build_all_android][]
 
 For example, the following will build the application APK in debug, install
 the APK on an attached Android device and execute the application:
 
 ~~~{.sh}
     cd examples/libfplutil_example
-    ../../bin/build_all_android.py -T debug -i -r
+    ../../bin/build_all_android -T debug -i -r
 ~~~
 
 Which should display:
@@ -45,7 +45,7 @@ Which should display:
 
 # Building manually with ndk-build    {#libfplutil_example_build_ndkbuild}
 
-The following steps *only* need to be performed if [build_all_android.py][]
+The following steps *only* need to be performed if [build_all_android][]
 isn't sufficient for your build environment.
 
 To build the shared library that constitutes the native component of the

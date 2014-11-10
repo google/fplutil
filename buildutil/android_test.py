@@ -16,7 +16,6 @@
 
 import __builtin__
 import argparse
-import distutils.spawn
 import os
 import platform
 import StringIO
@@ -258,21 +257,20 @@ class AndroidBuildUtilTest(unittest.TestCase):
     self.os_walk = os.walk
     self.os_path_exists = os.path.exists
     self.os_path_getmtime = os.path.getmtime
-    self.distutils_spawn_find_executable = distutils.spawn.find_executable
+    self.find_executable = common._find_executable
     self.file_open = __builtin__.open
     self.subprocess_popen = subprocess.Popen
     # Mock out find_executable so all binaries are found.
-    distutils.spawn.find_executable = (
-        lambda name, path=None: (
+    common._find_executable = lambda name, path=None: (
             os.path.join(path, name) if path else os.path.join(
-                'a', 'b', name)))
+                'a', 'b', name))
 
   def tearDown(self):
     # Undo mocks.
     os.walk = self.os_walk
     os.path.exists = self.os_path_exists
     os.path.getmtime = self.os_path_getmtime
-    distutils.spawn.find_executable = self.distutils_spawn_find_executable
+    common._find_executable = self.find_executable
     __builtin__.open = self.file_open
     subprocess.Popen = self.subprocess_popen
 
@@ -567,7 +565,7 @@ class AndroidBuildUtilTest(unittest.TestCase):
     expect += flaglist
     m.expect(expect)
     b.build_android_libraries([l], output=l)
-    distutils.spawn.find_executable = self.distutils_spawn_find_executable
+    common._find_executable = self.find_executable
     b.ndk_home = '/dev/null'
     with self.assertRaises(common.ToolPathError):
       b.build_android_libraries([l], output=l)
@@ -599,7 +597,7 @@ class AndroidBuildUtilTest(unittest.TestCase):
     expect += flaglist
     m.expect(expect)
     b.build_android_libraries([l], output=l)
-    distutils.spawn.find_executable = self.distutils_spawn_find_executable
+    common._find_executable = self.find_executable
     b.ndk_home = '/dev/null'
     with self.assertRaises(common.ToolPathError):
       b.build_android_libraries([l], output=l)
@@ -724,12 +722,13 @@ class AndroidBuildUtilTest(unittest.TestCase):
         {manifest.path: 10, buildxml_filename: 5}[filename])
 
     run_command_mock = common_test.RunCommandMock(self)
-    run_command_mock.expect([os.path.join('tools', 'android'), 'update',
-                             'project', '--path',
+    run_command_mock.expect([os.path.join('sdk_path', 'tools', 'android'),
+                             'update', 'project', '--path',
                              build_environment.get_project_directory(),
                              '--target', 10, '--name', 'libfplutil_test'])
     build_environment.run_subprocess = run_command_mock
-
+    build_environment.ndk_home = 'ndk_path'
+    build_environment.sdk_home = 'sdk_path'
     buildxml = build_environment.create_update_build_xml(manifest)
     self.assertEqual('libfplutil_test', buildxml.project_name)
 
@@ -744,12 +743,13 @@ class AndroidBuildUtilTest(unittest.TestCase):
         {manifest.path: 10, buildxml_filename: 5}[filename])
 
     run_command_mock = common_test.RunCommandMock(self)
-    run_command_mock.expect([os.path.join('tools', 'android'), 'update',
-                             'project', '--path',
+    run_command_mock.expect([os.path.join('sdk_path', 'tools', 'android'),
+                             'update', 'project', '--path',
                              build_environment.get_project_directory(),
                              '--target', 10, '--name', 'libfplutil_test'])
     build_environment.run_subprocess = run_command_mock
-
+    build_environment.ndk_home = 'ndk_path'
+    build_environment.sdk_home = 'sdk_path'
     buildxml = build_environment.create_update_build_xml(manifest)
     self.assertEqual('libfplutil_test', buildxml.project_name)
 
@@ -761,7 +761,8 @@ class AndroidBuildUtilTest(unittest.TestCase):
     os.path.exists = lambda unused_filename: True
     os.path.getmtime = lambda filename: (
         {manifest.path: 5, buildxml_filename: 5}[filename])
-
+    build_environment.ndk_home = 'ndk_path'
+    build_environment.sdk_home = 'sdk_path'
     buildxml = build_environment.create_update_build_xml(manifest)
     self.assertEqual('libfplutil_test', buildxml.project_name)
 
@@ -799,6 +800,8 @@ class AndroidBuildUtilTest(unittest.TestCase):
     run_command_mock = common_test.RunCommandMock(self)
     run_command_mock.expect(['ant', 'release', 'a', 'b', 'c d'], None)
     build_environment.run_subprocess = run_command_mock
+    build_environment.ndk_home = 'ndk_path'
+    build_environment.sdk_home = 'sdk_path'
     build_environment.build_android_apk(manifest=manifest)
 
   def test_clean_android_apk(self):
@@ -811,8 +814,9 @@ class AndroidBuildUtilTest(unittest.TestCase):
     run_command_mock = common_test.RunCommandMock(self)
     run_command_mock.expect(['ant', 'clean', '-quiet'], None)
     build_environment.run_subprocess = run_command_mock
+    build_environment.ndk_home = 'ndk_path'
+    build_environment.sdk_home = 'sdk_path'
     build_environment.build_android_apk(manifest=manifest)
-
 
   def _build_all_test_setup(self):
     b, walk_mock = self._find_projects_test_setup()

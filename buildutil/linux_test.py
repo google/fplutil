@@ -47,13 +47,13 @@ class LinuxBuildUtilTest(unittest.TestCase):
   """Linux-specific unit tests."""
 
   def setUp(self):
-    self.distutils_spawn_find_executable = distutils.spawn.find_executable
+    self.find_executable = common._find_executable
     # Mock out find_executable so all binaries are found.
-    distutils.spawn.find_executable = (
-        lambda name, path=None: path if path else os.path.join('a', 'b', name))
+    common._find_executable = (
+      lambda name, path=None: path if path else os.path.join('a', 'b', name))
 
   def tearDown(self):
-    distutils.spawn.find_executable = self.distutils_spawn_find_executable
+    common._find_executable = self.find_executable
 
   def test_build_defaults(self):
     d = linux.BuildEnvironment.build_defaults()

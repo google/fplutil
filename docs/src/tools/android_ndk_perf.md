@@ -1,12 +1,12 @@
-android_ndk_perf.py    {#android_ndk_perf}
-===================
+android_ndk_perf    {#android_ndk_perf}
+================
 
-[android_ndk_perf.py][] is a desktop tool that enables native (C/C++)
+[android_ndk_perf][] is a desktop tool that enables native (C/C++)
 developers to measure the CPU utilization of their applications on
 [Android][], guiding their optimization efforts.
 
-[android_ndk_perf.py][] uses [Linux Perf][] to profile the native (C/C++)
-components of applications on Android.  [android_ndk_perf.py][] can be
+[android_ndk_perf][] uses [Linux Perf][] to profile the native (C/C++)
+components of applications on Android.  [android_ndk_perf][] can be
 run on developer's workstations to collect traces of applications running on
 Android devices.  After application traces are collected the data can be
 examined using [Linux Perf][]'s commands or a HTML visualization can be
@@ -55,15 +55,15 @@ Application to be profiled must be:
      makes it possible for [Linux Perf][] to correctly add symbolic function
      names to instruction pointers in traces.
 
-## Building and Installing using build_all_android.py    {#android_ndk_perf_building_fplutil}
+## Building and Installing using build_all_android    {#android_ndk_perf_building_fplutil}
 
-If you're building using fplutil's [build_all_android.py][], the process of
+If you're building using fplutil's [build_all_android][], the process of
 building and installing [LiquidFun][]'s Testbed application with symbols for
 ARM (v7a) can be performed using the following command:
 
 ~~~{.sh}
     cd liquidfun/Box2D/Testbed
-    build_all_android.py -f 'NDK_DEBUG=0 APP_ABI=armeabi-v7a APP_CFLAGS=-mapcs-frame' -T debug -i
+    build_all_android -f 'NDK_DEBUG=0 APP_ABI=armeabi-v7a APP_CFLAGS=-mapcs-frame' -T debug -i
 ~~~
 
 ## Building using ndk-build and ant    {#android_ndk_perf_building_manual}
@@ -95,12 +95,12 @@ Finally, the application should be installed on a test device:
 # Capturing a Trace    {#android_ndk_perf_record}
 
 After installing an application on a device, it's possible to capture a
-trace to the directory `output/perf.data` using [android_ndk_perf.py][]'s
+trace to the directory `output/perf.data` using [android_ndk_perf][]'s
 `record` command:
 
 ~~~{.sh}
     cd liquidfun/Box2D/Testbed
-    android_ndk_perf.py --apk bin/testbed-debug.apk record -o output/perf.data
+    android_ndk_perf --apk bin/testbed-debug.apk record -o output/perf.data
 ~~~
 
 To stop the trace press `Ctrl-C` (sends the interrupt signal to the process).
@@ -115,14 +115,14 @@ The `record` command performs the following:
 
 # Visualizing a Trace    {#android_ndk_perf_visualize}
 
-[android_ndk_perf.py][]'s `visualize` command can be used to generate a
+[android_ndk_perf][]'s `visualize` command can be used to generate a
 HTML report and open the report in a web browser.  The trace
 `output/perf.data` captured using the `record` command can be converted
 to the HTML report `report.html` and viewed using the following command:
 
 ~~~{.sh}
     cd liquidfun/Box2D/Testbed
-    android_ndk_perf.py visualize -i output/perf.data -o report.html
+    android_ndk_perf visualize -i output/perf.data -o report.html
 ~~~
 
 Which generates a [report][] like the following:
@@ -147,7 +147,7 @@ profiling period.
      style="width: 80%"/>
 
 When a ring is highlighted in the chart, the stack trace of visible functions
-in the chart are shown on the top right side of the screen: 
+in the chart are shown on the top right side of the screen:
 
 <img src="android_ndk_perf_visualize_summary.png"
      alt="Visualizer Stack Summary" style="width: 80%"/>
@@ -164,11 +164,11 @@ application, captured on a Nexus 5, is available to browse [here](report.html).
 # Trace Reports    {#android_ndk_perf_report}
 
 [Linux Perf][] provides the `report` command to view a `perf.data` trace file.
-This command can be invoked via [android_ndk_perf.py][] using the following:
+This command can be invoked via [android_ndk_perf][] using the following:
 
 ~~~{.sh}
     cd liquidfun/Box2D/Testbed
-    android_ndk_perf.py report -i output/perf.data
+    android_ndk_perf report -i output/perf.data
 ~~~
 
 `report` provides a view similar to the `visualize` command's output with a
@@ -179,7 +179,7 @@ A more terse overview of the data can be retrieved using:
 
 ~~~{.sh}
     cd liquidfun/Box2D/Testbed
-    android_ndk_perf.py report -i output/perf.data --call-graph none
+    android_ndk_perf report -i output/perf.data --call-graph none
 ~~~
 
 Which will produce something like the following, summarizing the amount of
@@ -200,8 +200,8 @@ time spent in each function over the profiling period:
 <br>
 
   [Android]: http://www.android.com
-  [android_ndk_perf.py]: @ref android_ndk_perf
-  [build_all_android.py]: @ref build_all_android
+  [android_ndk_perf]: @ref android_ndk_perf
+  [build_all_android]: @ref build_all_android
   [Linux Perf]: http://perf.wiki.kernel.org
   [LiquidFun]: http://google.github.io/liquidfun/
   [debuggable APK]: http://developer.android.com/guide/topics/manifest/application-element.html#debug

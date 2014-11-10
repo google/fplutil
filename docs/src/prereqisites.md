@@ -15,7 +15,7 @@ Download and install:
      machine.
    * [Java 1.7][] required to use Android tools.
         * For example, on systems that support apt-get...<br/>
-          `sudo apt-get install jdkTODO`
+          `sudo apt-get install openjdk-7-jdk`
    * [Apache Ant][], required to build Android applications with [fplutil][].
         * For example, on systems that support `apt-get`...<br/>
           `sudo apt-get install ant`
@@ -97,7 +97,7 @@ Download and install:
        * For example, if [Apache Ant][] is installed in
          `/home/androiddev/apache-ant`, the following line should be added to
          the user's bash resource file `~/,basrhc`.<br/>
-         `export PATH="$PATH:/home/androiddev/apache-ant"`
+         `export PATH="$PATH:/home/androiddev/apache-ant/bin"`
 
 ## Windows    {#fplutil_command_line_windows}
 
@@ -111,6 +111,17 @@ See [Setting Windows Environment Variables][].
    * Add the [Android NDK][] directory to the [PATH variable][].
         * For example, if the [Android NDK][] is installed in `c:\android-ndk`,
           the path `c:\android-ndk` should be added to the [PATH variable][].
+   * Add the [Apache Ant][] install directory to the [PATH variable][].
+       * For example, if [Apache Ant][] is installed in
+         `c:\apache-ant`, the path `c:\apache-ant\bin` should be added to the
+         [PATH variable][].
+   * Add the [Java 1.7][] binary directory to the [PATH variable][].
+       * For example, if [Java 1.7][] is installed in
+         `C:\Program Files\Java\jdk1.7.0_71`, the path
+         `C:\Program Files\Java\jdk1.7.0_71\bin` should be added to the
+         [PATH variable][].
+   * Set the `JAVA_HOME` variable to the Java install location
+     (e.g `C:\Program Files\Java\jdk1.7.0_71`).
 
   [Android NDK]: http://developer.android.com/tools/sdk/ndk/index.html
   [Android SDK]: http://developer.android.com/sdk/index.html
