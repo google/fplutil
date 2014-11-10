@@ -4,6 +4,10 @@ fplutil    {#fplutil}
 fplutil is a set of small libraries and tools that can be useful when
 developing applications for Android and other platforms.
 
+Download the latest release from the
+[fplutil github page](http://github.com/google/fplutil) or the
+[releases page](https://github.com/google/fplutil/releases).
+
 Discuss fplutil with other developers and users on the
 [fplutil Google Group][].  File issues on the [fplutil Issues Tracker][]
 or post your questions to [stackoverflow.com][] with a mention of
@@ -40,4 +44,3 @@ Before getting started, make sure all
   [libfplutil]: @ref libfplutil_overview
   [stackoverflow.com]: http://www.stackoverflow.com
   [Hello World]: http://en.wikipedia.org/wiki/%22Hello,_world!%22_program
-
