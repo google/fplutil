@@ -14,7 +14,7 @@ Before getting started, make sure all
 
 # Components
 
-   * [build_all_android.py][] is an all-in-one build script that allows you to
+   * [build_all_android][] is an all-in-one build script that allows you to
      build, install and run native (C/C++) Android apps from the command line.
      This is ideal for build automation, but can also be in a developer’s
      compile/run loop.
@@ -22,7 +22,7 @@ Before getting started, make sure all
      of [Android][] and [Linux][] C/C++ applications using a suite of
      [Python][] modules.  This suite of modules can automate builds in a
      continuous integration environment.
-   * [android_ndk_perf.py][] is a desktop tool that enables native (C/C++)
+   * [android_ndk_perf][] is a desktop tool that enables native (C/C++)
      developers to measure the CPU utilization of their applications on
      [Android][], guiding their optimization efforts.
    * [libfplutil][] enables C/C++ developers to write traditional applications
@@ -31,8 +31,8 @@ Before getting started, make sure all
   [Android]: http://www.android.com
   [Linux]: http://en.m.wikipedia.org/wiki/Linux
   [Python]: http://www.python.org
-  [android_ndk_perf.py]: @ref android_ndk_perf
-  [build_all_android.py]: @ref build_all_android
+  [android_ndk_perf]: @ref android_ndk_perf
+  [build_all_android]: @ref build_all_android
   [buildutil]: @ref buildutil_overview
   [fplutil Google Group]: http://group.google.com/group/fplutil
   [fplutil Issues Tracker]: http://github.com/google/fplutil/issues

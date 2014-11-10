@@ -27,7 +27,6 @@ command line.
 """
 
 import datetime
-import distutils.spawn
 import errno
 import os
 import platform
@@ -410,8 +409,9 @@ class BuildEnvironment(common.BuildEnvironment):
     args[_NDK_HOME] = (os.getenv(_NDK_HOME_ENV_VAR) or
                        common.BuildEnvironment._find_path_from_binary(
                            BuildEnvironment.NDK_BUILD, 1))
-    args[_ANT_PATH] = (os.getenv(_ANT_PATH_ENV_VAR) or
-                       distutils.spawn.find_executable(BuildEnvironment.ANT))
+    args[_ANT_PATH] = (
+        os.getenv(_ANT_PATH_ENV_VAR) or
+        common._find_executable(BuildEnvironment.ANT))
     args[_ANT_FLAGS] = '-quiet'
     args[_ANT_TARGET] = 'release'
     args[_APK_KEYSTORE] = None
@@ -538,6 +538,9 @@ class BuildEnvironment(common.BuildEnvironment):
       for root, dirs, _ in os.walk(os.path.join(self.sdk_home, 'build-tools')):
         zip_align_paths.extend([os.path.join(root, d, '') for d in dirs])
         break
+
+    if not self.sdk_home or not ndk_build_paths:
+      raise common.ToolPathError('Android SDK or NDK', '[unknown]')
 
     search_dict = {
         BuildEnvironment.ADB: [os.path.join(
@@ -919,7 +922,8 @@ class BuildEnvironment(common.BuildEnvironment):
 
         password = BuildEnvironment.generate_password()
         with open(passfile, 'w') as pf:
-          os.fchmod(pf.fileno(), stat.S_IRUSR | stat.S_IWUSR)
+          if self._posix:
+            os.fchmod(pf.fileno(), stat.S_IRUSR | stat.S_IWUSR)
           pf.write(password)
 
         alias = os.path.basename(source).split('.')[0]

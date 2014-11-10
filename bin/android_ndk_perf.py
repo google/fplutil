@@ -115,10 +115,10 @@ PERF_MIN_API_LEVEL = 16
 PERFHOST_BINARY = 'perfhost'
 
 ## Binary which converts from a perf trace to JSON.
-PERF_TO_TRACING = 'perf_to_tracing_json.py'
+PERF_TO_TRACING = 'perf_to_tracing_json'
 
 ## Binary visualizes JSON output of PERF_TO_TRACING using HTML.
-PERF_VIS = 'perf-vis.py'
+PERF_VIS = 'perf-vis'
 
 ## Perf binaries not supported warning message.
 PERF_BINARIES_NOT_SUPPORTED = """
@@ -1449,9 +1449,9 @@ def get_host_executable_extensions():
   # On Windows search for filenames that have executable extensions.
   exe_extensions = ['']
   if platform.system() == 'Windows':
-    extensions = os.environ('PATHEXT')
+    extensions = os.getenv('PATHEXT')
     if extensions:
-      exe_extensions.extend(extensions.split(';'))
+      exe_extensions.extend(extensions.split(os.pathsep))
   return exe_extensions
 
 
@@ -2221,7 +2221,7 @@ def run_perf_visualizer(browser, perf_args, adb_device, output_filename,
   # Generate the html file from the json data.
   perf_vis_args = [json_output.name,
                    # process_perf_script_dump() calculated sample periods in
-                   # microseconds so perf-vis.py needs to scale samples
+                   # microseconds so perf-vis needs to scale samples
                    # back to seconds before converting up to milliseconds.
                    '-c', '1000000']
   if frames:

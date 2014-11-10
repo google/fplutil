@@ -15,7 +15,6 @@
 #
 
 import argparse
-import distutils.spawn
 import os
 import sys
 import unittest
@@ -46,7 +45,7 @@ class MockOsPathExists(object):
     return self.mock_path_exists
 
 class MockFindExecutable(object):
-  """Mock of distutils.spawn.find_executable.
+  """Mock of common._find_executable
 
   Attribtues:
     mock_path: Path to return from __call__().
@@ -61,7 +60,7 @@ class MockFindExecutable(object):
     self.mock_path = mock_path
 
   def __call__(self, unused_name):
-    """Mock of distutils.spawn.find_executable().
+    """Mock of common._find_executable().
 
     Returns:
       Returns the mock_path attribute.
@@ -221,12 +220,12 @@ class CommonBuildUtilTest(unittest.TestCase):
     self.git_clean_ran = False
     self.git_reset_ran = False
     self.os_path_exists = os.path.exists
-    self.distutils_spawn_find_executable = distutils.spawn.find_executable
-    distutils.spawn.find_executable = (
+    self.find_executable = common._find_executable
+    common._find_executable = (
         lambda name, path=None: path if path else os.path.join('a', 'b', name))
 
   def tearDown(self):
-    distutils.spawn.find_executable = self.distutils_spawn_find_executable
+    common._find_executable = self.find_executable
     os.path.exists = self.os_path_exists
 
   def test_build_defaults(self):
@@ -298,7 +297,7 @@ class CommonBuildUtilTest(unittest.TestCase):
 
     for (path, levels, expect) in test_data:
       # reset in tearDown
-      distutils.spawn.find_executable = MockFindExecutable(path)
+      common._find_executable = MockFindExecutable(path)
       result = common.BuildEnvironment._find_path_from_binary('foo', levels)
       self.assertEqual(result, expect, '"%s" != "%s" (case: %s)' % (
           result, expect, str((path, levels, expect))))
@@ -306,7 +305,7 @@ class CommonBuildUtilTest(unittest.TestCase):
   def test_find_binary_found(self):
     build_environment = common.BuildEnvironment(
         common.BuildEnvironment.build_defaults())
-    distutils.spawn.find_executable = lambda name, path=None: None
+    common._find_executable = lambda name, path=None: None
     with self.assertRaises(common.ToolPathError):
       build_environment._find_binary(common.BuildEnvironment.MAKE)
 

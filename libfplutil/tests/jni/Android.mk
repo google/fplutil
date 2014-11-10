@@ -20,9 +20,9 @@ DEPENDENCIES_ROOT:=$(wildcard $(PROJECT_ROOT)/dependencies)
 # Directory which contains the googletest library directory such that
 # $(GOOGLETEST_PATH)/googletest/Android.mk exists.
 ifneq ($(DEPENDENCIES_ROOT),)
-GOOGLETEST_PATH?=$(realpath $(DEPENDENCIES_ROOT))
+GOOGLETEST_PATH?=$(DEPENDENCIES_ROOT)
 else
-GOOGLETEST_PATH?=$(realpath $(PROJECT_ROOT)/..)
+GOOGLETEST_PATH?=$(PROJECT_ROOT)/..
 endif
 
 # --- project ---
