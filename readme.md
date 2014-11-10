@@ -6,7 +6,7 @@ fplutil Version 1.0
 fplutil is a set of small libraries and tools that can be useful when
 developing applications for Android and other platforms.
 
-   * [build_all_android.py][] is an all-in-one build script that allows you to
+   * [build_all_android][] is an all-in-one build script that allows you to
      build, install and run native (C/C++) Android apps from the command line.
      This is ideal for build automation, but can also be in a developer’s
      compile/run loop.
@@ -14,7 +14,7 @@ developing applications for Android and other platforms.
      of [Android][] and [Linux][] C/C++ applications using a suite of
      [Python][] modules.  This suite of modules can automate builds in a
      continuous integration environment.
-   * [android_ndk_perf.py][] is a desktop tool that enables native (C/C++)
+   * [android_ndk_perf][] is a desktop tool that enables native (C/C++)
      developers to measure the CPU utilization of their applications on
      [Android][], guiding their optimization efforts.
    * [libfplutil][] enables C/C++ developers to write traditional applications
@@ -36,8 +36,8 @@ continue to invest in them. Since this is open source, you are free to remove
 the version string but we would appreciate if you would leave it in.
 
   [Android]: http://www.android.com
-  [android_ndk_perf.py]: @ref android_ndk_perf
-  [build_all_android.py]: @ref build_all_android
+  [android_ndk_perf]: @ref android_ndk_perf
+  [build_all_android]: @ref build_all_android
   [buildutil]: @ref buildutil_overview
   [libfplutil]: @ref libfplutil_overview
   [Linux]: http://en.m.wikipedia.org/wiki/Linux

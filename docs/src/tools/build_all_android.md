@@ -17,7 +17,7 @@ will change into the [fplutil][] directory and build all Android projects:
 
 ~~~{.sh}
     cd fplutil
-    ./bin/build_all_android
+    ./bin/build_all_android -E dependencies
 ~~~
 
 The application will place the build artifacts in the following locations:
@@ -43,7 +43,7 @@ For example, the following will build and sign all APKs with a temporary key:
 
 ~~~{.sh}
     cd fplutil
-    ./bin/build_all_android -S
+    ./bin/build_all_android -E dependencies -S
 ~~~
 
 In a similar fashion to unsigned APKs, signed APKs are placed in the apks
@@ -68,7 +68,7 @@ sign the APKs and install them to an attached device:
 
 ~~~{.sh}
     cd fplutil
-    ./bin/build_all_android -S -i
+    ./bin/build_all_android -E dependencies -S -i
 ~~~
 
 # Running Applications    {#build_all_android_run}
@@ -82,7 +82,7 @@ sequence:
 
 ~~~{.sh}
     cd fplutil
-    ./bin/build_all_android -S -i -r
+    ./bin/build_all_android -E dependencies -S -i -r
 ~~~
 
 # Build Configuration    {#build_all_android_build_config}
@@ -96,7 +96,7 @@ mode with no native (C/C++) symbols:
 
 ~~~{.sh}
     cd fplutil
-    ./bin/build_all_android -T debug
+    ./bin/build_all_android -E dependencies -T debug
 ~~~
 
 In order to perform symbolic debugging of native (C/C++) components with
@@ -107,14 +107,14 @@ For example:
 
 ~~~{.sh}
     cd fplutil
-    ./bin/build_all_android -T debug -f NDK_DEBUG=1
+    ./bin/build_all_android -E dependencies -T debug -f NDK_DEBUG=1
 ~~~
 
 To force optimization in debug mode, set `NDK_DEBUG=0`.
 
 ~~~{.sh}
     cd fplutil
-    ./bin/build_all_android -T debug -f NDK_DEBUG=0
+    ./bin/build_all_android -E dependencies -T debug -f NDK_DEBUG=0
 ~~~
 
 # Cleaning Build Artifacts    {#build_all_android_clean}
@@ -122,7 +122,7 @@ To force optimization in debug mode, set `NDK_DEBUG=0`.
 Build artifacts can be cleaned using the `-c` or `--clean` flag.  For example:
 
 ~~~{.sh}
-    ./bin/build_all_android -c
+    ./bin/build_all_android -E dependencies -c
 ~~~
 
 # Working with Multiple Devices    {#build_all_android_multiple_devices}
@@ -137,7 +137,7 @@ sign them, install and run them on all attached devices:
 
 ~~~{.sh}
     cd fplutil
-    ./bin/build_all_android -S -i -r -d @
+    ./bin/build_all_android -E dependencies -S -i -r -d @
 ~~~
 
 <br>

@@ -63,7 +63,7 @@ ARM (v7a) can be performed using the following command:
 
 ~~~{.sh}
     cd liquidfun/Box2D/Testbed
-    build_all_android -f 'NDK_DEBUG=0 APP_ABI=armeabi-v7a APP_CFLAGS=-mapcs-frame' -T debug -i
+    build_all_android -E dependencies -f 'NDK_DEBUG=0 APP_ABI=armeabi-v7a APP_CFLAGS=-mapcs-frame' -T debug -i
 ~~~
 
 ## Building using ndk-build and ant    {#android_ndk_perf_building_manual}

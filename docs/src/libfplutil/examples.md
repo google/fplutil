@@ -118,4 +118,4 @@ Which should display:
   [Android SDK]: http://developer.android.com/sdk/index.html
   [APK Signing]: http://developer.android.com/tools/publishing/app-signing.html
   [Android API Level]: http://developer.android.com/guide/topics/manifest/uses-sdk-element.html#ApiLevels
-  [build_all_android.py]: @ref build_all_android
+  [build_all_android]: @ref build_all_android
