@@ -1,0 +1,21 @@
+{
+  "package": {
+    "name": "fplutil",
+    "url": "http://github.com/google/fplutil.git",
+    "branch": "develop",
+    "is_library": 1,
+    "third_party": 0,
+    "push": 1
+  },
+
+  "dependencies": [
+    {
+      "name": "googletest",
+      "url": "http://github.com/google/fplutil.git",
+      "branch": "googletest",
+      "is_library": 1,
+      "third_party": 0,
+      "push": 1
+    }
+  ]
+}
