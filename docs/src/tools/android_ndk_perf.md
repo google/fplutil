@@ -68,8 +68,8 @@ ARM (v7a) can be performed using the following command:
 
 ## Building using ndk-build and ant    {#android_ndk_perf_building_manual}
 
-Using `ndk-build` can be used to build [LiquidFun][] Testbed application with
-symbols for ARM (v7a) withx the following commands:
+`ndk-build` can be used to build [LiquidFun][] Testbed application with
+symbols for ARM (v7a) with the following commands:
 
 ~~~{.sh}
     cd liquidfun/Box2D/Testbed
@@ -81,7 +81,7 @@ a [debuggable APK][]:
 
 ~~~{.sh}
     cd liquidfun/Box2D/Testbed
-    android update project --target android-15 -n testbed -path .
+    android update project --target android-15 -n testbed --path .
     ant debug
 ~~~
 
