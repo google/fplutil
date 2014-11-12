@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Finds a dependency relative to the directory containing this script."""
+"""Push this package and its' dependencies to a remote git repositories."""
 
 import argparse
 import json
@@ -734,11 +734,15 @@ def read_config(config_filename):
         config_filename, str(error)))
 
 
-def main():
-  """Check the set of dependencies for this package.
+def parse_arguments(project_dir=None, config_json=None):
+  """Parse arguments for this script.
+
+  Args:
+    project_dir: Default project directory.
+    config_json: Default config.json filename.
 
   Returns:
-    0 if all dependencies are found, 1 otherwise.
+    Result of argparse.ArgumentParser.parse_args().
   """
   parser = argparse.ArgumentParser()
   parser.add_argument('-v', '--verbose', help='Display verbose output.',
@@ -763,11 +767,33 @@ def main():
                       help=('Push documentation upstream.  '
                             'Use with care, documentation is public as soon '
                             'as it is pushed.'))
-  parser.add_argument('-p', '--package-dir', default=PROJECT_DIR,
-                      help='Directory containing the package config.')
-  parser.add_argument('-c', '--config-json', default=CONFIG_JSON,
+  parser.add_argument('-p', '--package-dir',
+                      default=project_dir if project_dir else PROJECT_DIR,
+                      help='Directory containing the package.')
+  parser.add_argument('-c', '--config-json',
+                      default=config_json if config_json else CONFIG_JSON,
                       help='JSON file that describes the package contents.')
-  args = parser.parse_args()
+  return parser.parse_args()
+
+
+def main(args=None):
+  """Push this package and its' dependencies to a remote git repositories.
+
+  Gather the git repository of this package and its' dependencies, specified
+  by a JSON configuration file, and push the result to a remote git repository.
+  In addition, create a "master" branch on the remote that contains this
+  package's dependencies under the "dependencies" directory as submodules.
+  Finally, build the documentation using the "docs/generate_docs.py" script for
+  this package and push the HTML output to a "gh-pages" branch in the remote
+  repo.
+
+  Args:
+    args: The result of parse_arguments().
+
+  Returns:
+    0 if all dependencies are found, 1 otherwise.
+  """
+  args = args if args else parse_arguments()
 
   subprocess_runner = Subprocess(args.verbose)
   if args.staging_area:
