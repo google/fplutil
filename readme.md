@@ -22,10 +22,16 @@ developing applications for Android and other platforms.
 
 Goto fplutil's [landing page][] for documentation.
 
-Discuss fplutil with other developers and users on the
-[fplutil Google Group][].  File issues on the [fplutil Issues Tracker][]
-or post your questions to [stackoverflow.com][] with a mention of
-**fplutil**.
+   * Discuss fplutil with other developers and users on the
+     [fplutil Google Group][].
+   * File issues on the [fplutil Issues Tracker][]
+     or post your questions to [stackoverflow.com][] with a mention of
+     **fplutil**.
+
+**Important**: fplutil uses submodules to reference other components it depends
+upon so to download the source use:
+
+    git clone --recursive https://github.com/google/fplutil.git
 
 For applications on Google Play that integrate these libraries, usage is
 tracked.  This tracking is done automatically using the embedded version string

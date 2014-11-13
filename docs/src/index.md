@@ -8,10 +8,18 @@ Download the latest release from the
 [fplutil github page](http://github.com/google/fplutil) or the
 [releases page](https://github.com/google/fplutil/releases).
 
-Discuss fplutil with other developers and users on the
-[fplutil Google Group][].  File issues on the [fplutil Issues Tracker][]
-or post your questions to [stackoverflow.com][] with a mention of
-**fplutil**.
+**Important**: fplutil uses submodules to reference other components it depends
+upon so to download the source use:
+
+~~~{.sh}
+    git clone --recursive https://github.com/google/fplutil.git
+~~~
+
+   * Discuss fplutil with other developers and users on the
+     [fplutil Google Group][].
+   * File issues on the [fplutil Issues Tracker][]
+     or post your questions to [stackoverflow.com][] with a mention of
+     **fplutil**.
 
 Before getting started, make sure all
 [prerequisites](@ref fplutil_prerequisites) are installed and configured.
