@@ -153,6 +153,7 @@ class Package(object):
     branch: Branch ther project is pushed to in the upstream project.
     is_library: Whether this project is a library.
     third_party: If this project is a 3rd party.
+    prebuilts: Whether the package is prebuilt.
     push: Whether to push this project to the branch in the upstream_url.
     package_json: "package" dictionary parsed from the JSON file.
     path: Local path of the package.
@@ -187,6 +188,7 @@ class Package(object):
     self.git_remote_local = ''
     self.subprocess_runner = subprocess_runner
     self.working_copy = working_copy
+    self.prebuilts = self.package_json.get('prebuilts', False)
     try:
       self.name = self.package_json['name']
       self.url = self.package_json['url']
@@ -210,9 +212,10 @@ class Package(object):
     """Resolve the path of all dependencies."""
     for dependency in self.dependencies:
       dependency.path = self.find_dependency(dependency.name,
-                                             dependency.third_party)
+                                             dependency.third_party,
+                                             dependency.prebuilts)
 
-  def find_dependency(self, package_name, third_party):
+  def find_dependency(self, package_name, third_party, prebuilts):
     """Finds a dependency relative to the directory containing this script.
 
     This script handles differences in internal vs. external git project
@@ -221,6 +224,7 @@ class Package(object):
     Args:
       package_name: Name of the package to find.
       third_party: Whether the package to find is external or third_party.
+      prebuilts: Whether the package is prebuilt (binary distro).
 
     Returns:
       Path to the dependency.
@@ -234,6 +238,10 @@ class Package(object):
     if third_party:
       search_paths.append(os.path.join(
           self.path, os.path.sep.join([os.path.pardir] * 4), 'external',
+          package_name))
+    elif prebuilts:
+      search_paths.append(os.path.join(
+          self.path, os.path.sep.join([os.path.pardir] * 4), 'prebuilts',
           package_name))
     else:
       # If the dependent package is a library, search the directory at the same
