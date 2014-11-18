@@ -147,5 +147,6 @@
       </tab>
     </tab>
     <tab type="usergroup" url="@ref fplutil_readme" title="readme"/>
+    <tab type="usergroup" url="@ref contributing" title="contributing"/>
   </navindex>
 </doxygenlayout>
