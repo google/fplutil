@@ -150,7 +150,8 @@ class Package(object):
   Attributes:
     name: Name of the package.
     url: The URL of the upstream project.
-    branch: Branch ther project is pushed to in the upstream project.
+    branch: Branch the project is pushed to in the upstream project.
+    revision: Revision to sync to in the project.
     is_library: Whether this project is a library.
     third_party: If this project is a 3rd party.
     prebuilts: Whether the package is prebuilt.
@@ -189,6 +190,7 @@ class Package(object):
     self.subprocess_runner = subprocess_runner
     self.working_copy = working_copy
     self.prebuilts = self.package_json.get('prebuilts', False)
+    self.revision = self.package_json.get('revision', '')
     try:
       self.name = self.package_json['name']
       self.url = self.package_json['url']
@@ -545,6 +547,10 @@ class Package(object):
         self.subprocess_runner.check_call(
             ['git', 'clone', '-b', dependency.branch, dependency.url,
              submodule_path], cwd=submodule_path)
+        if dependency.revision:
+          self.subprocess_runner.check_call(
+            ['git', 'reset', '--hard', dependency.revision],
+            cwd=submodule_path)
         # NOTE: The submodule path needs to be relative to the working copy.
         # Also, submodule add occasionally complains about the directory
         # being ignored by .gitignore (it's not) so force the add.
