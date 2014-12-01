@@ -33,6 +33,8 @@ upon so to download the source use:
 
     git clone --recursive https://github.com/google/fplutil.git
 
+To contribute to this project see [CONTRIBUTING][].
+
 For applications on Google Play that integrate these libraries, usage is
 tracked.  This tracking is done automatically using the embedded version string
 (kFplUtilVersionString). Aside from consuming a few extra bytes in your
@@ -50,3 +52,4 @@ the version string but we would appreciate if you would leave it in.
   [landing page]: http://google.github.io/fplutil
   [1.0.0]: http://google.github.io/fplutil/releases
   [Hello World]: http://en.wikipedia.org/wiki/%22Hello,_world!%22_program
+  [CONTRIBUTING]: http://github.com/google/fplutil/blob/master/CONTRIBUTING
