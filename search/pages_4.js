@@ -1,6 +1,4 @@
 var searchData=
 [
-  ['linux_20buildutil_20example',['Linux Buildutil Example',['../buildutil_examples_linux_code.html',1,'']]],
-  ['linking_20applications_20with_20libfplutil',['Linking Applications with libfplutil',['../libfplutil_linking.html',1,'']]],
-  ['libfplutil_20overview',['libfplutil Overview',['../libfplutil_overview.html',1,'']]]
+  ['fplutil_20version_201_2e0',['fplutil Version 1.0',['../md_readme.html',1,'']]]
 ];

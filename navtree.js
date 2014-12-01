@@ -86,7 +86,8 @@ var NAVTREE =
         ] ]
       ] ]
     ] ],
-    [ "readme", "md_readme.html#fplutil_readme", null ]
+    [ "readme", "md_readme.html#fplutil_readme", null ],
+    [ "contributing", "contributing.html", null ]
   ] ]
 ];
 
