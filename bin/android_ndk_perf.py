@@ -2200,7 +2200,7 @@ def run_perf_visualizer(browser, perf_args, adb_device, output_filename,
   perf_script_args_list = [
       'script', '-D', '-i', perf_args.get_input_filename(),
       '--symfs', (perf_args.args[symfs_index] if symfs_index >= 0 else
-                  os.dirname(perf_args.get_input_filename()))]
+                  os.path.dirname(perf_args.get_input_filename()))]
   perf_script_args = PerfArgs(perf_script_args_list, verbose)
   out, _, _ = execute_command(perf_host, perf_script_args.args,
                               'Cannot visualize perf data.  '
