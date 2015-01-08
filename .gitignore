@@ -8,13 +8,25 @@ examples/libfplutil_example/obj/
 examples/libfplutil_example/proguard-project.txt
 examples/libfplutil_example/project.properties
 examples/libfplutil_example/apks/
+libfplutil/cmake_install.cmake
+libfplutil/CMakeCache.txt
+libfplutil/CMakeFiles/
+libfplutil/CMakeScripts/
+libfplutil/Makefile
+libfplutil/tests/test_*
 libfplutil/tests/bin/
 libfplutil/tests/build.xml
+libfplutil/tests/cmake_install.cmake
+libfplutil/tests/CMakeFiles/
+libfplutil/tests/Debug/
+libfplutil/tests/googletest/
 libfplutil/tests/libs/
 libfplutil/tests/local.properties
+libfplutil/tests/Makefile
 libfplutil/tests/obj/
 libfplutil/tests/proguard-project.txt
 libfplutil/tests/project.properties
+libfplutil/tests/Release/
 apks/
 libs/
 
