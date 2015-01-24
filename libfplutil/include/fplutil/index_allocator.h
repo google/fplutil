@@ -22,7 +22,6 @@
 /// keep that array contiguous in memory. The array is managed by the caller,
 /// who provides callbacks for moving indices around.
 
-
 #include <algorithm>
 
 namespace fpl {
@@ -59,7 +58,7 @@ namespace fpl {
 /// Whenever the array size is increased (durring Alloc()) or decreased (during
 /// Defragment()), a callback CallbackInterface::SetNumIndices() is called so
 /// that the user can grow or shrink the corresponding data.
-template<class Index>
+template <class Index>
 class IndexAllocator {
  public:
   class CallbackInterface {
@@ -71,10 +70,8 @@ class IndexAllocator {
 
   /// Create an empty IndexAllocator that uses the specified callback
   /// interface.
-  explicit IndexAllocator(CallbackInterface& callbacks) :
-      callbacks_(&callbacks),
-      num_indices_(0) {
-  }
+  explicit IndexAllocator(CallbackInterface& callbacks)
+      : callbacks_(&callbacks), num_indices_(0) {}
 
   /// If a previously-freed index can be recycled, allocates that index.
   /// Otherwise, increases the number of indices by one, and returns the
@@ -125,8 +122,7 @@ class IndexAllocator {
   ///
   void Defragment() {
     // Quick check is an optimization.
-    if (unused_indices_.size() == 0)
-      return;
+    if (unused_indices_.size() == 0) return;
 
     // We check if unused index is the last index, so must be in sorted order.
     std::sort(unused_indices_.begin(), unused_indices_.end());
@@ -180,7 +176,6 @@ class IndexAllocator {
   std::vector<Index> unused_indices_;
 };
 
-} // namespace fpl
+}  // namespace fpl
 
-
-#endif // FPLUTIL_INDEX_ALLOCATOR_H
+#endif  // FPLUTIL_INDEX_ALLOCATOR_H

@@ -136,7 +136,7 @@ void SetAndroidStdioOutputFunction(AndroidLogOutputFunction func);
 int AndroidPerrorMsg(const char *msg, int err, char *msgout, size_t outsize);
 
 #if defined(__cplusplus)
-} // extern "C"
+}  // extern "C"
 #endif  // defined(__cplusplus)
 
 #endif  // defined(ANDROID) || defined(__ANDROID__)
