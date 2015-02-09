@@ -23,6 +23,7 @@
 /// who provides callbacks for moving indices around.
 
 #include <algorithm>
+#include <assert.h>
 
 namespace fpl {
 
