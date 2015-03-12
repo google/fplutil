@@ -157,6 +157,18 @@ class IndexAllocator {
     return static_cast<size_t>(num_indices_) == unused_indices_.size();
   }
 
+  /// Returns true if the index is current allocated.
+  bool ValidIndex(Index index) const {
+    if (index < 0 || index >= num_indices_)
+      return false;
+
+    for (auto it = unused_indices_.begin(); it != unused_indices_.end(); ++it) {
+      if (index == *it) return false;
+    }
+
+    return true;
+  }
+
   /// Returns the size of the array that  number of contiguous indices.
   /// This includes all the indices that have been free.
   Index num_indices() const { return num_indices_; }
