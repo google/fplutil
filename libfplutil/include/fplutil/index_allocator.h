@@ -162,7 +162,8 @@ class IndexAllocator {
     if (index < 0 || index >= num_indices_)
       return false;
 
-    for (auto it = unused_indices_.begin(); it != unused_indices_.end(); ++it) {
+    for (ConstIndexIterator it = unused_indices_.begin();
+         it != unused_indices_.end(); ++it) {
       if (index == *it) return false;
     }
 
@@ -174,6 +175,8 @@ class IndexAllocator {
   Index num_indices() const { return num_indices_; }
 
  private:
+  typedef typename std::vector<Index>::const_iterator ConstIndexIterator;
+
   // When indices are moved or the number of inidices changes, we notify the
   // caller via these callbacks.
   CallbackInterface* callbacks_;
