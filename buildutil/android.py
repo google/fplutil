@@ -806,7 +806,7 @@ class BuildEnvironment(common.BuildEnvironment):
         buildxml.project_name, path=path)
     source_apkpath = unsigned_apkpath
 
-    if self.sign_apk:
+    if self.sign_apk and not self.clean:
       if self.ant_target != 'debug':
         source_apkpath = signed_apkpath
         self._sign_apk(unsigned_apkpath, signed_apkpath)
@@ -814,7 +814,7 @@ class BuildEnvironment(common.BuildEnvironment):
         print >>sys.stderr, 'Signing not required for debug target %s.' % (
             unsigned_apkpath)
 
-    if output:
+    if output and not self.clean:
       out_abs = self.get_project_directory(path=output)
       if not os.path.exists(out_abs):
         os.makedirs(out_abs)
