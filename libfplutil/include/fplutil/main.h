@@ -70,5 +70,5 @@ void ProcessAndroidEvents(int maxWait);
 }
 #endif  // defined(__cplusplus)
 
-#endif // defined(ANDROID) || defined(__ANDROID__)
-#endif // FPLUTIL_MAIN_H
+#endif  // defined(ANDROID) || defined(__ANDROID__)
+#endif  // FPLUTIL_MAIN_H

@@ -1,5 +1,5 @@
-fplutil Version 1.0
-===================
+fplutil Version 1.0.1
+=====================
 
 # fplutil    {#fplutil_readme}
 
@@ -50,6 +50,5 @@ the version string but we would appreciate if you would leave it in.
   [fplutil Issues Tracker]: http://github.com/google/fplutil/issues
   [stackoverflow.com]: http://www.stackoverflow.com
   [landing page]: http://google.github.io/fplutil
-  [1.0.0]: http://google.github.io/fplutil/releases
   [Hello World]: http://en.wikipedia.org/wiki/%22Hello,_world!%22_program
   [CONTRIBUTING]: http://github.com/google/fplutil/blob/master/CONTRIBUTING

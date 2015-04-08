@@ -70,12 +70,12 @@ Download and install:
         * For example, if the [Android SDK][] is installed in
          `/home/androiddev/adt` the following line should be added
           to user's bash resource file `~/.bashrc`.<br/>
-          `export PATH="$PATH:/home/androiddev/android-adt/sdk/tools"`
+          `export PATH="$PATH:/home/androiddev/adt/sdk/tools"`
    * Add the [Android NDK][] directory to the [PATH variable][].
         * For example, if the [Android NDK][] is installed in
           `/home/androiddev/ndk` the following line should be added to the
           user's bash resource file `~/.bashrc`.<br/>
-          `export PATH="$PATH:/home/androiddev/android-ndk"`
+          `export PATH="$PATH:/home/androiddev/ndk"`
    * Make sure [Java 1.7][] is selected in the event multiple Java versions
      are installed on the system.  For example, on Ubunutu run
      `update-java-alternatives` to select the correct Java version.
@@ -86,13 +86,13 @@ Download and install:
      directory to the [PATH variable][].
         * For example, if the [Android SDK][] is installed in
           `/home/androiddev/adt` the following line should be added to user's
-          bash resource file `~/.bashrc`.<br/>
-          `export PATH="$PATH:/home/androiddev/android-adt/sdk/tools"`
+          bash resource file `~/.bash_profile`.<br/>
+          `export PATH="$PATH:/home/androiddev/adt/sdk/tools"`
    * Add the [Android NDK][] directory to the [PATH variable][].
         * For example, if the [Android NDK][] is installed in
           `/home/androiddev/ndk` the following line should be added to the
-          user's bash resource file `~/.bashrc`.<br/>
-         `export PATH="$PATH:/home/androiddev/android-ndk"`
+          user's bash resource file `~/.bash_profile`.<br/>
+         `export PATH="$PATH:/home/androiddev/ndk"`
    * Add the [Apache Ant][] install directory to the [PATH variable][].
        * For example, if [Apache Ant][] is installed in
          `/home/androiddev/apache-ant`, the following line should be added to
