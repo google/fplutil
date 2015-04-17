@@ -17,8 +17,8 @@ LOCAL_PATH:=$(call my-dir)/..
 include $(CLEAR_VARS)
 LOCAL_MODULE:=libfplutil_print
 LOCAL_SRC_FILES:=\
-	$(LOCAL_PATH)/src/print.c \
-	$(LOCAL_PATH)/src/print_cxx.cc
+	src/print.c \
+	src/print_cxx.cc
 LOCAL_C_INCLUDES:=$(LOCAL_PATH)/include
 LOCAL_EXPORT_C_INCLUDES:=$(LOCAL_PATH)/include
 # Cause the linker to substitute our implementations for these functions, at
@@ -41,7 +41,7 @@ include $(BUILD_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE:=libfplutil_main
-LOCAL_SRC_FILES:=$(LOCAL_PATH)/src/main.c
+LOCAL_SRC_FILES:=src/main.c
 LOCAL_C_INCLUDES:=\
 	$(LOCAL_PATH)/include \
 	$(NDK_ROOT)/sources/android/native_app_glue
