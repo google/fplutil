@@ -26,7 +26,7 @@ static const char kDirectorySeparator = '/';
 #endif
 static const char kDirectorySeparators[] = "\\/";
 
-std::string DirectoryName(const std::string& s) {
+std::string FormatAsDirectoryName(const std::string& s) {
   const bool needs_slash = s.length() > 0 &&
                            s.find_first_of(kDirectorySeparators,
                                            s.length() - 1) == std::string::npos;
@@ -45,6 +45,28 @@ std::string RemoveDirectoryFromName(const std::string& s) {
 
 std::string BaseFileName(const std::string& s) {
   return RemoveExtensionFromName(RemoveDirectoryFromName(s));
+}
+
+std::string DirectoryName(const std::string& s) {
+  const size_t slash = s.find_last_of(kDirectorySeparators);
+  return slash == std::string::npos ? std::string(".") : s.substr(0, slash + 1);
+}
+
+std::string FileExtension(const std::string& s) {
+  const size_t dot = s.find_last_of('.');
+  return dot == std::string::npos ? std::string("") : s.substr(dot + 1);
+}
+
+bool AbsoluteFileName(const std::string& s) {
+  const bool starts_with_slash =
+      s.length() > 0 &&
+      s.find_first_of(kDirectorySeparators, 0, 1) != std::string::npos;
+  return starts_with_slash;
+}
+
+bool FileExists(const std::string& file_name) {
+  struct stat buffer;
+  return stat(file_name.c_str(), &buffer) == 0;
 }
 
 bool CreateDirectory(const std::string& dir) {

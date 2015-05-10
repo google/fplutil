@@ -20,7 +20,7 @@
 namespace fpl {
 
 /// Ensure that `s` has a directory slash on the end of it.
-std::string DirectoryName(const std::string& s);
+std::string FormatAsDirectoryName(const std::string& s);
 
 /// Remove the last `.` from `s`, and any text after it.
 std::string RemoveExtensionFromName(const std::string& s);
@@ -30,6 +30,18 @@ std::string RemoveDirectoryFromName(const std::string& s);
 
 /// Remove both the extention and directory from name.
 std::string BaseFileName(const std::string& s);
+
+/// Remove the file from the string and return the directory.
+std::string DirectoryName(const std::string& s);
+
+/// Return just the extension of the file. That is, everything after the '.'.
+std::string FileExtension(const std::string& s);
+
+/// Return true if the specified file starts with a slash.
+bool AbsoluteFileName(const std::string& s);
+
+/// Return true if the specified file exists. Can be absolute or relative path.
+bool FileExists(const std::string& file_name);
 
 /// Create the sequence of directories specified by `dir`.
 /// @param dir Directory to create. Can be and absolute path, or a path
