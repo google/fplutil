@@ -150,13 +150,13 @@ void Callbacks_SetNumIndices_Test() {
   Callbacks<Index> callbacks;
   IndexAllocator<Index> alloc(callbacks);
 
-  EXPECT_EQ(callbacks.num_indices(), 0);
+  EXPECT_EQ(callbacks.num_indices(), static_cast<Index>(0));
   const Index index1 = alloc.Alloc();
-  EXPECT_EQ(callbacks.num_indices(), 1);
+  EXPECT_EQ(callbacks.num_indices(), static_cast<Index>(1));
   alloc.Free(index1);
-  EXPECT_EQ(callbacks.num_indices(), 1);
+  EXPECT_EQ(callbacks.num_indices(), static_cast<Index>(1));
   alloc.Defragment();
-  EXPECT_EQ(callbacks.num_indices(), 0);
+  EXPECT_EQ(callbacks.num_indices(), static_cast<Index>(0));
 }
 TEST_ALL_SIZES_F(Callbacks_SetNumIndices)
 
@@ -170,8 +170,8 @@ void Callbacks_Defragment_Test() {
   alloc.Alloc();
   alloc.Free(index0);
   alloc.Defragment();
-  EXPECT_EQ(callbacks.old_index(), 1);
-  EXPECT_EQ(callbacks.new_index(), 0);
+  EXPECT_EQ(callbacks.old_index(), static_cast<Index>(1));
+  EXPECT_EQ(callbacks.new_index(), static_cast<Index>(0));
 }
 TEST_ALL_SIZES_F(Callbacks_Defragment)
 
@@ -188,7 +188,7 @@ void Callbacks_DefragmentAtEnd_Test() {
   alloc.Defragment();
   EXPECT_EQ(callbacks.old_index(), Callbacks<Index>::InvalidIndex());
   EXPECT_EQ(callbacks.new_index(), Callbacks<Index>::InvalidIndex());
-  EXPECT_EQ(callbacks.num_indices(), 2);
+  EXPECT_EQ(callbacks.num_indices(), static_cast<Index>(2));
 }
 TEST_ALL_SIZES_F(Callbacks_DefragmentAtEnd)
 
@@ -213,7 +213,7 @@ void Callbacks_DefragmentStartMiddleEnd_Test() {
   alloc.Free(index_start);
 
   alloc.Defragment();
-  EXPECT_EQ(callbacks.num_indices(), 2);
+  EXPECT_EQ(callbacks.num_indices(), static_cast<Index>(2));
 }
 TEST_ALL_SIZES_F(Callbacks_DefragmentStartMiddleEnd)
 
