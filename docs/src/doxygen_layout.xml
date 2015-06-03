@@ -86,8 +86,11 @@
          title="build_all_android.py">
       <tab type="user" url="@ref build_all_android_build"
            title="Building Applications" />
-      <tab type="user" url="@ref build_all_android_sign"
-           title="Signing Applications" />
+      <tab type="usergroup" url="@ref build_all_android_sign"
+           title="Signing Applications" >
+        <tab type="user" url="@ref build_all_android_sign_key"
+              title="Signing with Keys" />
+      </tab>
       <tab type="user" url="@ref build_all_android_install"
            title="Installing Applications" />
       <tab type="user" url="@ref build_all_android_run"

@@ -56,7 +56,47 @@ directory.  Signed APK names do not end in `-unsigned.apk`.
     apks/tests.apk
 ~~~
 
-TODO: Describe signing with a real key
+## Signing with Keys    {#build_all_android_sign_key}
+
+The method described above generates a temporary key, which is used to sign
+the application.  Using a temporary key is ok when debugging but should not be
+used when distributing your application to consumers as the application's
+certificate is used to validate it's origin and allow the application to be
+safely upgraded in future.
+
+Firstly, a key needs to be generated using [keytool][] which will be used
+to sign the application in future.  The following generates a certificate
+referenced by the name `my_alias` in the keystore file
+`my-release-key.keystore` using the `RSA` algorithm with a lifetime of around
+27.5 years (`10000` days).
+
+~~~{.sh}
+    $ keytool -genkey -v -keystore my-release-key.keystore \
+              -alias my_alias -keyalg RSA -keysize 2048 -validity 10000
+~~~
+
+[keytool][] will prompt for additional information required to generate the
+key and a password which is used to access the keystore file in future.
+
+After saving the password supplied to [keytool][] in a file
+(e.g `mysecretpassword_file.txt`), applications can be built and signed with
+[build_all_android][]:
+
+~~~{.sh}
+    cd fplutil/examples/libfplutil_example
+    ../../bin/build_all_android -S -k my-release-key.keystore \
+                                -K my_alias
+                                -P mysecretpassword_file.txt
+~~~
+
+The "Signing Your App Manually" section on [Signing Your Applications][]
+describes in detail how to generate a private key using [keytool][] and sign
+an application directly using jarsigner.
+
+It is also possible to sign using a private / public key pair (pk8 / pem)
+using the `--apk_keypk8` and `--apk_keypem` arguments of [build_all_android][].
+For information on how to generate pk8 / pem files see
+[How to Sign APK Zip Files][].
 
 # Installing Applications    {#build_all_android_install}
 
@@ -145,3 +185,6 @@ sign them, install and run them on all attached devices:
   [build_all_android]: @ref build_all_android
   [buildutil]: @ref buildutil_overview
   [fplutil]: index.html
+  [Signing Your Applications]: http://developer.android.com/tools/publishing/app-signing.html
+  [keytool]: http://docs.oracle.com/javase/6/docs/technotes/tools/solaris/keytool.html
+  [How to Sign APK Zip Files]: http://www.londatiga.net/it/how-to-sign-apk-zip-files/
