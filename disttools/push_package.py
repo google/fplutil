@@ -728,6 +728,29 @@ class Package(object):
     for dependency in self.dependencies:
       dependency.delete_temporary_git_objects()
 
+  def create_symlinks(self, symlink_dir, verbose):
+    """Create symlinks to this package and it's dependencies.
+
+    Args:
+      symlink_dir: Directory where symlinks will be stored.
+      verbose: Whether to display verbose output.
+
+    Raises:
+      OSError: If this method fails to create symlinks or directories.
+    """
+    for package_file in os.listdir(self.path):
+      link = os.path.join(symlink_dir, package_file)
+      if verbose: print 'Creating ' + link
+      os.symlink(os.path.join(self.path, package_file), link)
+    dependencies_dir = os.path.join(symlink_dir, 'dependencies')
+    if verbose: print 'Creating ' + dependencies_dir
+    os.mkdir(dependencies_dir)
+    for dependency in self.dependencies:
+      link = os.path.join(dependencies_dir, dependency.name)
+      if verbose: print 'Creating ' + link
+      os.symlink(dependency.path, link)
+
+
 
 def read_config(config_filename):
   """Read the configuration of the specified package.
@@ -789,6 +812,10 @@ def parse_arguments(project_dir=None, config_json=None):
   parser.add_argument('-c', '--config-json',
                       default=config_json if config_json else CONFIG_JSON,
                       help='JSON file that describes the package contents.')
+  parser.add_argument('-S', '--create-symlinks',
+                      help=('Create a tree of dependency symlinks in the '
+                            'specified directory for testing.  NOTE: This '
+                            'disables all git publishing operations.'))
   return parser.parse_args()
 
 
@@ -817,7 +844,9 @@ def main(args=None):
   else:
     working_copy = tempfile.mkdtemp()
 
-  if args.verbose or args.leave_working_copy:
+  if args.create_symlinks:
+    print 'symlink target directory: %s' % args.create_symlinks
+  elif args.verbose or args.leave_working_copy:
     print 'git staging area in: %s' % working_copy
   try:
     subprocess_runner.check_call(['git', 'init'], cwd=working_copy)
@@ -833,6 +862,10 @@ def main(args=None):
     print str(package)
     for dep in package.dependencies:
       print str(dep)
+
+    if args.create_symlinks:
+      package.create_symlinks(args.create_symlinks, args.verbose)
+      return 0
 
     try:
       print '===== Adding Remotes ===='
