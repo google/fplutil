@@ -174,7 +174,6 @@ class AndroidManifest(XMLFile):
     root = etree.getroot()
 
     self.package_name = root.get('package')
-
     sdk_element = root.find('uses-sdk')
 
     if sdk_element is None:
@@ -193,7 +192,7 @@ class AndroidManifest(XMLFile):
     if activity_element is not None:
       self.activity_name = AndroidManifest.__get_schema_attribute_value(
           activity_element, 'name')
-
+ 
     if not min_sdk_version:
       raise common.ConfigurationError(self.path, 'minSdkVersion missing')
     if not target_sdk_version:
@@ -1100,17 +1099,27 @@ class BuildEnvironment(common.BuildEnvironment):
     return (devices, out)
 
   def check_adb_devices(self, adb_device=None):
-    """Verifies that only one device is connected.
+    """Gets the only attached device, or the attached device matching a serial.
+
+    When using adb to connect to a device, adb's behavior changes depending on
+    how many devices are connected. If there is only one device connected, then
+    no device needs to be specified (as the only device will be used). If more
+    than one device is connected and no device is specified, adb will error out
+    as it does not know which device to connect to.
+
+    This method ensures that for either case enough valid information is
+    specified, and returns an instance of AdbDevice representing the valid
+    device.
 
     Args:
-      adb_device: If specified, check whether this device is connected.
+      adb_device: The serial to match a device on.
 
     Returns:
-      The device matching adb_device or the first device reported by ADB
-      if only one device is connected.
+      The only AdbDevice connected to adb, or AdbDevice matching the serial.
 
     Raises:
-      AdbError: Incorrect number of connected devices.
+      AdbError: More than one attached device and no serial specified, or
+                device with matching serial specified cannot be found.
     """
     devices, out = self.get_adb_devices()
     number_of_devices = len(devices)
@@ -1125,16 +1134,15 @@ class BuildEnvironment(common.BuildEnvironment):
             'The devices connected are: %s' % (adb_device, os.linesep + out))
     elif number_of_devices > 1:
       raise common.AdbError(
-          'Multiple Android devices are connected to this host. '
-          'Please specify a device using --adb_devices <serial>. '
-          'The devices connected are: %s' % (os.linesep + out))
+          'Multiple Android devices are connected to this host and none were '
+          'specified. The devices connected are: %s' % (os.linesep + out))
     return devices[0]
 
   def get_adb_device_argument(self, adb_device=None):
     """Construct the argument for ADB to select the specified device.
 
     Args:
-      adb_device: Serial number of the device to use with ADB.
+      adb_device: Serial of the device to use with ADB.
 
     Returns:
       A string which contains the second argument passed to ADB to select a
@@ -1146,7 +1154,7 @@ class BuildEnvironment(common.BuildEnvironment):
     """Get the list of packages installed on an Android device.
 
     Args:
-      adb_device: The device to query.
+      adb_device: The serial of the device to query.
 
     Returns:
       List of package strings.
@@ -1184,8 +1192,8 @@ class BuildEnvironment(common.BuildEnvironment):
 
     Args:
       path: Relative path from project directory to project to run.
-      adb_device: The device to run the apk on. If none it will use the only
-        device connected.
+      adb_device: The serial of the device to run the apk on. If None it will
+        the only device connected will be used.
       force_install: Whether to install the package if it's older than the
         package on the target device.
 
@@ -1252,8 +1260,8 @@ class BuildEnvironment(common.BuildEnvironment):
 
     Args:
       path: Path to search the search in, defaults to '.'
-      adb_device: The device to install the APK to. If none it will use the
-        only device connected.
+      adb_device: The serial of the device to install the APK to. If None the
+        only device connected will be used.
       exclude_dirs: List of directory names to exclude from project
         detection (see find_projects() for more information).
 
@@ -1283,8 +1291,8 @@ class BuildEnvironment(common.BuildEnvironment):
 
     Args:
       path: Relative path from project directory to project to run.
-      adb_device: The device to run the apk on. If none it will use the only
-        device connected.
+      adb_device: The device to run the apk on. If None the only device
+        connected will be used.
       wait: Optional argument to tell the function to wait until the process
         completes and dump the output.
 

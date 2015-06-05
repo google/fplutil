@@ -91,7 +91,7 @@ class FileSetMockFactory(object):
       contents indexed by the key None will be returned.
   """
 
-  file_open = __builtins__.open
+  file_open = __builtin__.open
 
   def __init__(self, test_case, filename_contents):
     """Initialize the mock file factory.
@@ -112,7 +112,7 @@ class FileSetMockFactory(object):
     Args:
       filename: Name of the file used to lookup the contents string in
         "filename_contents" which initializes the returned FileMock.
-      argv: Additional arguments for file open, ignored by the mock
+      *argv: Additional arguments for file open, ignored by the mock
         implementation.
 
     Returns:
@@ -508,8 +508,8 @@ class AndroidBuildUtilTest(unittest.TestCase):
 
   def test_parse_adb_devices_list(self):
     device = android.AdbDevice(
-      '06d8bd43               device usb:2-3.3 product:razor model:Nexus_7 '
-      'device:flo')
+        '06d8bd43               device usb:2-3.3 product:razor model:Nexus_7 '
+        'device:flo')
     self.assertEquals(device.serial, '06d8bd43')
     self.assertEquals(device.type, 'device')
     self.assertEquals(device.usb, '2-3.3')
@@ -528,11 +528,14 @@ class AndroidBuildUtilTest(unittest.TestCase):
     self.assertEquals('device:flo model:Nexus_7 product:razor serial:06d8bd43 '
                       'type:device usb:2-3.3', str(device))
 
-  def test_adb_device_to_string(self):
+  def test_adb_device_from_device_line_to_string(self):
+    device = android.AdbDevice(
+        '06d8bd43 device usb:2-3.3 product:razor model:Nexus_7 device:flo')
+    self.assertEquals('device:flo model:Nexus_7 product:razor serial:06d8bd43 '
+                      'type:device usb:2-3.3',
+                      str(device))
     build_environment = android.BuildEnvironment(
         android.BuildEnvironment.build_defaults())
-    device = android.AdbDevice(
-      '06d8bd43 device usb:2-3.3 product:razor model:Nexus_7 device:flo')
     self.assertEquals('06d8bd43',
                       build_environment.get_adb_device_name(device))
 
@@ -540,7 +543,6 @@ class AndroidBuildUtilTest(unittest.TestCase):
     self.assertEquals('device:flo model:Nexus_7 product:razor serial:06d8bd43 '
                       'type:device usb:2-3.3',
                       build_environment.get_adb_device_name(device))
-
 
   def test_build_libraries(self):
     d = android.BuildEnvironment.build_defaults()
@@ -569,7 +571,6 @@ class AndroidBuildUtilTest(unittest.TestCase):
     b.ndk_home = '/dev/null'
     with self.assertRaises(common.ToolPathError):
       b.build_android_libraries([l], output=l)
-      b._parse(f)
 
   def test_clean_libraries(self):
     d = android.BuildEnvironment.build_defaults()
@@ -601,7 +602,6 @@ class AndroidBuildUtilTest(unittest.TestCase):
     b.ndk_home = '/dev/null'
     with self.assertRaises(common.ToolPathError):
       b.build_android_libraries([l], output=l)
-      b._parse(f)
 
   def test_find_android_sdk(self):
     d = android.BuildEnvironment.build_defaults()
@@ -682,11 +682,11 @@ class AndroidBuildUtilTest(unittest.TestCase):
 
   def _create_update_build_xml_setup(self):
     build_environment = android.BuildEnvironment(
-      android.BuildEnvironment.build_defaults())
+        android.BuildEnvironment.build_defaults())
     build_environment.sdk_home = ''
 
     build_environment._find_best_android_sdk = (
-      lambda unused_android, unused_min_sdk, unused_target_sdk: 10)
+        lambda unused_android, unused_min_sdk, unused_target_sdk: 10)
 
     project_directory = build_environment.get_project_directory()
     buildxml_filename = os.path.join(project_directory, 'build.xml')
@@ -877,7 +877,7 @@ class AndroidBuildUtilTest(unittest.TestCase):
             build_environment._find_binary(android.BuildEnvironment.ADB)),
         stdout='List of devices attached\n\n', shell=True)
     with self.assertRaises(common.AdbError):
-        build_environment.check_adb_devices()
+      build_environment.check_adb_devices()
 
   def test_check_adb_devices_one_device(self):
     build_environment = android.BuildEnvironment(
