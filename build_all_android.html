@@ -129,7 +129,20 @@ Signing Applications</h1>
 <div class="line">apks/example.apk</div>
 <div class="line">apks/tests-release-<span class="keywordtype">unsigned</span>.apk</div>
 <div class="line">apks/tests.apk</div>
-</div><!-- fragment --><p>TODO: Describe signing with a real key</p>
+</div><!-- fragment --><h2><a class="anchor" id="build_all_android_sign_key"></a>
+Signing with Keys</h2>
+<p>The method described above generates a temporary key, which is used to sign the application. Using a temporary key is ok when debugging but should not be used when distributing your application to consumers as the application's certificate is used to validate it's origin and allow the application to be safely upgraded in future.</p>
+<p>Firstly, a key needs to be generated using <a href="http://docs.oracle.com/javase/6/docs/technotes/tools/solaris/keytool.html">keytool</a> which will be used to sign the application in future. The following generates a certificate referenced by the name <code>my_alias</code> in the keystore file <code>my-release-key.keystore</code> using the <code>RSA</code> algorithm with a lifetime of around 27.5 years (<code>10000</code> days).</p>
+<div class="fragment"><div class="line">$ keytool -genkey -v -keystore my-release-key.keystore \</div>
+<div class="line">          -alias my_alias -keyalg RSA -keysize 2048 -validity 10000</div>
+</div><!-- fragment --><p><a href="http://docs.oracle.com/javase/6/docs/technotes/tools/solaris/keytool.html">keytool</a> will prompt for additional information required to generate the key and a password which is used to access the keystore file in future.</p>
+<p>After saving the password supplied to <a href="http://docs.oracle.com/javase/6/docs/technotes/tools/solaris/keytool.html">keytool</a> in a file (e.g <code>mysecretpassword_file.txt</code>), applications can be built and signed with <a class="el" href="build_all_android.html">build_all_android</a>:</p>
+<div class="fragment"><div class="line">cd fplutil/examples/libfplutil_example</div>
+<div class="line">../../bin/build_all_android -S -k my-release-key.keystore \</div>
+<div class="line">                            -K my_alias</div>
+<div class="line">                            -P mysecretpassword_file.txt</div>
+</div><!-- fragment --><p>The "Signing Your App Manually" section on <a href="http://developer.android.com/tools/publishing/app-signing.html">Signing Your Applications</a> describes in detail how to generate a private key using <a href="http://docs.oracle.com/javase/6/docs/technotes/tools/solaris/keytool.html">keytool</a> and sign an application directly using jarsigner.</p>
+<p>It is also possible to sign using a private / public key pair (pk8 / pem) using the <code>--apk_keypk8</code> and <code>--apk_keypem</code> arguments of <a class="el" href="build_all_android.html">build_all_android</a>. For information on how to generate pk8 / pem files see <a href="http://www.londatiga.net/it/how-to-sign-apk-zip-files/">How to Sign APK Zip Files</a>.</p>
 <h1><a class="anchor" id="build_all_android_install"></a>
 Installing Applications</h1>
 <p>Using the <code>-i</code> or <code>--apk_install</code> flag, <a class="el" href="build_all_android.html">build_all_android</a> can install applications to one or more devices attached to a workstation.</p>

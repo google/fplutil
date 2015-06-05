@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['subcommanderror',['SubCommandError',['../classbuildutil_1_1common_1_1_sub_command_error.html',1,'buildutil::common']]]
+  ['missingactivityerror',['MissingActivityError',['../classbuildutil_1_1android_1_1_android_manifest_1_1_missing_activity_error.html',1,'buildutil::android::AndroidManifest']]]
 ];

@@ -51,7 +51,9 @@ var NAVTREE =
     ] ],
     [ "build_all_android.py", "build_all_android.html", [
       [ "Building Applications", "build_all_android.html#build_all_android_build", null ],
-      [ "Signing Applications", "build_all_android.html#build_all_android_sign", null ],
+      [ "Signing Applications", "build_all_android.html#build_all_android_sign", [
+        [ "Signing with Keys", "build_all_android.html#build_all_android_sign_key", null ]
+      ] ],
       [ "Installing Applications", "build_all_android.html#build_all_android_install", null ],
       [ "Running Applications", "build_all_android.html#build_all_android_run", null ],
       [ "Build Configuration", "build_all_android.html#build_all_android_build_config", null ],

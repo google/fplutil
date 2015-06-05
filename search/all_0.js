@@ -6,6 +6,7 @@ var searchData=
   ['adbdevice',['AdbDevice',['../classbuildutil_1_1android_1_1_adb_device.html',1,'buildutil::android']]],
   ['adberror',['AdbError',['../classbuildutil_1_1common_1_1_adb_error.html',1,'buildutil::common']]],
   ['add_5farguments',['add_arguments',['../classbuildutil_1_1android_1_1_build_environment.html#adb78369126608bb47a3abc329cf25b24',1,'buildutil.android.BuildEnvironment.add_arguments()'],['../classbuildutil_1_1common_1_1_build_environment.html#a45e3b3d3ed3d48ecbe047254b682047b',1,'buildutil.common.BuildEnvironment.add_arguments()'],['../classbuildutil_1_1linux_1_1_build_environment.html#abb6f072aabd96a14e85cf4b63299d150',1,'buildutil.linux.BuildEnvironment.add_arguments()']]],
+  ['alloc',['Alloc',['../classfpl_1_1_index_allocator.html#a1e07ecbcf2ea1d4d31e1e140c3648d97',1,'fpl::IndexAllocator']]],
   ['always_5fmake',['always_make',['../classbuildutil_1_1android_1_1_build_environment.html#a86eefe93b16b0d13c7ec30415132c36d',1,'buildutil::android::BuildEnvironment']]],
   ['android_2epy',['android.py',['../android_8py.html',1,'']]],
   ['android_5fndk_5fperf',['android_ndk_perf',['../android_ndk_perf.html',1,'']]],
