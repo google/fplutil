@@ -13,28 +13,35 @@
 # limitations under the License.
 cmake_minimum_required(VERSION 2.8.12)
 
-project(fplutil_alloc)
+project(fplutil)
 
-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+option(fplutil_build_tests "Build tests for this project." ON)
+option(fplutil_build_library "Build library with file utils, etc.." ON)
 
-# Temporary files (like object files) created while compiling projects.
-set(tmp_dir ${CMAKE_BINARY_DIR}/obj)
+# Output library files into `obj`.
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/obj)
 
 # Directory which contains the source for 3rd party libraries.
-get_filename_component(
-    third_party_root "${CMAKE_SOURCE_DIR}/../../../../../external" REALPATH)
+if(NOT DEFINED third_party_root)
+  get_filename_component(
+    third_party_root "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../external"
+    REALPATH)
+endif()
+
 # Directory which contains source for FPL libraries.
-get_filename_component(
-    fpl_root "${CMAKE_SOURCE_DIR}/../.." REALPATH)
+if(NOT DEFINED fpl_root)
+  get_filename_component(
+      fpl_root "${CMAKE_CURRENT_SOURCE_DIR}/../../../libs" REALPATH)
+endif()
 
 # If the dependencies directory exists, assume this is the root directory for
 # all libraries required by this project.
-set(dependencies_root "${CMAKE_SOURCE_DIR}/dependencies")
-if(EXISTS "${dependencies_root}")
-  set(third_party_root "${dependencies_root}")
-  set(fpl_root "${dependencies_root}")
+if(NOT DEFINED dependencies_root)
+  set(dependencies_root "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
+  if(EXISTS "${dependencies_root}")
+    set(third_party_root "${dependencies_root}")
+    set(fpl_root "${dependencies_root}")
+  endif()
 endif()
 
 # Configurable locations of dependencies of this project.
@@ -44,6 +51,10 @@ set(dependencies_gtest_dir "${fpl_root}/googletest"
 # Includes for this project.
 include_directories(src)
 include_directories(include)
+
+# Source files for the fplutil library.
+set(fplutil_SRCS
+    src/file_utils.cpp)
 
 # Detect clang
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -64,6 +75,14 @@ endif()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_FLAGS_WARNINGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${C_FLAGS_WARNINGS}")
 
+# Library.
+if(fplutil_build_library)
+  add_library(fplutil ${fplutil_SRCS})
+endif()
+
 # Tests.
-add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
+if(fplutil_build_tests)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/tests)
+endif()
+
 

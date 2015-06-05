@@ -16,4 +16,5 @@ APP_PLATFORM:=android-9
 APP_ABI:=armeabi-v7a
 # Library uses STLPort so verify gnustl compatibility here.
 APP_STL:=gnustl_static
+APP_CPPFLAGS+=-std=c++11 -Wno-literal-suffix
 APP_MODULES:=fplutiltests

@@ -1007,7 +1007,7 @@ class BuildEnvironment(common.BuildEnvironment):
     if type(exclude_dirs) is list:
       exclude += exclude_dirs
 
-    for root, dirs, files in os.walk(project):
+    for root, dirs, files in os.walk(project, followlinks=True):
       for ex in exclude:
         if ex in dirs:
           dirs.remove(ex)

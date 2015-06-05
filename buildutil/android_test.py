@@ -221,7 +221,7 @@ class OsWalkMock(object):
   def set_root(self, root):
     self.root = root
 
-  def walk(self, path):
+  def walk(self, path, **unused_kwargs):
     self.test.assertEqual(self.project, path)
     # Perform a BFS traversal as a generator to mimic how topdown os.walk works.
     nodes = [self.root]
