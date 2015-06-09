@@ -13,7 +13,6 @@ libfplutil/CMakeCache.txt
 libfplutil/CMakeFiles/
 libfplutil/CMakeScripts/
 libfplutil/Makefile
-libfplutil/tests/test_*
 libfplutil/tests/bin/
 libfplutil/tests/build.xml
 libfplutil/tests/cmake_install.cmake

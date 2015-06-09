@@ -62,6 +62,7 @@ set(COMMON_LIBS "gtest;${SDL_LIBRARIES};${CMAKE_THREAD_LIBS_INIT}")
 # test_CallbackTests.cc along with any files specified by the SUPPORT_SRCS
 # variable.
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
 function(test_executable name)
   cxx_executable_with_flags(test_${name} "${cxx_default}" "${COMMON_LIBS}"
       ${CMAKE_CURRENT_SOURCE_DIR}/test_${name}.cc ${SUPPORT_SRCS}
@@ -69,4 +70,5 @@ function(test_executable name)
 endfunction()
 
 test_executable(index_allocator)
+test_executable(intrusive_list)
 
