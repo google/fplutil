@@ -372,9 +372,15 @@ class AdbDevice(object):
     self.product = ''
     self.device = ''
     self.model = ''
+    # 'adb device -l' returns a line per device according to this format:
+    # SERIAL TYPE [KEY:VALUE ...]
     if adb_device_line:
       tokens = adb_device_line.split()
-      if len(tokens) > 2:
+      if len(tokens) < 2:
+        print >>sys.stderr, ('Warning: AdbDevice initialized with '
+                             'adb_device_line "{}", expected "SERIAL TYPE '
+                             '[KEY:VALUE ...]"'.format(adb_device_line))
+      else:
         self.serial = tokens[0]
         self.type = tokens[1]
         for token in tokens[2:]:
@@ -1377,52 +1383,48 @@ class BuildEnvironment(common.BuildEnvironment):
 
     return (retval, errmsg)
 
-  def _kill_package(self, adb_path, adb_device_arg, package_name):
-    """Kills an Android process with a matching package name.
-
-    If there is no Android process with matching package name, nothing happens.
+  def stop_process(self, package_name, adb_device=None):
+    """Attempts to stop a process running under the given package name.
 
     Args:
-      adb_path: location of the adb program.
-      adb_device_arg: formatted arg to adb to target a specific device.
-      package_name: The package to stop.
+      package_name: Name of the package to stop.
+      adb_device: Serial of the device to stop the app on. If none specified,
+        the only device connected will be used.
     """
-    out, _ = self.run_subprocess(('%s %s shell ps' % (adb_path,
-                                                      adb_device_arg)),
-                                 capture=True,
-                                 shell=True)
-    processes = out.split('\n')
-    for process in processes:
-      if process.endswith(package_name):
-        pid = process.split()[1]
-        self.run_subprocess(('%s %s shell am kill %s' % (adb_path,
-                                                         adb_device_arg,
-                                                         pid)),
-                            shell=True)
-        return
+    adb_path = self._find_binary(BuildEnvironment.ADB)
+    device = self.check_adb_devices(adb_device=adb_device)
+    adb_device_arg = self.get_adb_device_argument(adb_device=device.serial)
+    self.run_subprocess(('%s %s shell am force-stop %s' %
+                         (adb_path, adb_device_arg, package_name)),
+                        shell=True)
 
   def run_android_apk(self, path='.', adb_device=None, wait=True,
-                      end_match=None, echo_log=True):
+                      end_match=None, echo_log=True, apk_missing_allowed=True):
     """Run an android apk on the given device.
 
     Args:
       path: Relative path from project directory to project to run.
-      adb_device: The device to run the apk on. If None the only device
-        connected will be used.
+      adb_device: The serial of the device to run the apk on. If None the only
+        device connected will be used.
       wait: Optional argument to tell the function to wait until the process
         completes and dump the output.
       end_match: Optional compiled regex applied to logs. When a match is
         found, the process is considered finished (sets wait to False).
       echo_log: If set, prints the output from logcat.
+      apk_missing_allowed: If set to False, raise an AdbError if the activity
+        couldn't be started.
 
     Returns:
       String containing adb logcat output for the run.
       None if there is a manifest configuration problem.
+
+    Raises:
+      AdbError: If the activity wasn't started.
     """
     try:
       manifest = self.parse_manifest(path=path)
     except AndroidManifest.MissingActivityError as e:
-      print >>sys.stderr, str(e)
+      print >> sys.stderr, str(e)
       return
     main_activity_name = manifest.main_activity_name
     if '.' not in manifest.main_activity_name:
@@ -1435,18 +1437,25 @@ class BuildEnvironment(common.BuildEnvironment):
     print 'Launching %s on %s' % (full_name, self.get_adb_device_name(device))
 
     # Stop the app before reading logs.
-    self._kill_package(adb_path, adb_device_arg, manifest.package_name)
-
-    self.run_subprocess('%s %s logcat -c' % (adb_path, adb_device_arg),
+    self.run_subprocess(('%s %s shell am force-stop %s' %
+                         (adb_path, adb_device_arg, manifest.package_name)),
                         shell=True)
 
-    self.run_subprocess(
-        ('%s %s shell am start -n %s' % (adb_path, adb_device_arg,
-                                         full_name)), shell=True)
+    # Clear logcat.
+    self.run_subprocess(('%s %s logcat -c' % (adb_path, adb_device_arg)),
+                        shell=True)
+
+    out, _ = self.run_subprocess(('%s %s shell am start -n %s' %
+                                  (adb_path, adb_device_arg, full_name)),
+                                 shell=True,
+                                 capture=True)
+
+    if 'Error: Activity class {' + manifest.package_name in out:
+      raise common.AdbError(out)
 
     end_match = end_match or re.compile(
         (r'.*(Displayed|Activity destroy timeout|'
-         r'Force finishing activity).*%s.*' % full_name))
+         r'Force finishing activity).*%s.*' % manifest.package_name))
 
     # Build list of arguments for logcat.
     logcat_args = [adb_path]
@@ -1457,20 +1466,20 @@ class BuildEnvironment(common.BuildEnvironment):
 
     # We only need to capture stdout so use subprocess directly rather than
     # run_subprocess() to simplify the process of reading the stdout pipe.
-    process = subprocess.Popen(args=logcat_args, bufsize=-1,
+    process = subprocess.Popen(args=logcat_args,
+                               bufsize=-1,
                                stdout=subprocess.PIPE)
     stdout = process.stdout
     logdata = []
     try:
       while wait or self.adb_logcat_monitor:
         line = stdout.readline()
+        logdata.append(line)
         stripped_line = line.rstrip()
         if echo_log:
           print stripped_line
         if end_match.match(stripped_line):
           wait = False
-        else:
-          logdata.append(line)
     except KeyboardInterrupt:
       pass
 

@@ -1144,16 +1144,15 @@ class AndroidBuildUtilTest(unittest.TestCase):
     expected_logoutput = (
         'Random log output\n'
         'Some other log output\n'
-        'Another application log output.\n')
-    logoutput = expected_logoutput + (
+        'Another application log output.\n'
         'Displayed com.google.fpl.libfplutil_test/'
         'android.app.NativeActivity\n'
-        'Line noise\n')
+        )
+    logoutput = expected_logoutput + 'Line noise\n'
 
     # Configure the set of expected commands executed by run_android_apk.
     os.path.exists = lambda unused_filename: True
     build_environment.sdk_home = 'sdk_home'
-    pid = 33
     package = 'com.google.fpl.libfplutil_test'
     activity = 'android.app.NativeActivity'
     adb_path = build_environment._find_binary(android.BuildEnvironment.ADB)
@@ -1164,18 +1163,15 @@ class AndroidBuildUtilTest(unittest.TestCase):
                     '123456\tdevice\tusb:2-3.4\tproduct:razor\tmodel:Nexus_7\t'
                     'device:flo\n')),
          common_test.RunCommandMock(
-             self, args=('%s -s 123456 shell ps' % adb_path),
-             stdout=('root 790 1 4864 844 ffffffff 80213c59 S nftld\n'
-                     'root 792 1 4824 804 ffffffff 80213c59 S ata/0\n'
-                     'app_1 %s 1 1 1 fffff 11111 S %s\n'
-                     % (pid, package))),
+             self, args=('%s -s 123456 shell am force-stop %s' %
+                         (adb_path, package))),
          common_test.RunCommandMock(
-             self, args=('%s -s 123456 shell am kill %s' % (adb_path, pid))),
+             self, args=('%s -s 123456 logcat -c' %
+                         (adb_path))),
          common_test.RunCommandMock(
-             self, args='%s -s 123456 logcat -c' % adb_path),
-         common_test.RunCommandMock(
-             self, args=('%s -s 123456 shell am start -n '
-                         '%s/%s' % (adb_path, package, activity)))])
+             self, args=('%s -s 123456 shell am start -n %s/%s' %
+                         (adb_path, package, activity)),
+             stdout=(''))])
     build_environment.run_subprocess = run_command_mock
 
     subprocess.Popen = SubprocessMockStdOut(
@@ -1183,6 +1179,15 @@ class AndroidBuildUtilTest(unittest.TestCase):
         stdout=logoutput)
     self.assertEquals(expected_logoutput,
                       build_environment.run_android_apk(adb_device='123456'))
+
+  def test_adb_device_with_poorly_formatted_device_line(self):
+    adb_device = android.AdbDevice('serial')
+    self.assertEquals(adb_device.serial, '')
+
+  def test_adb_device_with_short_device_line(self):
+    adb_device = android.AdbDevice('serial type')
+    self.assertEquals(adb_device.serial, 'serial')
+    self.assertEquals(adb_device.type, 'type')
 
   def test_run_android_apk_custom_endpoint(self):
     os.path.exists = lambda unused_filename: True
@@ -1212,15 +1217,14 @@ class AndroidBuildUtilTest(unittest.TestCase):
     expected_logoutput = (
         'Random log output\n'
         'Some other log output\n'
-        'Another application log output.\n')
+        'Another application log output.\n' + end_str + '\n')
 
-    logoutput = expected_logoutput + end_str
+    logoutput = expected_logoutput + '\nLine noise\n'
 
     # Configure the set of expected commands executed by run_android_apk.
     os.path.exists = lambda unused_filename: True
     build_environment.sdk_home = 'sdk_home'
     adb_path = build_environment._find_binary(android.BuildEnvironment.ADB)
-    pid = 33
     package = 'com.google.fpl.libfplutil_test'
     activity = 'android.app.NativeActivity'
     run_command_mock = common_test.RunCommandMockList(
@@ -1230,19 +1234,15 @@ class AndroidBuildUtilTest(unittest.TestCase):
                     '123456\tdevice\tusb:2-3.4\tproduct:razor\tmodel:Nexus_7\t'
                     'device:flo\n')),
          common_test.RunCommandMock(
-             self, args=('%s -s 123456 shell ps' % adb_path),
-             stdout=('root 790 1 4864 844 ffffffff 80213c59 S nftld\n'
-                     'root 792 1 4824 804 ffffffff 80213c59 S ata/0\n'
-                     'app_1 %s 1 1 1 fffff 11111 S %s'
-                     % (pid, package))
-             ),
+             self, args=('%s -s 123456 shell am force-stop %s' %
+                         (adb_path, package))),
          common_test.RunCommandMock(
-             self, args=('%s -s 123456 shell am kill %s' % (adb_path, pid))),
+             self, args=('%s -s 123456 logcat -c' %
+                         (adb_path))),
          common_test.RunCommandMock(
-             self, args='%s -s 123456 logcat -c' % adb_path),
-         common_test.RunCommandMock(
-             self, args=('%s -s 123456 shell am start -n '
-                         '%s/%s' % (adb_path, package, activity)))])
+             self, args=('%s -s 123456 shell am start -n %s/%s' %
+                         (adb_path, package, activity)),
+             stdout=(''))])
     build_environment.run_subprocess = run_command_mock
     subprocess.Popen = SubprocessMockStdOut(
         self, args=[adb_path, '-s', '123456', 'logcat'],
