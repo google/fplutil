@@ -39,6 +39,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import uuid
 import xml.etree.ElementTree
 sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
 import buildutil.common as common
@@ -1396,6 +1397,57 @@ class BuildEnvironment(common.BuildEnvironment):
     adb_device_arg = self.get_adb_device_argument(adb_device=device.serial)
     self.run_subprocess(('%s %s shell am force-stop %s' %
                          (adb_path, adb_device_arg, package_name)),
+                        shell=True)
+
+  def get_device_dpi(self, adb_device=None):
+    """Returns the dpi of a device connected to adb.
+
+    Args:
+      adb_device: Serial of the device to get the dpi from. If none specified,
+        the only device connected will be used.
+
+    Returns:
+      int of the device's pixel density.
+    """
+    adb_path = self._find_binary(BuildEnvironment.ADB)
+    device = self.check_adb_devices(adb_device=adb_device)
+    adb_device_arg = self.get_adb_device_argument(adb_device=device.serial)
+    density, _ = self.run_subprocess(('%s %s shell getprop ro.sf.lcd_density' %
+                                      (adb_path, adb_device_arg)
+                                     ),
+                                     shell=True,
+                                     capture=True)
+    return int(density)
+
+
+  def take_screencap(self, destination, adb_device=None):
+    """Takes a screencap on the device and saves it to destination.
+
+    Saves the screencap to a random filename on the device's sdcard,
+    transfers the screencap to destination path, then deletes the screencap
+    on the device.
+
+    Args:
+      destination: The file path where the screencap will be saved.
+      adb_device: Serial of the device to take the screencap with. If none
+        specified, the only device connected will be used.
+    """
+    adb_path = self._find_binary(BuildEnvironment.ADB)
+    device = self.check_adb_devices(adb_device=adb_device)
+    adb_device_arg = self.get_adb_device_argument(adb_device=device.serial)
+    temp_filename = uuid.uuid4()
+
+    self.run_subprocess(('%s %s shell screencap -p /sdcard/%s' %
+                         (adb_path, adb_device_arg, temp_filename)),
+                        shell=True)
+
+    self.run_subprocess(('%s %s pull /sdcard/%s %s' %
+                         (adb_path, adb_device_arg, temp_filename, destination)
+                        ),
+                        shell=True)
+
+    self.run_subprocess(('%s %s shell rm /sdcard/%s' %
+                         (adb_path, adb_device_arg, temp_filename)),
                         shell=True)
 
   def run_android_apk(self, path='.', adb_device=None, wait=True,

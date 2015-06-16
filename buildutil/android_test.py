@@ -23,6 +23,7 @@ import StringIO
 import subprocess
 import sys
 import unittest
+import uuid
 sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
 import buildutil.android as android
 import buildutil.common as common
@@ -265,6 +266,7 @@ class AndroidBuildUtilTest(unittest.TestCase):
     common._find_executable = lambda name, path=None: (
         os.path.join(path, name) if path else os.path.join(
             'a', 'b', name))
+    self.uuid4 = uuid.uuid4
 
   def tearDown(self):
     # Undo mocks.
@@ -274,6 +276,7 @@ class AndroidBuildUtilTest(unittest.TestCase):
     common._find_executable = self.find_executable
     __builtin__.open = self.file_open
     subprocess.Popen = self.subprocess_popen
+    uuid.uuid4 = self.uuid4
 
   def test_build_defaults(self):
     d = android.BuildEnvironment.build_defaults()
@@ -1250,6 +1253,50 @@ class AndroidBuildUtilTest(unittest.TestCase):
     self.assertEquals(expected_logoutput,
                       build_environment.run_android_apk(adb_device='123456',
                                                         end_match=end_cond))
+  def test_take_screencap(self):
+    uuid.uuid4 = lambda: 'test_uuid.png'
+    build_environment = android.BuildEnvironment(
+        android.BuildEnvironment.build_defaults())
+    adb_path = build_environment._find_binary(android.BuildEnvironment.ADB)
+    test_dest = '/fake/directory/structure.png'
+    run_command_mock = common_test.RunCommandMockList(
+        [common_test.RunCommandMock(
+            self, args='%s devices -l' % adb_path,
+            stdout=('List of devices attached\n'
+                    '123456\tdevice\tusb:2-3.4\tproduct:razor\tmodel:Nexus_7\t'
+                    'device:flo\n')),
+         common_test.RunCommandMock(
+             self, args=('%s -s 123456 shell screencap -p /sdcard/%s' %
+                         (adb_path, uuid.uuid4()))),
+         common_test.RunCommandMock(
+             self, args=('%s -s 123456 pull /sdcard/%s %s' %
+                         (adb_path, uuid.uuid4(), test_dest))),
+         common_test.RunCommandMock(
+             self, args=('%s -s 123456 shell rm /sdcard/%s' %
+                         (adb_path, uuid.uuid4()))),
+         ])
+    build_environment.run_subprocess = run_command_mock
+    build_environment.take_screencap(test_dest, adb_device='123456')
+
+  def test_get_device_dpi(self):
+    build_environment = android.BuildEnvironment(
+        android.BuildEnvironment.build_defaults())
+    adb_path = build_environment._find_binary(android.BuildEnvironment.ADB)
+    run_command_mock = common_test.RunCommandMockList(
+        [common_test.RunCommandMock(
+            self, args='%s devices -l' % adb_path,
+            stdout=('List of devices attached\n'
+                    '123456\tdevice\tusb:2-3.4\tproduct:razor\tmodel:Nexus_7\t'
+                    'device:flo\n')),
+         common_test.RunCommandMock(
+             self, args=('%s -s 123456 shell getprop ro.sf.lcd_density' %
+                         adb_path),
+             stdout='240'),
+         ])
+    build_environment.run_subprocess = run_command_mock
+    dpi = build_environment.get_device_dpi(adb_device='123456')
+    self.assertEqual(dpi, 240)
+
 
 if __name__ == '__main__':
   unittest.main()
