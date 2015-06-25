@@ -20,10 +20,15 @@
 class IntegerListNode {
  public:
   IntegerListNode(int value) : node(), value_(value) {}
-  // Older versions of Visual Studio don't generate move constructors.
+  // Older versions of Visual Studio don't generate move constructors or move
+  // assignment operators.
   IntegerListNode(IntegerListNode&& other) {
+    *this = std::move(other);
+  }
+  IntegerListNode& operator=(IntegerListNode&& other) {
     value_ = other.value_;
     node = std::move(other.node);
+    return *this;
   }
 
   int value() const { return value_; }
