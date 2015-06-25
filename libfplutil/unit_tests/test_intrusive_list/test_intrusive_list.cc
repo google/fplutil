@@ -17,6 +17,11 @@
 #include "gtest/gtest.h"
 #include "fplutil/intrusive_list.h"
 
+// EXPECT_DEATH tests don't work on Android.
+#ifdef __ANDROID__
+#define NO_DEATH_TESTS
+#endif  // __ANDROID__
+
 class IntegerListNode {
  public:
   IntegerListNode(int value) : node(), value_(value) {}
@@ -126,6 +131,7 @@ TEST_F(intrusive_list_test, push_back) {
   EXPECT_EQ(5, list_.back().value());
 }
 
+#ifndef NO_DEATH_TESTS
 TEST_F(intrusive_list_test, push_back_failure) {
   list_.push_back(one_);
   list_.push_back(two_);
@@ -134,6 +140,7 @@ TEST_F(intrusive_list_test, push_back_failure) {
   list_.push_back(five_);
   EXPECT_DEATH(list_.push_back(five_), ".");
 }
+#endif  // NO_DEATH_TESTS
 
 TEST_F(intrusive_list_test, pop_back) {
   list_.push_back(one_);
@@ -176,6 +183,7 @@ TEST_F(intrusive_list_test, push_front) {
   EXPECT_EQ(1, list_.back().value());
 }
 
+#ifndef NO_DEATH_TESTS
 TEST_F(intrusive_list_test, push_front_failure) {
   list_.push_front(five_);
   list_.push_front(four_);
@@ -184,6 +192,7 @@ TEST_F(intrusive_list_test, push_front_failure) {
   list_.push_front(one_);
   EXPECT_DEATH(list_.push_front(one_), ".");
 }
+#endif  // NO_DEATH_TESTS
 
 TEST_F(intrusive_list_test, destructor) {
   list_.push_back(one_);

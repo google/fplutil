@@ -612,9 +612,8 @@ void Defrag_BigAssortment_Test(Index count) {
 }
 TEST_ALL_SIZES_F(Defrag_BigAssortment)
 
-#if !defined(__ANDROID__)
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
-#endif // !defined(__ANDROID__)
+
