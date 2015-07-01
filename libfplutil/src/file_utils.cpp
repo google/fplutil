@@ -49,7 +49,7 @@ std::string BaseFileName(const std::string& s) {
 
 std::string DirectoryName(const std::string& s) {
   const size_t slash = s.find_last_of(kDirectorySeparators);
-  return slash == std::string::npos ? std::string(".") : s.substr(0, slash + 1);
+  return slash == std::string::npos ? std::string("") : s.substr(0, slash + 1);
 }
 
 std::string FileExtension(const std::string& s) {
