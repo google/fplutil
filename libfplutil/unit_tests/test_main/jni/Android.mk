@@ -14,7 +14,7 @@
 
 LOCAL_PATH:=$(call my-dir)/..
 
-PROJECT_ROOT:=$(LOCAL_PATH)/../..
+PROJECT_ROOT:=$(LOCAL_PATH)/../../..
 DEPENDENCIES_ROOT:=$(wildcard $(PROJECT_ROOT)/dependencies)
 
 # Directory which contains the googletest library directory such that
@@ -27,7 +27,7 @@ endif
 
 # --- project ---
 include $(CLEAR_VARS)
-LOCAL_MODULE:=fplutiltests
+LOCAL_MODULE:=test_main
 LOCAL_SRC_FILES:=$(wildcard $(LOCAL_PATH)/test_*.cc)
 LOCAL_WHOLE_STATIC_LIBRARIES:=android_native_app_glue libfplutil_main \
 	libfplutil_print libgtest
