@@ -120,7 +120,6 @@ a.SelectItem:hover {
   background-image: none;
   text-shadow: none;
   background-color: #f7f7f7;
-  padding-left: 10px;
 }
 
 #nav-tree a {
@@ -128,7 +127,15 @@ a.SelectItem:hover {
 }
 
 #nav-tree .selected a {
-  color: #03a9f4;
+  color: #0288d1;
+}
+
+#nav-tree .item:hover {
+  background-color: #f7f7f7;
+}
+
+#nav-tree .item:hover a {
+  color: #0288d1;
 }
 
 #nav-tree .label {
@@ -159,7 +166,7 @@ a:visited,
 .contents a:link, 
 .contents a:visited,
 a.el {
-  color: #03a9f4;
+  color: #0288d1;
   font-weight: normal;
   text-decoration: none;
 }
@@ -192,6 +199,7 @@ div.contents {
 .directory tr#row_0_ td {
   background: #7cb342;
   color: #fff;
+  font-size: 18px;
 }
 
 .memSeparator {
@@ -359,7 +367,7 @@ code, pre {
 }
 
 span.preprocessor, span.comment {
-  color: #d81b60;
+  color: #0b8043;
 }
 
 span.keywordtype {

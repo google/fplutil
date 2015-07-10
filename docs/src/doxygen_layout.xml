@@ -116,35 +116,37 @@
            title="API Reference">
         <tab type="usergroup" url="@ref buildutil/common.py"
              title="common.py">
-          <tab type="user" url="@ref buildutil.common.Error"
+          <tab type="user" url="@ref fplutil.buildutil.common.Error"
                title="buildutil.common.Error" />
-          <tab type="user" url="@ref buildutil.common.ToolPathError"
+          <tab type="user" url="@ref fplutil.buildutil.common.ToolPathError"
                title="buildutil.common.ToolPathError" />
-          <tab type="user" url="@ref buildutil.common.SubCommandError"
+          <tab type="user" url="@ref fplutil.buildutil.common.SubCommandError"
                title="buildutil.common.SubCommandError" />
-          <tab type="user" url="@ref buildutil.common.ConfigurationError"
+          <tab type="user"
+               url="@ref fplutil.buildutil.common.ConfigurationError"
                title="buildutil.common.ConfigurationError" />
-          <tab type="user" url="@ref buildutil.common.AdbError"
+          <tab type="user" url="@ref fplutil.buildutil.common.AdbError"
                title="buildutil.common.AdbError" />
-          <tab type="user" url="@ref buildutil.common.BuildEnvironment"
+          <tab type="user" url="@ref fplutil.buildutil.common.BuildEnvironment"
                title="buildutil.common.BuildEnvironment" />
         </tab>
         <tab type="usergroup" url="@ref buildutil/android.py"
              title="android.py">
-          <tab type="user" url="@ref buildutil.android.XMLFile"
+          <tab type="user" url="@ref fplutil.buildutil.android.XMLFile"
                title="buildutil.android.XMLFile" />
-          <tab type="user" url="@ref buildutil.android.AndroidManifest"
+          <tab type="user" url="@ref fplutil.buildutil.android.AndroidManifest"
                title="buildutil.android.AndroidManifest" />
-          <tab type="user" url="@ref buildutil.android.BuildXml"
+          <tab type="user" url="@ref fplutil.buildutil.android.BuildXml"
                title="buildutil.android.BuildXml" />
-          <tab type="user" url="@ref buildutil.android.AdbDevice"
+          <tab type="user" url="@ref fplutil.buildutil.android.AdbDevice"
                title="buildutil.android.AdbDevice" />
-          <tab type="user" url="@ref buildutil.android.BuildEnvironment"
+          <tab type="user"
+               url="@ref fplutil.buildutil.android.BuildEnvironment"
                title="buildutil.android.BuildEnvironment" />
         </tab>
         <tab type="usergroup" url="@ref buildutil/linux.py"
              title="linux.py">
-          <tab type="user" url="@ref buildutil.linux.BuildEnvironment"
+          <tab type="user" url="@ref fplutil.buildutil.linux.BuildEnvironment"
                title="buildutil.linux.BuildEnvironment" />
         </tab>
       </tab>

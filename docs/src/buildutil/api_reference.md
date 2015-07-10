@@ -27,13 +27,13 @@ configure the instance.
 After constructing a [BuildEnvironment][] instance, it's possible to build
 projects for the selected build environment using methods like the following:
 
-   * [run_make](@ref buildutil.common.BuildEnvironment.run_make)
-   * [run_cmake](@ref buildutil.linux.BuildEnvironment.run_cmake)
-   * [build_all](@ref buildutil.android.BuildEnvironment.build_all)
+   * [run_make](@ref fplutil.buildutil.common.BuildEnvironment.run_make)
+   * [run_cmake](@ref fplutil.buildutil.linux.BuildEnvironment.run_cmake)
+   * [build_all](@ref fplutil.buildutil.android.BuildEnvironment.build_all)
 
   [ArgumentParser]: @ref argparse.ArgumentParser
-  [BuildEnvironment]: @ref buildutil.common.BuildEnvironment
-  [add_arguments]: @ref buildutil.common.BuildEnvironment.add_arguments
+  [BuildEnvironment]: @ref fplutil.buildutil.common.BuildEnvironment
+  [add_arguments]: @ref fplutil.buildutil.common.BuildEnvironment.add_arguments
   [android.py]: @ref buildutil/android.py
   [common.py]: @ref buildutil/common.py
   [linux.py]: @ref buildutil/linux.py
