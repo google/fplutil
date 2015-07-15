@@ -1,10 +1,11 @@
+<!-- HTML header for doxygen 1.8.6-->
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.6"/>
-<title>fplutil: fpl::IndexAllocator&lt; Index, Count &gt;::CallbackInterface Class Reference</title>
+<title>fplutil: fpl::IndexAllocator&lt; Index &gt;::CallbackInterface Class Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -21,6 +22,8 @@
   $(document).ready(function() { searchBox.OnSelectItem(0); });
 </script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,400,400italic,500,500italic,700,700italic|Roboto+Mono:400,700" rel="stylesheet">
+<link href="style.css" rel="stylesheet" type="text/css"/>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -103,18 +106,18 @@ $(document).ready(function(){initNavTree('classfpl_1_1_index_allocator_1_1_callb
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="classfpl_1_1_index_allocator_1_1_callback_interface-members.html">List of all members</a>  </div>
   <div class="headertitle">
-<div class="title">fpl::IndexAllocator&lt; Index, Count &gt;::CallbackInterface Class Reference<span class="mlabels"><span class="mlabel">abstract</span></span></div>  </div>
+<div class="title">fpl::IndexAllocator&lt; Index &gt;::CallbackInterface Class Reference<span class="mlabels"><span class="mlabel">abstract</span></span></div>  </div>
 </div><!--header-->
 <div class="contents">
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:adb748ee71cd87c53e0fdba214d2b9ad3"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="adb748ee71cd87c53e0fdba214d2b9ad3"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>SetNumIndices</b> (Index <a class="el" href="classfpl_1_1_index_allocator.html#aada7c95c55ca94835eeaea66a87103f3">num_indices</a>)=0</td></tr>
-<tr class="separator:adb748ee71cd87c53e0fdba214d2b9ad3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae502aec8c82e2f8f92c53888db8bd6c5"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ae502aec8c82e2f8f92c53888db8bd6c5"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>MoveIndex</b> (Index old_index, Index new_index)=0</td></tr>
-<tr class="separator:ae502aec8c82e2f8f92c53888db8bd6c5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adfee7dbc5847848774ed37597b7471a6"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="adfee7dbc5847848774ed37597b7471a6"></a>
+virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>SetNumIndices</b> (Index <a class="el" href="classfpl_1_1_index_allocator.html#a9f052d6f65e1458f01bf7f8125deac72">num_indices</a>)=0</td></tr>
+<tr class="separator:adfee7dbc5847848774ed37597b7471a6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a84cb0a6f862f4f442dcf9a417526783a"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a84cb0a6f862f4f442dcf9a417526783a"></a>
+virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>MoveIndexRange</b> (const <a class="el" href="classfpl_1_1_index_allocator_1_1_index_range.html">IndexRange</a> &amp;source, Index target)=0</td></tr>
+<tr class="separator:a84cb0a6f862f4f442dcf9a417526783a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <hr/>The documentation for this class was generated from the following file:<ul>
 <li><a class="el" href="index__allocator_8h_source.html">index_allocator.h</a></li>

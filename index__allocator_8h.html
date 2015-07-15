@@ -1,3 +1,4 @@
+<!-- HTML header for doxygen 1.8.6-->
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -21,6 +22,8 @@
   $(document).ready(function() { searchBox.OnSelectItem(0); });
 </script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,400,400italic,500,500italic,700,700italic|Roboto+Mono:400,700" rel="stylesheet">
+<link href="style.css" rel="stylesheet" type="text/css"/>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -100,7 +103,8 @@ $(document).ready(function(){initNavTree('index__allocator_8h.html','');});
 
 <div class="header">
   <div class="summary">
-<a href="#nested-classes">Classes</a>  </div>
+<a href="#nested-classes">Classes</a> &#124;
+<a href="#define-members">Macros</a>  </div>
   <div class="headertitle">
 <div class="title">index_allocator.h File Reference</div>  </div>
 </div><!--header-->
@@ -114,11 +118,19 @@ $(document).ready(function(){initNavTree('index__allocator_8h.html','');});
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfpl_1_1_index_allocator.html">fpl::IndexAllocator&lt; Index, Count &gt;</a></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfpl_1_1_index_allocator.html">fpl::IndexAllocator&lt; Index &gt;</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Allocate, free, and defragment array indices.  <a href="classfpl_1_1_index_allocator.html#details">More...</a><br/></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfpl_1_1_index_allocator_1_1_callback_interface.html">fpl::IndexAllocator&lt; Index, Count &gt;::CallbackInterface</a></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfpl_1_1_index_allocator_1_1_index_range.html">fpl::IndexAllocator&lt; Index &gt;::IndexRange</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfpl_1_1_index_allocator_1_1_callback_interface.html">fpl::IndexAllocator&lt; Index &gt;::CallbackInterface</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="define-members"></a>
+Macros</h2></td></tr>
+<tr class="memitem:a547007b8785ba5b2b4191e46bc13a997"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a547007b8785ba5b2b4191e46bc13a997"></a>
+#define&#160;</td><td class="memItemRight" valign="bottom"><b>FPL_INDEX_ALLOCATOR_VERIFY_INTERNAL_STATE</b>&#160;&#160;&#160;1</td></tr>
+<tr class="separator:a547007b8785ba5b2b4191e46bc13a997"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Header (and all code) for IndexAllocator.</p>

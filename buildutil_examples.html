@@ -1,3 +1,4 @@
+<!-- HTML header for doxygen 1.8.6-->
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -21,6 +22,8 @@
   $(document).ready(function() { searchBox.OnSelectItem(0); });
 </script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,400,400italic,500,500italic,700,700italic|Roboto+Mono:400,700" rel="stylesheet">
+<link href="style.css" rel="stylesheet" type="text/css"/>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -107,12 +110,12 @@ $(document).ready(function(){initNavTree('buildutil_examples.html','');});
 Android</h1>
 <p>The <a class="el" href="android_8py.html">android</a> module contains functions that make it easy to build, deploy and run Android applications.</p>
 <p>For reference the complete source is in <a class="el" href="buildutil_examples_android_code.html">examples/buildutil/android.py</a>.</p>
-<p>The following code parses arguments to the script and creates an <a class="el" href="classbuildutil_1_1android_1_1_build_environment.html">android.BuildEnvironment</a> instance which is used to perform Android specific build operations...</p>
+<p>The following code parses arguments to the script and creates an android.BuildEnvironment instance which is used to perform Android specific build operations...</p>
 <div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;parser = argparse.ArgumentParser()</div>
-<div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;<a class="code" href="classbuildutil_1_1android_1_1_build_environment.html#adb78369126608bb47a3abc329cf25b24">buildutil.android.BuildEnvironment.add_arguments</a>(parser)</div>
+<div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;buildutil.android.BuildEnvironment.add_arguments(parser)</div>
 <div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;args = parser.parse_args()</div>
 <div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;</div>
-<div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;env = <a class="code" href="classbuildutil_1_1android_1_1_build_environment.html">buildutil.android.BuildEnvironment</a>(args)</div>
+<div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;env = buildutil.android.BuildEnvironment(args)</div>
 </div><!-- fragment --><p>The following code then copies the NDK <code>native-plasma</code> sample to the example directory...</p>
 <div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;samplename = <span class="stringliteral">&#39;native-plasma&#39;</span></div>
 <div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;samplepath = os.path.join(env.ndk_home, <span class="stringliteral">&#39;samples&#39;</span>, samplename)</div>
@@ -126,12 +129,12 @@ Android</h1>
 Linux</h1>
 <p>The <a class="el" href="linux_8py.html">linux</a> module contains functions that make it easy to build applications that use <a href="http://www.cmake.org">cmake</a> in conjunction with the <a href="http://www.gnu.org/software/make">make</a> generator for Unix-like operating systems (e.g <a href="http://en.m.wikipedia.org/wiki/Linux">Linux</a> and <a href="http://www.apple.com/osx">OSX</a>).</p>
 <p>For reference the complete source is in <a class="el" href="buildutil_examples_linux_code.html">examples/buildutil/linux.py</a>.</p>
-<p>The following code, parses arguments to the script and creates an <a class="el" href="classbuildutil_1_1linux_1_1_build_environment.html">linux.BuildEnvironment</a> instance which is used to perform Linux specific build operations...</p>
+<p>The following code, parses arguments to the script and creates an linux.BuildEnvironment instance which is used to perform Linux specific build operations...</p>
 <div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;parser = argparse.ArgumentParser()</div>
-<div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;<a class="code" href="classbuildutil_1_1linux_1_1_build_environment.html#abb6f072aabd96a14e85cf4b63299d150">buildutil.linux.BuildEnvironment.add_arguments</a>(parser)</div>
+<div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;buildutil.linux.BuildEnvironment.add_arguments(parser)</div>
 <div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;args = parser.parse_args()</div>
 <div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;</div>
-<div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;env = <a class="code" href="classbuildutil_1_1linux_1_1_build_environment.html">buildutil.linux.BuildEnvironment</a>(args)</div>
+<div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;env = buildutil.linux.BuildEnvironment(args)</div>
 </div><!-- fragment --><p>The example application prints the preprocessor <code>MESSAGE</code> to the standard output stream. So this is passed as a flag to <a href="http://www.cmake.org">CMake</a>...</p>
 <div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;env.cmake_flags = <span class="stringliteral">&#39;-DMESSAGE=&quot;Hello, World!&quot;&#39;</span></div>
 </div><!-- fragment --><p>The application is built by running <a href="http://www.cmake.org">CMake</a> followed by <a href="http://www.gnu.org/software/make">make</a>...</p>

@@ -69,22 +69,22 @@ var NAVTREE =
       ] ],
       [ "API Reference", "buildutil_api_reference.html", [
         [ "common.py", "common_8py.html", [
-          [ "buildutil.common.Error", "classbuildutil_1_1common_1_1_error.html", null ],
-          [ "buildutil.common.ToolPathError", "classbuildutil_1_1common_1_1_tool_path_error.html", null ],
-          [ "buildutil.common.SubCommandError", "classbuildutil_1_1common_1_1_sub_command_error.html", null ],
-          [ "buildutil.common.ConfigurationError", "classbuildutil_1_1common_1_1_configuration_error.html", null ],
-          [ "buildutil.common.AdbError", "classbuildutil_1_1common_1_1_adb_error.html", null ],
-          [ "buildutil.common.BuildEnvironment", "classbuildutil_1_1common_1_1_build_environment.html", null ]
+          [ "buildutil.common.Error", "@ref fplutil.buildutil.common.Error", null ],
+          [ "buildutil.common.ToolPathError", "@ref fplutil.buildutil.common.ToolPathError", null ],
+          [ "buildutil.common.SubCommandError", "@ref fplutil.buildutil.common.SubCommandError", null ],
+          [ "buildutil.common.ConfigurationError", "@ref fplutil.buildutil.common.ConfigurationError", null ],
+          [ "buildutil.common.AdbError", "@ref fplutil.buildutil.common.AdbError", null ],
+          [ "buildutil.common.BuildEnvironment", "@ref fplutil.buildutil.common.BuildEnvironment", null ]
         ] ],
         [ "android.py", "android_8py.html", [
-          [ "buildutil.android.XMLFile", "classbuildutil_1_1android_1_1_x_m_l_file.html", null ],
-          [ "buildutil.android.AndroidManifest", "classbuildutil_1_1android_1_1_android_manifest.html", null ],
-          [ "buildutil.android.BuildXml", "classbuildutil_1_1android_1_1_build_xml.html", null ],
-          [ "buildutil.android.AdbDevice", "classbuildutil_1_1android_1_1_adb_device.html", null ],
-          [ "buildutil.android.BuildEnvironment", "classbuildutil_1_1android_1_1_build_environment.html", null ]
+          [ "buildutil.android.XMLFile", "@ref fplutil.buildutil.android.XMLFile", null ],
+          [ "buildutil.android.AndroidManifest", "@ref fplutil.buildutil.android.AndroidManifest", null ],
+          [ "buildutil.android.BuildXml", "@ref fplutil.buildutil.android.BuildXml", null ],
+          [ "buildutil.android.AdbDevice", "@ref fplutil.buildutil.android.AdbDevice", null ],
+          [ "buildutil.android.BuildEnvironment", "@ref fplutil.buildutil.android.BuildEnvironment", null ]
         ] ],
         [ "linux.py", "linux_8py.html", [
-          [ "buildutil.linux.BuildEnvironment", "classbuildutil_1_1linux_1_1_build_environment.html", null ]
+          [ "buildutil.linux.BuildEnvironment", "@ref fplutil.buildutil.linux.BuildEnvironment", null ]
         ] ]
       ] ]
     ] ],
@@ -95,7 +95,7 @@ var NAVTREE =
 
 var NAVTREEINDEX =
 [
-"android_8py.html"
+"@ref fplutil.buildutil.android.AdbDevice"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

@@ -1,3 +1,4 @@
+<!-- HTML header for doxygen 1.8.6-->
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -21,6 +22,8 @@
   $(document).ready(function() { searchBox.OnSelectItem(0); });
 </script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,400,400italic,500,500italic,700,700italic|Roboto+Mono:400,700" rel="stylesheet">
+<link href="style.css" rel="stylesheet" type="text/css"/>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -112,13 +115,13 @@ $(document).ready(function(){initNavTree('buildutil_api_reference.html','');});
 <p>The <a class="el" href="common_8py.html">common.py</a> module implements functionality shared across multiple build environments.</p>
 <p><a class="el" href="android_8py.html">android.py</a> implements functions to build <a href="http://www.android.com">Android</a> projects, sign APKs, deploy APKs to <a href="http://www.android.com">Android</a> devices and launch the built applications.</p>
 <p><a class="el" href="linux_8py.html">linux.py</a> implements functions to build applications using <a href="http://www.cmake.org">CMake</a> and <a href="http://www.gnu.org/software/make">make</a> on Unix-like operating systems (e.g <a href="http://en.m.wikipedia.org/wiki/Linux">Linux</a> and <a href="http;//www.apple.com/osx">OSX</a>).</p>
-<p>Each module implements a <a class="el" href="classbuildutil_1_1common_1_1_build_environment.html">BuildEnvironment</a> class which contains functions to build for a specific build environment.</p>
-<p>Each <a class="el" href="classbuildutil_1_1common_1_1_build_environment.html">BuildEnvironment</a> class implements an <a class="el" href="classbuildutil_1_1common_1_1_build_environment.html#a45e3b3d3ed3d48ecbe047254b682047b">add_arguments</a> which adds a set of arguments to an ArgumentParser instance. The arguments parsed by ArgumentParser can be passed to a <a class="el" href="classbuildutil_1_1common_1_1_build_environment.html">BuildEnvironment</a> on construction to configure the instance.</p>
-<p>After constructing a <a class="el" href="classbuildutil_1_1common_1_1_build_environment.html">BuildEnvironment</a> instance, it's possible to build projects for the selected build environment using methods like the following:</p>
+<p>Each module implements a BuildEnvironment class which contains functions to build for a specific build environment.</p>
+<p>Each BuildEnvironment class implements an add_arguments which adds a set of arguments to an ArgumentParser instance. The arguments parsed by ArgumentParser can be passed to a BuildEnvironment on construction to configure the instance.</p>
+<p>After constructing a BuildEnvironment instance, it's possible to build projects for the selected build environment using methods like the following:</p>
 <ul>
-<li><a class="el" href="classbuildutil_1_1common_1_1_build_environment.html#a2163cc1d36385c7739eb4f4dde02b2de">run_make</a></li>
-<li><a class="el" href="classbuildutil_1_1linux_1_1_build_environment.html#aeb68c3f83e7ee821e93bc6565abc907f">run_cmake</a></li>
-<li><a class="el" href="classbuildutil_1_1android_1_1_build_environment.html#a9459284d554a2a07e7c1dd3528c98df8">build_all</a> </li>
+<li>run_make</li>
+<li>run_cmake</li>
+<li>build_all </li>
 </ul>
 </div></div><!-- contents -->
 </div><!-- doc-content -->
