@@ -27,6 +27,11 @@
 #include <cstring>
 #include <type_traits>
 
+// Define this to 0 in the build file to disable sanity checks.
+#ifndef FPL_INDEX_ALLOCATOR_VERIFY_INTERNAL_STATE
+#define FPL_INDEX_ALLOCATOR_VERIFY_INTERNAL_STATE 1
+#endif
+
 namespace fpl {
 
 /// @class IndexAllocator "fplutil/index_allocator.h"
@@ -61,21 +66,40 @@ namespace fpl {
 /// Whenever the array size is increased (durring Alloc()) or decreased (during
 /// Defragment()), a callback CallbackInterface::SetNumIndices() is called so
 /// that the user can grow or shrink the corresponding data.
-template <class Index, class Count>
+template <class Index>
 class IndexAllocator {
  public:
+  /// The number of indices to allocate. Same base type as Index, since the
+  /// `counts_` array can be as long as the largest index.
+  typedef Index Count;
+
+  class IndexRange {
+   public:
+    IndexRange() : start_(1), end_(0) {}
+    IndexRange(Index start, Index end) : start_(start), end_(end) {}
+    bool Valid() const { return start_ <= end_; }
+    Index Length() const { return end_ - start_; }
+    Index start() const { return start_; }
+    Index end() const { return end_; }
+
+   private:
+    Index start_;
+    Index end_;
+  };
+
   class CallbackInterface {
    public:
     virtual ~CallbackInterface() {}
     virtual void SetNumIndices(Index num_indices) = 0;
-    virtual void MoveIndex(Index old_index, Index new_index) = 0;
+    virtual void MoveIndexRange(const IndexRange& source, Index target) = 0;
   };
 
   /// Create an empty IndexAllocator that uses the specified callback
   /// interface.
   explicit IndexAllocator(CallbackInterface& callbacks)
       : callbacks_(&callbacks) {
-    static_assert(std::is_signed<Count>::value, "Count must be a signed type");
+    static_assert(std::is_signed<Count>::value,
+                  "Count (and therefore Index) must be a signed type");
   }
 
   /// If a previously-freed index can be recycled, allocates that index.
@@ -114,6 +138,7 @@ class IndexAllocator {
     if (least_excess_it != unused_indices_.end()) {
       // Return the first `count` indices.
       const Index excess_index = *least_excess_it;
+      InitializeIndex(excess_index, count);
 
       // Put the remainder in the `unused_indices_` pool.
       const Index remainder_index = excess_index + count;
@@ -139,69 +164,79 @@ class IndexAllocator {
     unused_indices_.push_back(index);
   }
 
-  /// Backfill all unused indices with the largest indices by calling
-  /// callbacks_->MoveIndex(). This reduces the total number of indices,
-  /// and keeps memory contiguous. Contiguous memory is important to mimimize
-  /// cache misses.
+  // Only one block of unused indices left, and they're at the end of the
+  // array.
+  bool UnusedAtEnd() const {
+    return unused_indices_.size() == 1 &&
+           NextIndex(unused_indices_[0]) == num_indices();
+  }
+
+  /// Backfill all unused index blocks. That is, move index blocks around
+  /// until all the unused index blocks have the *highest* indices. Then,
+  /// shrink the number of indices to remove all unused index blocks.
+  ///
+  /// Every time we move an index block, we call callbacks_->MoveIndexRange().
+  /// In MoveIndexRange(), the callee can correspondingly move its
+  /// internal data around to match the index shuffle. At the end of
+  /// Degragment(), the callee's internal data will be contiguous.
+  /// Contiguous data is essential in data-oriented design, since it
+  /// minimizes cache misses.
   ///
   /// Note that we could eliminate Defragment() function by calling MoveIndex()
   /// from Free(). The code would be simpler. We move the indices lazily,
   /// however, for performance: Defragment() is something that can happen on a
   /// background thread.
   ///
-  /// This function is fairly cheap. If there are N holes, then there will be
-  /// **at most** N calls to MoveIndex(). We assume that moving an index is
-  /// cheaper than processing data for an index. So, you should Defragment()
-  /// right before you process data, for optimal performance.
+  /// This function has worst case runtime of O(n) index moves, where n is
+  /// the total number of indices. To see why, notice that indices are only
+  /// moved forward, and are always moved into the forward-most hole.
+  ///
+  /// Note that there is some inefficiency with setting the `count_` array
+  /// excessively. The worst-case number of operations on the `count_` array
+  /// is greater than O(n). However, the assumption is that since `count_` is
+  /// just an array of integers, operations on it are insignificant compared
+  /// to the actual data movement that happens in callbacks_->MoveIndexRange().
+  /// However, there is an optimization opportunity here, most likely.
+  ///
+  /// In practice, this function will normally perform much better than O(n)
+  /// moves. We endeavour to fill holes with index blocks near the end of the
+  /// array. That is, we try to leapfrog the hole to the end of the array
+  /// when possible.
+  ///
+  /// Because of this, when all allocations are the same size, the worst case
+  /// runtime improves significantly to O(k) index moves, where k is the
+  /// total number of *unused* indices.
+  ///
+  /// If moving an index is cheaper than processing data for an index,
+  /// then you should call Defragment() right before you process data,
+  /// for optimal performance.
   ///
   /// Note that the number of indices shrinks or stays the same in this
   /// function, so the final call to SetNumIndices() will never result in a
   /// reallocation of the underlying array (which would be slow).
   ///
   void Defragment() {
-    // Quick check is an optimization.
+    // Quick check. An optimization.
     if (unused_indices_.size() == 0) return;
 
-    // We check if unused index is the last index, so must be in sorted order.
-    std::sort(unused_indices_.begin(), unused_indices_.end());
+    for (;;) {
+      // We check if unused index is the last index, so must be in sorted order.
+      ConsolidateUnusedIndices();
 
-    // Plug every unused index.
-    Index new_num_indices = num_indices();
-    while (unused_indices_.size() > 0) {
+      // If all the holes have been pushed to the end, we are done and can
+      // trim the number of indices.
+      const bool unused_at_end = unused_indices_.size() == 1 &&
+                                 NextIndex(unused_indices_[0]) == num_indices();
+      if (unused_at_end) break;
 
-      // Recycle the largest unused undex.
-      const Index unused_index = unused_indices_.back();
-      unused_indices_.pop_back();
-
-      // Search from the back for an index that fills the hole.
-      const Count count = CountForIndex(unused_index);
-      const Index fill_index = LastIndexMatchingCount(unused_index);
-
-      // Only perform move if source and destination are different.
-      if (fill_index != unused_index) {
-        // Move fill element into unused index.
-        callbacks_->MoveIndex(fill_index, unused_index);
-      }
-
-      // Shift all items after fill_index forward, to fill the new hole.
-      // The hope is that this won't have to move very many, since this is slow.
-      // TODO OPT: We can do better than this by finding indices of smaller
-      //           size and using those to fill the hole. The assumption is
-      //           that most of the time the allocation sizes will be pretty
-      //           uniform, so this function will almost always be a no-op.
-      //           But in pathological cases, this assumption can be very wrong.
-      MoveAllLaterIndices(fill_index);
-
-      // Remember how many indices we've defragged.
-      new_num_indices -= count;
+      // Find range of indices that will fit into the first block of
+      // unused indices and move them into it.
+      BackfillFirstUnused();
     }
 
-    // All unused indices have been filled in.
+    // Remove hole at end.
+    SetNumIndices(unused_indices_[0]);
     unused_indices_.clear();
-
-    // The index array has shrunk. Notify with a callback. Note that since
-    // we're shrinking the array, this will not have to result in a realloc.
-    SetNumIndices(new_num_indices);
   }
 
   /// Returns true if there are no indices allocated.
@@ -242,6 +277,26 @@ class IndexAllocator {
     return counts_[index];
   }
 
+  /// Assert if the internal state is invalid in any way.
+  /// Sanity check on this data structure.
+  void VerifyInternalState() const {
+#if FPL_INDEX_ALLOCATOR_VERIFY_INTERNAL_STATE
+    for (Index i = 0; i < num_indices();) {
+      // Each block of indices must start with the positive size of the block.
+      const Count count = counts_[i];
+      assert(count > 0);
+
+      // Succeeding elements in a block give the offset back to the start.
+      for (Index j = 1; j < count; ++j) {
+        assert(counts_[i + j] == -j);
+      }
+
+      // Jump to the next block.
+      i += count;
+    }
+#endif  // FPL_INDEX_ALLOCATOR_VERIFY_INTERNAL_STATE
+  }
+
   /// Returns the size of the array that  number of contiguous indices.
   /// This includes all the indices that have been free.
   Index num_indices() const { return static_cast<Index>(counts_.size()); }
@@ -253,7 +308,7 @@ class IndexAllocator {
   /// Returns the next allocated index. Skips over all indices associated
   /// with `index`.
   Index NextIndex(Index index) const {
-    assert(index < num_indices() && counts_[index] > 0);
+    assert(0 <= index && index < num_indices() && counts_[index] > 0);
     return index + counts_[index];
   }
 
@@ -273,7 +328,7 @@ class IndexAllocator {
   void InitializeIndex(Index index, Count count) {
     // Initialize the count for this index.
     counts_[index] = count;
-    for (int i = 1; i < count; ++i) {
+    for (Count i = 1; i < count; ++i) {
       counts_[index + i] = -i;
     }
   }
@@ -288,35 +343,146 @@ class IndexAllocator {
     callbacks_->SetNumIndices(new_num_indices);
   }
 
-  /// Returns allocation closest to the end of the array that has the matching
-  /// size of `search_index`.
-  Index LastIndexMatchingCount(Index search_index) const {
-    const Count count = CountForIndex(search_index);
-    Index index = num_indices();
-    for (;;) {
-      index = PrevIndex(index);
-      if (index == search_index)
-        break;
+  /// Combine adjacent blocks of unused incides in `unused_indices_`.
+  void ConsolidateUnusedIndices() {
+    // First put the indices in order so that we can process them efficiently.
+    std::sort(unused_indices_.begin(), unused_indices_.end());
 
-      if (CountForIndex(index) == count)
-        break;
+    // Consolidate adjacent blocks of unused indices.
+    size_t new_num_unused = 0;
+    for (size_t i = 0; i < unused_indices_.size();) {
+      const Index unused = unused_indices_[i];
+
+      // Find first non-consecutive index in unused_indices_.
+      size_t j = i + 1;
+      while (j < unused_indices_.size() &&
+             unused_indices_[j] == NextIndex(unused_indices_[j - 1])) {
+        ++j;
+      }
+
+      // Consolidate consecutive unused indices.
+      const size_t num_consecutive = j - i;
+      if (num_consecutive > 1) {
+        const Count consolidated_count =
+            NextIndex(unused_indices_[j - 1]) - unused;
+        InitializeIndex(unused, consolidated_count);
+      }
+
+      // Write to the output array.
+      unused_indices_[new_num_unused++] = unused;
+
+      // Increment the read-counter, skipping over any we've consolidated.
+      i += num_consecutive;
     }
-    assert(ValidIndex(index));
-    return index;
+
+    // Shrink number of unused indices. Size can only get smaller.
+    assert(new_num_unused <= unused_indices_.size());
+    unused_indices_.resize(new_num_unused);
   }
 
-  /// Shift all indices after `index` to the left to fill the space occupied
-  /// by `index`.
-  void MoveAllLaterIndices(Index index) {
-    // Notify callback.
-    const Index next_index = NextIndex(index);
-    const Index num_deleted_indices = next_index - index;
-    for (Index i = next_index; i < num_indices(); i = NextIndex(i)) {
-      callbacks_->MoveIndex(i, i - num_deleted_indices);
+  /// Move later blocks of indices into the first hole in `unused_indices_`.
+  /// That is, move the first hole farther back in the index array.
+  void BackfillFirstUnused() {
+    assert(unused_indices_.size() > 0);
+    const IndexRange unused_range(
+        unused_indices_[0],
+        unused_indices_[0] + CountForIndex(unused_indices_[0]));
+
+    // Find a fill_range after unused_range that we can move into unused_range.
+    //
+    // Case 1. Fill
+    //   indices in fill_range are moved into the first part of unused_range.
+    //   fill_range.Length() <= unused_range.Length()
+    //
+    //   before:       unused_range              fill_range
+    //             |..................|         |abcdefghij|
+    //
+    //   after:    |abcdefghij|.......|         |..........|
+    //                       unused_hole         fill_hole
+    //
+    //
+    // Case 2. Shift
+    //   indices in fill_range are moved to the left, into unused_range.
+    //   this opens up a hole where fill_range used to end
+    //
+    //   before:    unused_range    fill_range
+    //             |............|abcdefghijklmnop|
+    //
+    //   after:    |abcdefghijklmnop|............|
+    //                                shift_hole
+    //
+    IndexRange fill_range = LastIndexRangeSmallerThanHole(unused_range.start());
+    const bool is_fill = fill_range.Valid();
+    if (!is_fill) {
+      // If there's no index range that will fit into the hole, shift over
+      // all the indices between this hole and the next.
+      const Index next_hole_index =
+          unused_indices_.size() > 1 ? unused_indices_[1] : num_indices();
+      fill_range = IndexRange(NextIndex(unused_range.start()), next_hole_index);
     }
 
-    // Update counts_ to fill hole.
-    std::memmove(&counts_[index], &counts_[next_index], counts_.size() - next_index);
+    // Allow the callback to move data associated with the indices.
+    callbacks_->MoveIndexRange(fill_range, unused_range.start());
+
+    // Move `counts_` to fill_range's new location
+    memmove(&counts_[unused_range.start()], &counts_[fill_range.start()],
+            fill_range.Length() * sizeof(counts_[0]));
+
+    // Re-initialize `counts_` for new holes.
+    if (is_fill) {
+      // See Case 1 above: Add a hole for the range we just moved.
+      InitializeIndex(fill_range.start(), fill_range.Length());
+      unused_indices_[0] = fill_range.start();
+
+      // If we didn't completely fill unused_range, add a hole for the rest.
+      const IndexRange unused_hole(unused_range.start() + fill_range.Length(),
+                                   unused_range.end());
+      if (unused_hole.Length() > 0) {
+        InitializeIndex(unused_hole.start(), unused_hole.Length());
+        unused_indices_.push_back(unused_hole.start());
+      }
+    } else {
+      // See Case 2 above: Add a hole at the end of the range we shifted over.
+      const IndexRange shift_hole(unused_range.start() + fill_range.Length(),
+                                  fill_range.end());
+      InitializeIndex(shift_hole.start(), shift_hole.Length());
+      unused_indices_[0] = shift_hole.start();
+    }
+
+    VerifyInternalState();
+  }
+
+  IndexRange LastIndexRangeSmallerThanHole(Index index) const {
+    // We want the last consecutive range of indices of length <= count.
+    const Count count = CountForIndex(index);
+
+    // Loop from the back. `end` is the end of the range.
+    assert(unused_indices_.size() > 0);
+    size_t unused_i = unused_indices_.size() - 1;
+    for (Index end = num_indices(); end > index; end = PrevIndex(end)) {
+      // Skip over unused indices.
+      const Index unused_start = unused_indices_[unused_i];
+      const Index unused_end = NextIndex(unused_start);
+      assert(unused_end <= end);
+      if (end == unused_end) {
+        unused_i--;
+        continue;
+      }
+
+      // Loop towards the front while the size still fits into `count`.
+      Index start = end;
+      for (Index j = PrevIndex(end); j > index; j = PrevIndex(j)) {
+        if (end - j > count) break;
+        if (j == unused_start) break;
+        start = j;
+      }
+
+      // If at least some indices are in range, use those.
+      if (start < end) return IndexRange(start, end);
+    }
+
+    // No index range fits, so return an invalid range.
+    return IndexRange();
   }
 
   // When indices are moved or the number of inidices changes, we notify the

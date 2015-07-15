@@ -39,6 +39,8 @@ _ADB_DEVICES = 'adb_devices'
 _CONTINUE_RUN_ON_FAILURE = 'continue_run_on_failure'
 _GTEST = 'gtest'
 
+_ADB_DEVICES_ERR = 'Use --adb_devices to specify one or more devices.'
+
 class BuildAllEnvironment(buildutil.android.BuildEnvironment):
 
   """Class representing the build environment of multiple Android projects.
@@ -126,8 +128,8 @@ class BuildAllEnvironment(buildutil.android.BuildEnvironment):
                         dest=_APK_RUN, action='store_true',
                         default=defaults[_APK_RUN])
     parser.add_argument('-d', '--' + _ADB_DEVICES,
-                        help=('List of Android device serial numbers to '
-                              'install to / run on.  If @ is specified all '
+                        help=('List of Android device serials to install to / '
+                              'run on.  If @ is specified all '
                               'attached devices are selected.'),
                         dest=_ADB_DEVICES, default=defaults[_ADB_DEVICES],
                         nargs='+')
@@ -166,24 +168,34 @@ def main():
   adb_devices = args.adb_devices if args.adb_devices else [None]
   # If all devices are selected, get the list of serial numbers.
   if '@' in adb_devices:
-    adb_devices = [d.serial for d in env.get_adb_devices()[0]]
+    adb_devices = [d.serial for d in env.get_adb_devices()]
 
   if env.apk_install and not env.clean:
     for adb_device in adb_devices:
-      (rc, errmsg) = env.install_all(
-          path=args.search_path, adb_device=adb_device, exclude_dirs=[
-              args.apk_output_dir, args.lib_output_dir] + args.exclude_dirs)
-      if (rc != 0):
-        print >> sys.stderr, errmsg
-        return rc
+      try:
+        (rc, errmsg) = env.install_all(
+            path=args.search_path, adb_device=adb_device, exclude_dirs=[
+                args.apk_output_dir, args.lib_output_dir] + args.exclude_dirs)
+        if (rc != 0):
+          print >> sys.stderr, errmsg
+          return rc
+      except buildutil.common.AdbError as e:
+        print >> sys.stderr, str(e) + '\n' + _ADB_DEVICES_ERR
+        return 1
+
 
   if env.apk_run and not env.clean:
     failed_targets = []
     for adb_device in adb_devices:
-      (rc, errmsg, failures) = env.run_all(
-          path=args.search_path, adb_device=adb_device, exclude_dirs=[
-              args.apk_output_dir, args.lib_output_dir] + args.exclude_dirs,
-          continue_on_failure=args.continue_run_on_failure, gtest=args.gtest)
+      try:
+        (rc, errmsg, failures) = env.run_all(
+            path=args.search_path, adb_device=adb_device, exclude_dirs=[
+                 args.apk_output_dir, args.lib_output_dir] + args.exclude_dirs,
+            continue_on_failure=args.continue_run_on_failure, gtest=args.gtest)
+      except buildutil.common.AdbError as e:
+        print >> sys.stderr, str(e) + '\n' + _ADB_DEVICES_ERR
+        return 1
+
       failed_targets.extend(failures)
       if (rc != 0):
         print >> sys.stderr, errmsg

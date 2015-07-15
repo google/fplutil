@@ -39,6 +39,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import uuid
 import xml.etree.ElementTree
 sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
 import buildutil.common as common
@@ -62,11 +63,14 @@ _NDK_MAKEFILE = 'Android.mk'
 _ALWAYS_MAKE = 'always_make'
 _ADB_LOGCAT_ARGS = 'adb_logcat_args'
 _ADB_LOGCAT_MONITOR = 'adb_logcat_monitor'
+_IGNORE_SDK_VERSION_MISSING = 'ignore_sdk_version_missing'
 
 _MATCH_DEVICES = re.compile(r'^List of devices attached\s*')
 _MATCH_PACKAGE = re.compile(r'^package:(.*)')
 _GTEST_FAILED = re.compile(r'(\[\s*FAILEDs\*\]|.*FAILED TESTS)')
 
+_ACTION_MAIN = 'android.intent.action.MAIN'
+_CATEGORY_LAUNCHER = 'android.intent.category.LAUNCHER'
 _NATIVE_ACTIVITY = 'android.app.NativeActivity'
 _ANDROID_MANIFEST_SCHEMA = 'http://schemas.android.com/apk/res/android'
 
@@ -88,7 +92,7 @@ class XMLFile(object):
       path: The absolute path to the manifest file.
 
     Raises:
-      ConfigurationError: Manifest file missing.
+      common.ConfigurationError: Manifest file missing.
     """
     if path and not os.path.exists(path):
       raise common.ConfigurationError(path, os.strerror(errno.ENOENT))
@@ -121,19 +125,24 @@ class AndroidManifest(XMLFile):
     target_sdk: Target SDK version from the uses-sdk element, or min_sdk if it
       is not set.
     package_name: Name of the package.
-    activity_name: Name of the activity from the android:name element.
+    activity_name: Name of the first activity in the manifest.
+    activity_names: List of names of each of the activities.
+    main_activity_name: Name of the main activity.
     lib_name: Name of the library loaded by android.app.NativeActivity.
+    ignore_sdk_version_missing: If set, ignore issues when the manifest doesn't
+      contain SDK versioning elements. This is intended to be used when the
+      minSdkVersion is defined in gradle configuration.
   """
 
   class MissingActivityError(common.ConfigurationError):
-    """Raised if the activity element isn't present in a manifest.
+    """Raised if an activity element isn't present in a manifest.
 
     Attribtues:
       manifest: Manifest instance which detected an error.
     """
 
     def __init__(self, path, error, manifest):
-      """Initialize this instance.
+      """Initialize this MissingActivityError.
 
       Args:
         path: Path to file that generated the error.
@@ -143,22 +152,55 @@ class AndroidManifest(XMLFile):
       super(AndroidManifest.MissingActivityError, self).__init__(path, error)
       self.manifest = manifest
 
-  def __init__(self, path):
+  def __init__(self, path, ignore_sdk_version_missing=False):
     """Constructs the AndroidManifest for a specified path.
 
     Args:
       path: The absolute path to the manifest file.
+      ignore_sdk_version_missing: How to handle missing SDK version elements
+        during manifest processing. If set to False, raise an exception. If
+        set to True, processing will continue silently.
 
     Raises:
       ConfigurationError: Manifest file missing.
     """
     super(AndroidManifest, self).__init__(path)
 
-    self.min_sdk = 0
-    self.target_sdk = 0
-    self.package_name = ''
     self.activity_name = ''
+    self.activity_names = []
     self.lib_name = ''
+    self.main_activity_name = ''
+    self.min_sdk = 0
+    self.package_name = ''
+    self.target_sdk = 0
+    self.ignore_sdk_version_missing = ignore_sdk_version_missing
+
+  def _process_sdk_element(self, sdk_element):
+    """Processes a "uses-sdk" XML element and stores min/target sdk attributes.
+
+    Args:
+      sdk_element: xml.etree.ElementTree that represents a "uses-sdk" clause
+          in an AndroidManifest.
+
+    Raises:
+      common.ConfigurationError: sdk_element was None, or minSdkVersion missing
+    """
+    if sdk_element is None:
+      raise common.ConfigurationError(self.path, 'uses-sdk element missing')
+
+    min_sdk_version = AndroidManifest.__get_schema_attribute_value(
+        sdk_element, 'minSdkVersion')
+
+    if not min_sdk_version:
+      raise common.ConfigurationError(self.path, 'minSdkVersion missing')
+
+    target_sdk_version = AndroidManifest.__get_schema_attribute_value(
+        sdk_element, 'targetSdkVersion')
+
+    if not target_sdk_version:
+      target_sdk_version = min_sdk_version
+    self.min_sdk = int(min_sdk_version)
+    self.target_sdk = int(target_sdk_version)
 
   def process(self, etree):
     """Process the parsed AndroidManifest to extract SDK version info.
@@ -168,44 +210,42 @@ class AndroidManifest(XMLFile):
 
     Raises:
       ConfigurationError: Required elements were missing or incorrect.
-      MissingActivityError: If the activity element isn't present.  This
+      MissingActivityError: If the main activity element isn't present. This
         instance will be completely populated when this exception is thrown.
     """
     root = etree.getroot()
 
     self.package_name = root.get('package')
-
     sdk_element = root.find('uses-sdk')
 
-    if sdk_element is None:
-      raise common.ConfigurationError(self.path, 'uses-sdk element missing')
-
-    min_sdk_version = AndroidManifest.__get_schema_attribute_value(
-        sdk_element, 'minSdkVersion')
-    target_sdk_version = AndroidManifest.__get_schema_attribute_value(
-        sdk_element, 'targetSdkVersion')
+    # Attempt to process the element, but if ignore_sdk_version_missing is
+    # False, ignore issues of sdk version elements not existing in the
+    # manifest.
+    try:
+      self._process_sdk_element(sdk_element)
+    except common.ConfigurationError as e:
+      if not self.ignore_sdk_version_missing:
+        raise e
 
     app_element = root.find('application')
     if app_element is None:
       raise common.ConfigurationError(self.path, 'application missing')
 
-    activity_element = app_element.find('activity')
-    if activity_element is not None:
-      self.activity_name = AndroidManifest.__get_schema_attribute_value(
-          activity_element, 'name')
-
-    if not min_sdk_version:
-      raise common.ConfigurationError(self.path, 'minSdkVersion missing')
-    if not target_sdk_version:
-      target_sdk_version = min_sdk_version
     if not self.package_name:
       raise common.ConfigurationError(self.path, 'package missing')
 
-    self.min_sdk = int(min_sdk_version)
-    self.target_sdk = int(target_sdk_version)
+    activity_elements = app_element.findall('activity')
+    for activity_element in activity_elements:
+      activity_name = AndroidManifest.__get_schema_attribute_value(
+          activity_element, 'name')
+      self.activity_names.append(activity_name)
 
-    if self.activity_name == _NATIVE_ACTIVITY:
-      for metadata_element in activity_element.findall('meta-data'):
+      if AndroidManifest._check_main_activity(activity_element):
+        main_activity = activity_element
+        self.main_activity_name = activity_name
+
+    if self.main_activity_name == _NATIVE_ACTIVITY:
+      for metadata_element in main_activity.findall('meta-data'):
         if (AndroidManifest.__get_schema_attribute_value(
             metadata_element, 'name') == 'android.app.lib_name'):
           self.lib_name = AndroidManifest.__get_schema_attribute_value(
@@ -215,9 +255,44 @@ class AndroidManifest(XMLFile):
         raise common.ConfigurationError(
             self.path, 'meta-data android.app.lib_name missing')
 
-    elif not self.activity_name:
+    elif not self.main_activity_name:
       raise AndroidManifest.MissingActivityError(
-          self.path, 'activity android:name missing', self)
+          self.path, 'main activity missing', self)
+
+    # For backwards compatability.
+    if self.activity_names:
+      self.activity_name = self.activity_names[0]
+
+  @staticmethod
+  def _check_main_activity(activity_xml_element):
+    """Helper function to determine if an activity is considered main.
+
+    An activity is considered main if it has an intent-filter, filters for
+    the main action, and the category launcher.
+
+    Args:
+      activity_xml_element: xml.etree.ElementTree of an Android activity.
+
+    Returns:
+      True if the activity is considered main, False otherwise.
+    """
+    intent_filter_element = activity_xml_element.find('intent-filter')
+    if intent_filter_element is None:
+      return False
+
+    action_elements = intent_filter_element.findall('action')
+    action_names = (AndroidManifest.__get_schema_attribute_value(a, 'name')
+                    for a in action_elements)
+    if _ACTION_MAIN not in action_names:
+      return False
+
+    category_elements = intent_filter_element.findall('category')
+    category_names = (AndroidManifest.__get_schema_attribute_value(c, 'name')
+                      for c in category_elements)
+    if _CATEGORY_LAUNCHER not in category_names:
+      return False
+
+    return True
 
   @staticmethod
   def __get_schema_attribute_value(xml_element, attribute):
@@ -298,9 +373,15 @@ class AdbDevice(object):
     self.product = ''
     self.device = ''
     self.model = ''
+    # 'adb device -l' returns a line per device according to this format:
+    # SERIAL TYPE [KEY:VALUE ...]
     if adb_device_line:
       tokens = adb_device_line.split()
-      if len(tokens) > 2:
+      if len(tokens) < 2:
+        print >>sys.stderr, ('Warning: AdbDevice initialized with '
+                             'adb_device_line "{}", expected "SERIAL TYPE '
+                             '[KEY:VALUE ...]"'.format(adb_device_line))
+      else:
         self.serial = tokens[0]
         self.type = tokens[1]
         for token in tokens[2:]:
@@ -393,6 +474,7 @@ class BuildEnvironment(common.BuildEnvironment):
     self.always_make = args[_ALWAYS_MAKE]
     self.adb_logcat_args = args[_ADB_LOGCAT_ARGS]
     self.adb_logcat_monitor = args[_ADB_LOGCAT_MONITOR]
+    self.ignore_sdk_version_missing = args[_IGNORE_SDK_VERSION_MISSING]
 
   @staticmethod
   def build_defaults():
@@ -423,6 +505,8 @@ class BuildEnvironment(common.BuildEnvironment):
     args[_ALWAYS_MAKE] = False
     args[_ADB_LOGCAT_ARGS] = []
     args[_ADB_LOGCAT_MONITOR] = False
+    # We expect an SDK version check by default.
+    args[_IGNORE_SDK_VERSION_MISSING] = False
 
     return args
 
@@ -495,6 +579,13 @@ class BuildEnvironment(common.BuildEnvironment):
                               'destroyed.'),
                         dest=_ADB_LOGCAT_MONITOR, action='store_true',
                         default=defaults[_ADB_LOGCAT_MONITOR])
+    parser.add_argument('--' + _IGNORE_SDK_VERSION_MISSING,
+                        help=('Disable SDK version checks when reading the '
+                              'application manifest. This is required in '
+                              'cases where SDK versions are specified in '
+                              'gradle project files instead of the manifest.'),
+                        action='store_true',
+                        default=defaults[_IGNORE_SDK_VERSION_MISSING])
 
     parser.set_defaults(
         **{_ALWAYS_MAKE: defaults[_ALWAYS_MAKE]})  # pylint: disable=star-args
@@ -539,8 +630,12 @@ class BuildEnvironment(common.BuildEnvironment):
         zip_align_paths.extend([os.path.join(root, d, '') for d in dirs])
         break
 
-    if not self.sdk_home or not ndk_build_paths:
-      raise common.ToolPathError('Android SDK or NDK', '[unknown]')
+    if not self.sdk_home and not ndk_build_paths:
+      raise common.ToolPathError('Android SDK and NDK', '[unknown]')
+    elif not ndk_build_paths:
+      raise common.ToolPathError('Android NDK', '[unknown]')
+    elif not self.sdk_home:
+      raise common.ToolPathError('Android SDK', '[unknown]')
 
     search_dict = {
         BuildEnvironment.ADB: [os.path.join(
@@ -687,9 +782,11 @@ class BuildEnvironment(common.BuildEnvironment):
 
     Raises:
       ConfigurationError: Required elements were missing or incorrect.
-      MissingActivityError: If the activity element isn't present.
+      MissingActivityError: If a main activity element isn't present.
     """
-    manifest = AndroidManifest(self.get_manifest_path(path=path))
+    manifest = AndroidManifest(self.get_manifest_path(path=path),
+                               ignore_sdk_version_missing=
+                               self.ignore_sdk_version_missing)
     manifest.parse()
     return manifest
 
@@ -1100,17 +1197,27 @@ class BuildEnvironment(common.BuildEnvironment):
     return (devices, out)
 
   def check_adb_devices(self, adb_device=None):
-    """Verifies that only one device is connected.
+    """Gets the only attached device, or the attached device matching a serial.
+
+    When using adb to connect to a device, adb's behavior changes depending on
+    how many devices are connected. If there is only one device connected, then
+    no device needs to be specified (as the only device will be used). If more
+    than one device is connected and no device is specified, adb will error out
+    as it does not know which device to connect to.
+
+    This method ensures that for either case enough valid information is
+    specified, and returns an instance of AdbDevice representing the valid
+    device.
 
     Args:
-      adb_device: If specified, check whether this device is connected.
+      adb_device: The serial to match a device on.
 
     Returns:
-      The device matching adb_device or the first device reported by ADB
-      if only one device is connected.
+      The only AdbDevice connected to adb, or AdbDevice matching the serial.
 
     Raises:
-      AdbError: Incorrect number of connected devices.
+      AdbError: More than one attached device and no serial specified, or
+                device with matching serial specified cannot be found.
     """
     devices, out = self.get_adb_devices()
     number_of_devices = len(devices)
@@ -1125,16 +1232,15 @@ class BuildEnvironment(common.BuildEnvironment):
             'The devices connected are: %s' % (adb_device, os.linesep + out))
     elif number_of_devices > 1:
       raise common.AdbError(
-          'Multiple Android devices are connected to this host. '
-          'Please specify a device using --adb_devices <serial>. '
-          'The devices connected are: %s' % (os.linesep + out))
+          'Multiple Android devices are connected to this host and none were '
+          'specified. The devices connected are: %s' % (os.linesep + out))
     return devices[0]
 
   def get_adb_device_argument(self, adb_device=None):
     """Construct the argument for ADB to select the specified device.
 
     Args:
-      adb_device: Serial number of the device to use with ADB.
+      adb_device: Serial of the device to use with ADB.
 
     Returns:
       A string which contains the second argument passed to ADB to select a
@@ -1146,7 +1252,7 @@ class BuildEnvironment(common.BuildEnvironment):
     """Get the list of packages installed on an Android device.
 
     Args:
-      adb_device: The device to query.
+      adb_device: The serial of the device to query.
 
     Returns:
       List of package strings.
@@ -1184,8 +1290,8 @@ class BuildEnvironment(common.BuildEnvironment):
 
     Args:
       path: Relative path from project directory to project to run.
-      adb_device: The device to run the apk on. If none it will use the only
-        device connected.
+      adb_device: The serial of the device to run the apk on. If None it will
+        the only device connected will be used.
       force_install: Whether to install the package if it's older than the
         package on the target device.
 
@@ -1252,8 +1358,8 @@ class BuildEnvironment(common.BuildEnvironment):
 
     Args:
       path: Path to search the search in, defaults to '.'
-      adb_device: The device to install the APK to. If none it will use the
-        only device connected.
+      adb_device: The serial of the device to install the APK to. If None the
+        only device connected will be used.
       exclude_dirs: List of directory names to exclude from project
         detection (see find_projects() for more information).
 
@@ -1278,44 +1384,130 @@ class BuildEnvironment(common.BuildEnvironment):
 
     return (retval, errmsg)
 
-  def run_android_apk(self, path='.', adb_device=None, wait=True):
+  def stop_process(self, package_name, adb_device=None):
+    """Attempts to stop a process running under the given package name.
+
+    Args:
+      package_name: Name of the package to stop.
+      adb_device: Serial of the device to stop the app on. If none specified,
+        the only device connected will be used.
+    """
+    adb_path = self._find_binary(BuildEnvironment.ADB)
+    device = self.check_adb_devices(adb_device=adb_device)
+    adb_device_arg = self.get_adb_device_argument(adb_device=device.serial)
+    self.run_subprocess(('%s %s shell am force-stop %s' %
+                         (adb_path, adb_device_arg, package_name)),
+                        shell=True)
+
+  def get_device_dpi(self, adb_device=None):
+    """Returns the dpi of a device connected to adb.
+
+    Args:
+      adb_device: Serial of the device to get the dpi from. If none specified,
+        the only device connected will be used.
+
+    Returns:
+      int of the device's pixel density.
+    """
+    adb_path = self._find_binary(BuildEnvironment.ADB)
+    device = self.check_adb_devices(adb_device=adb_device)
+    adb_device_arg = self.get_adb_device_argument(adb_device=device.serial)
+    density, _ = self.run_subprocess(('%s %s shell getprop ro.sf.lcd_density' %
+                                      (adb_path, adb_device_arg)
+                                     ),
+                                     shell=True,
+                                     capture=True)
+    return int(density)
+
+
+  def take_screencap(self, destination, adb_device=None):
+    """Takes a screencap on the device and saves it to destination.
+
+    Saves the screencap to a random filename on the device's sdcard,
+    transfers the screencap to destination path, then deletes the screencap
+    on the device.
+
+    Args:
+      destination: The file path where the screencap will be saved.
+      adb_device: Serial of the device to take the screencap with. If none
+        specified, the only device connected will be used.
+    """
+    adb_path = self._find_binary(BuildEnvironment.ADB)
+    device = self.check_adb_devices(adb_device=adb_device)
+    adb_device_arg = self.get_adb_device_argument(adb_device=device.serial)
+    temp_filename = uuid.uuid4()
+
+    self.run_subprocess(('%s %s shell screencap -p /sdcard/%s' %
+                         (adb_path, adb_device_arg, temp_filename)),
+                        shell=True)
+
+    self.run_subprocess(('%s %s pull /sdcard/%s %s' %
+                         (adb_path, adb_device_arg, temp_filename, destination)
+                        ),
+                        shell=True)
+
+    self.run_subprocess(('%s %s shell rm /sdcard/%s' %
+                         (adb_path, adb_device_arg, temp_filename)),
+                        shell=True)
+
+  def run_android_apk(self, path='.', adb_device=None, wait=True,
+                      end_match=None, echo_log=True, apk_missing_allowed=True):
     """Run an android apk on the given device.
 
     Args:
       path: Relative path from project directory to project to run.
-      adb_device: The device to run the apk on. If none it will use the only
-        device connected.
+      adb_device: The serial of the device to run the apk on. If None the only
+        device connected will be used.
       wait: Optional argument to tell the function to wait until the process
         completes and dump the output.
+      end_match: Optional compiled regex applied to logs. When a match is
+        found, the process is considered finished (sets wait to False).
+      echo_log: If set, prints the output from logcat.
+      apk_missing_allowed: If set to False, raise an AdbError if the activity
+        couldn't be started.
 
     Returns:
       String containing adb logcat output for the run.
+      None if there is a manifest configuration problem.
+
+    Raises:
+      AdbError: If the activity wasn't started.
     """
     try:
       manifest = self.parse_manifest(path=path)
     except AndroidManifest.MissingActivityError as e:
-      print >>sys.stderr, str(e)
+      print >> sys.stderr, str(e)
       return
-    activity_name = manifest.activity_name
-    if '.' not in manifest.activity_name:
-      activity_name = '.' + manifest.activity_name
-    full_name = '%s/%s' % (manifest.package_name, activity_name)
+    main_activity_name = manifest.main_activity_name
+    if '.' not in manifest.main_activity_name:
+      main_activity_name = '.' + manifest.main_activity_name
+    full_name = '%s/%s' % (manifest.package_name, main_activity_name)
     adb_path = self._find_binary(BuildEnvironment.ADB)
     device = self.check_adb_devices(adb_device=adb_device)
     adb_device_arg = self.get_adb_device_argument(adb_device=device.serial)
 
     print 'Launching %s on %s' % (full_name, self.get_adb_device_name(device))
 
-    self.run_subprocess('%s %s logcat -c' % (adb_path, adb_device_arg),
+    # Stop the app before reading logs.
+    self.run_subprocess(('%s %s shell am force-stop %s' %
+                         (adb_path, adb_device_arg, manifest.package_name)),
                         shell=True)
 
-    self.run_subprocess(
-        ('%s %s shell am start -S -n %s' % (adb_path, adb_device_arg,
-                                            full_name)), shell=True)
+    # Clear logcat.
+    self.run_subprocess(('%s %s logcat -c' % (adb_path, adb_device_arg)),
+                        shell=True)
 
-    end_match = re.compile(
+    out, _ = self.run_subprocess(('%s %s shell am start -n %s' %
+                                  (adb_path, adb_device_arg, full_name)),
+                                 shell=True,
+                                 capture=True)
+
+    if 'Error: Activity class {' + manifest.package_name in out:
+      raise common.AdbError(out)
+
+    end_match = end_match or re.compile(
         (r'.*(Displayed|Activity destroy timeout|'
-         r'Force finishing activity).*%s.*' % full_name))
+         r'Force finishing activity).*%s.*' % manifest.package_name))
 
     # Build list of arguments for logcat.
     logcat_args = [adb_path]
@@ -1326,23 +1518,25 @@ class BuildEnvironment(common.BuildEnvironment):
 
     # We only need to capture stdout so use subprocess directly rather than
     # run_subprocess() to simplify the process of reading the stdout pipe.
-    process = subprocess.Popen(args=logcat_args, bufsize=-1,
+    process = subprocess.Popen(args=logcat_args,
+                               bufsize=-1,
                                stdout=subprocess.PIPE)
     stdout = process.stdout
     logdata = []
     try:
-      wait = True
       while wait or self.adb_logcat_monitor:
         line = stdout.readline()
+        logdata.append(line)
         stripped_line = line.rstrip()
-        print stripped_line
+        if echo_log:
+          print stripped_line
         if end_match.match(stripped_line):
           wait = False
-        else:
-          logdata.append(line)
     except KeyboardInterrupt:
       pass
+
     process.kill()
+
     return ''.join(logdata)
 
   def run_all(self, path='.', adb_device=None, exclude_dirs=None, wait=True,

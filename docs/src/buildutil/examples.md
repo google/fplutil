@@ -10,8 +10,8 @@ For reference the complete source is in
 [examples/buildutil/android.py](@ref buildutil_examples_android_code).
 
 The following code parses arguments to the script and creates an
-[android.BuildEnvironment](@ref buildutil.android.BuildEnvironment) instance
-which is used to perform Android specific build operations...
+[android.BuildEnvironment](@ref fplutil.buildutil.android.BuildEnvironment)
+instance which is used to perform Android specific build operations...
 
 ~~~{.py}
 parser = argparse.ArgumentParser()
@@ -54,8 +54,8 @@ For reference the complete source is in
 [examples/buildutil/linux.py](@ref buildutil_examples_linux_code).
 
 The following code, parses arguments to the script and creates an
-[linux.BuildEnvironment](@ref buildutil.linux.BuildEnvironment) instance
-which is used to perform Linux specific build operations...
+[linux.BuildEnvironment](@ref fplutil.buildutil.linux.BuildEnvironment)
+instance which is used to perform Linux specific build operations...
 
 ~~~{.py}
 parser = argparse.ArgumentParser()

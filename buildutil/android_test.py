@@ -18,10 +18,12 @@ import __builtin__
 import argparse
 import os
 import platform
+import re
 import StringIO
 import subprocess
 import sys
 import unittest
+import uuid
 sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
 import buildutil.android as android
 import buildutil.common as common
@@ -91,7 +93,7 @@ class FileSetMockFactory(object):
       contents indexed by the key None will be returned.
   """
 
-  file_open = __builtins__.open
+  file_open = __builtin__.open
 
   def __init__(self, test_case, filename_contents):
     """Initialize the mock file factory.
@@ -112,7 +114,7 @@ class FileSetMockFactory(object):
     Args:
       filename: Name of the file used to lookup the contents string in
         "filename_contents" which initializes the returned FileMock.
-      argv: Additional arguments for file open, ignored by the mock
+      *argv: Additional arguments for file open, ignored by the mock
         implementation.
 
     Returns:
@@ -225,12 +227,12 @@ class OsWalkMock(object):
     self.test.assertEqual(self.project, path)
     # Perform a BFS traversal as a generator to mimic how topdown os.walk works.
     nodes = [self.root]
-    while len(nodes):
+    while nodes:
       n = nodes.pop(0)
       rc = (n.name, [os.path.basename(m.name) for m in n.dirs], n.files)
       yield rc
       # Pick up changes to the dirlist, per how os.walk works in real life.
-      name, dirs, unused_files = rc
+      _, dirs, _ = rc
       nodes += [d for d in n.dirs if os.path.basename(d.name) in dirs]
 
 
@@ -262,8 +264,9 @@ class AndroidBuildUtilTest(unittest.TestCase):
     self.subprocess_popen = subprocess.Popen
     # Mock out find_executable so all binaries are found.
     common._find_executable = lambda name, path=None: (
-            os.path.join(path, name) if path else os.path.join(
-                'a', 'b', name))
+        os.path.join(path, name) if path else os.path.join(
+            'a', 'b', name))
+    self.uuid4 = uuid.uuid4
 
   def tearDown(self):
     # Undo mocks.
@@ -273,6 +276,7 @@ class AndroidBuildUtilTest(unittest.TestCase):
     common._find_executable = self.find_executable
     __builtin__.open = self.file_open
     subprocess.Popen = self.subprocess_popen
+    uuid.uuid4 = self.uuid4
 
   def test_build_defaults(self):
     d = android.BuildEnvironment.build_defaults()
@@ -365,6 +369,10 @@ class AndroidBuildUtilTest(unittest.TestCase):
         '    <activity android:name="android.app.NativeActivity">\n'
         '      <meta-data android:name="android.app.lib_name"\n'
         '                 android:value="test"/>\n'
+        '      <intent-filter>\n'
+        '       <action android:name="android.intent.action.MAIN"/>\n'
+        '       <category android:name="android.intent.category.LAUNCHER"/>\n'
+        '      </intent-filter>\n'
         '    </activity>\n'
         '  </application>\n'
         '</manifest>')
@@ -399,6 +407,10 @@ class AndroidBuildUtilTest(unittest.TestCase):
         '    <activity android:name="android.app.NativeActivity">\n'
         '      <meta-data android:name="android.app.lib_name"\n'
         '                 android:value="test"/>\n'
+        '      <intent-filter>\n'
+        '       <action android:name="android.intent.action.MAIN"/>\n'
+        '       <category android:name="android.intent.category.LAUNCHER"/>\n'
+        '      </intent-filter>\n'
         '    </activity>\n'
         '  </application>\n'
         '</manifest>')
@@ -418,6 +430,10 @@ class AndroidBuildUtilTest(unittest.TestCase):
         '    <activity android:name="android.app.NativeActivity">\n'
         '      <meta-data android:name="android.app.lib_name"\n'
         '                 android:value="test"/>\n'
+        '      <intent-filter>\n'
+        '       <action android:name="android.intent.action.MAIN"/>\n'
+        '       <category android:name="android.intent.category.LAUNCHER"/>\n'
+        '      </intent-filter>\n'
         '    </activity>\n'
         '  </application>\n'
         '</manifest>')
@@ -436,6 +452,49 @@ class AndroidBuildUtilTest(unittest.TestCase):
     m = android.AndroidManifest(None)
     with self.assertRaises(common.ConfigurationError):
       m._parse(f)
+
+  def test_manifest_parse_expecting_missing_sdk(self):
+    f = FileMock(
+        '<manifest '
+        '  xmlns:android="http://schemas.android.com/apk/res/android"\n'
+        '  package="com.google.fpl.libfplutil_test">\n'
+        '  <application>\n'
+        '    <activity android:name="android.app.NativeActivity">\n'
+        '      <meta-data android:name="android.app.lib_name"\n'
+        '                 android:value="test"/>\n'
+        '      <intent-filter>\n'
+        '       <action android:name="android.intent.action.MAIN"/>\n'
+        '       <category android:name="android.intent.category.LAUNCHER"/>\n'
+        '      </intent-filter>\n'
+        '    </activity>\n'
+        '  </application>\n'
+        '</manifest>')
+    m = android.AndroidManifest(None, ignore_sdk_version_missing=True)
+    m._parse(f)
+    self.assertEqual(m.min_sdk, 0)
+    self.assertEqual(m.target_sdk, 0)
+
+  def test_manifest_parse_expecting_missing_min_ver(self):
+    f = FileMock(
+        '<manifest '
+        '  xmlns:android="http://schemas.android.com/apk/res/android"\n'
+        '  package="com.google.fpl.libfplutil_test">\n'
+        '  <application>\n'
+        '    <uses-sdk/>\n'
+        '    <activity android:name="android.app.NativeActivity">\n'
+        '      <meta-data android:name="android.app.lib_name"\n'
+        '                 android:value="test"/>\n'
+        '      <intent-filter>\n'
+        '       <action android:name="android.intent.action.MAIN"/>\n'
+        '       <category android:name="android.intent.category.LAUNCHER"/>\n'
+        '      </intent-filter>\n'
+        '    </activity>\n'
+        '  </application>\n'
+        '</manifest>')
+    m = android.AndroidManifest(None, ignore_sdk_version_missing=True)
+    m._parse(f)
+    self.assertEqual(m.min_sdk, 0)
+    self.assertEqual(m.target_sdk, 0)
 
   def test_manifest_parse_missing_uses_sdk(self):
     f = FileMock(
@@ -464,15 +523,40 @@ class AndroidBuildUtilTest(unittest.TestCase):
         '    <activity android:name="android.app.NativeActivity">\n'
         '      <meta-data android:name="android.app.lib_name"\n'
         '                 android:value="test"/>\n'
+        '      <intent-filter>\n'
+        '       <action android:name="android.intent.action.MAIN"/>\n'
+        '       <category android:name="android.intent.category.LAUNCHER"/>\n'
+        '      </intent-filter>\n'
         '    </activity>\n'
         '  </application>\n'
         '</manifest>')
     manifest = android.BuildEnvironment(
         android.BuildEnvironment.build_defaults()).parse_manifest()
-    # Restore default file behavior for the correct display of exceptions.
-    __builtin__.open = self.file_open
     self.assertEqual(manifest.min_sdk, 1)
     self.assertEqual(manifest.target_sdk, manifest.min_sdk)
+
+  def test_manifest_parse_missing_main_activity(self):
+    os.path.exists = lambda unused_filename: True
+    # This mock file has everything but the launcher category.
+    __builtin__.open = FileMockFactory(
+        self,
+        '<manifest '
+        '  xmlns:android="http://schemas.android.com/apk/res/android"\n'
+        '  package="com.google.fpl.libfplutil_test">\n'
+        '  <uses-sdk android:minSdkVersion="1"/>\n'
+        '  <application>\n'
+        '    <activity android:name="android.app.NativeActivity">\n'
+        '      <meta-data android:name="android.app.lib_name"\n'
+        '                 android:value="test"/>\n'
+        '    <intent-filter>\n'
+        '      <action android:name="android.intent.action.MAIN"/>\n'
+        '    </intent-filter>\n'
+        '    </activity>\n'
+        '  </application>\n'
+        '</manifest>')
+    defaults = android.BuildEnvironment.build_defaults()
+    self.assertRaises(android.AndroidManifest.MissingActivityError,
+                      android.BuildEnvironment(defaults).parse_manifest)
 
   def test_manifest_parse_error(self):
     f = FileMock('<manifest ')
@@ -508,8 +592,8 @@ class AndroidBuildUtilTest(unittest.TestCase):
 
   def test_parse_adb_devices_list(self):
     device = android.AdbDevice(
-      '06d8bd43               device usb:2-3.3 product:razor model:Nexus_7 '
-      'device:flo')
+        '06d8bd43               device usb:2-3.3 product:razor model:Nexus_7 '
+        'device:flo')
     self.assertEquals(device.serial, '06d8bd43')
     self.assertEquals(device.type, 'device')
     self.assertEquals(device.usb, '2-3.3')
@@ -528,11 +612,14 @@ class AndroidBuildUtilTest(unittest.TestCase):
     self.assertEquals('device:flo model:Nexus_7 product:razor serial:06d8bd43 '
                       'type:device usb:2-3.3', str(device))
 
-  def test_adb_device_to_string(self):
+  def test_adb_device_from_device_line_to_string(self):
+    device = android.AdbDevice(
+        '06d8bd43 device usb:2-3.3 product:razor model:Nexus_7 device:flo')
+    self.assertEquals('device:flo model:Nexus_7 product:razor serial:06d8bd43 '
+                      'type:device usb:2-3.3',
+                      str(device))
     build_environment = android.BuildEnvironment(
         android.BuildEnvironment.build_defaults())
-    device = android.AdbDevice(
-      '06d8bd43 device usb:2-3.3 product:razor model:Nexus_7 device:flo')
     self.assertEquals('06d8bd43',
                       build_environment.get_adb_device_name(device))
 
@@ -540,7 +627,6 @@ class AndroidBuildUtilTest(unittest.TestCase):
     self.assertEquals('device:flo model:Nexus_7 product:razor serial:06d8bd43 '
                       'type:device usb:2-3.3',
                       build_environment.get_adb_device_name(device))
-
 
   def test_build_libraries(self):
     d = android.BuildEnvironment.build_defaults()
@@ -569,7 +655,6 @@ class AndroidBuildUtilTest(unittest.TestCase):
     b.ndk_home = '/dev/null'
     with self.assertRaises(common.ToolPathError):
       b.build_android_libraries([l], output=l)
-      b._parse(f)
 
   def test_clean_libraries(self):
     d = android.BuildEnvironment.build_defaults()
@@ -601,7 +686,6 @@ class AndroidBuildUtilTest(unittest.TestCase):
     b.ndk_home = '/dev/null'
     with self.assertRaises(common.ToolPathError):
       b.build_android_libraries([l], output=l)
-      b._parse(f)
 
   def test_find_android_sdk(self):
     d = android.BuildEnvironment.build_defaults()
@@ -682,11 +766,11 @@ class AndroidBuildUtilTest(unittest.TestCase):
 
   def _create_update_build_xml_setup(self):
     build_environment = android.BuildEnvironment(
-      android.BuildEnvironment.build_defaults())
+        android.BuildEnvironment.build_defaults())
     build_environment.sdk_home = ''
 
     build_environment._find_best_android_sdk = (
-      lambda unused_android, unused_min_sdk, unused_target_sdk: 10)
+        lambda unused_android, unused_min_sdk, unused_target_sdk: 10)
 
     project_directory = build_environment.get_project_directory()
     buildxml_filename = os.path.join(project_directory, 'build.xml')
@@ -695,21 +779,25 @@ class AndroidBuildUtilTest(unittest.TestCase):
     manifest.path = os.path.join(project_directory, 'AndroidManifest.xml')
     manifest._parse(FileMock(
         '<manifest '
-        '  xmlns:android="http://schemas.android.com/apk/res/android"\n'
-        '  package="com.google.fpl.libfplutil_test">\n'
-        '  <uses-sdk android:minSdkVersion="1"/>\n'
-        '  <application>\n'
-        '    <activity android:name="android.app.NativeActivity">\n'
-        '      <meta-data android:name="android.app.lib_name"\n'
-        '                 android:value="test"/>\n'
-        '    </activity>\n'
-        '  </application>\n'
+        ' xmlns:android="http://schemas.android.com/apk/res/android"\n'
+        ' package="com.google.fpl.libfplutil_test">\n'
+        ' <uses-sdk android:minSdkVersion="1"/>\n'
+        ' <application>\n'
+        '  <activity android:name="android.app.NativeActivity">\n'
+        '    <intent-filter>\n'
+        '      <action android:name="android.intent.action.MAIN"/>\n'
+        '      <category android:name="android.intent.category.LAUNCHER"/>\n'
+        '    </intent-filter>\n'
+        '    <meta-data android:name="android.app.lib_name"\n'
+        '               android:value="test"/>\n'
+        '   </activity>\n'
+        ' </application>\n'
         '</manifest>'))
 
     __builtin__.open = FileMockFactory(
-        self,  ('<?xml version="1.0" encoding="UTF-8"?>\n'
-                '<project name="libfplutil_test" default="help">\n'
-                '</project>\n'))
+        self, ('<?xml version="1.0" encoding="UTF-8"?>\n'
+               '<project name="libfplutil_test" default="help">\n'
+               '</project>\n'))
 
     return build_environment, manifest, buildxml_filename
 
@@ -738,7 +826,7 @@ class AndroidBuildUtilTest(unittest.TestCase):
 
     missing_files = set(buildxml_filename)
     os.path.exists = lambda f: (
-      True if f not in missing_files else missing_files.remove(f) or False)
+        True if f not in missing_files else missing_files.remove(f) or False)
     os.path.getmtime = lambda filename: (
         {manifest.path: 10, buildxml_filename: 5}[filename])
 
@@ -757,7 +845,6 @@ class AndroidBuildUtilTest(unittest.TestCase):
     build_environment, manifest, buildxml_filename = (
         self._create_update_build_xml_setup())
 
-    missing_files = set(buildxml_filename)
     os.path.exists = lambda unused_filename: True
     os.path.getmtime = lambda filename: (
         {manifest.path: 5, buildxml_filename: 5}[filename])
@@ -768,9 +855,9 @@ class AndroidBuildUtilTest(unittest.TestCase):
 
   def test_get_apk_filenames(self):
     build_environment = android.BuildEnvironment(
-      android.BuildEnvironment.build_defaults())
+        android.BuildEnvironment.build_defaults())
     signed_apk, unsigned_apk = build_environment.get_apk_filenames(
-      'libfplutil_example')
+        'libfplutil_example')
     self.assertEquals(os.path.join(os.getcwd(), 'bin',
                                    'libfplutil_example-release-unsigned.apk'),
                       unsigned_apk)
@@ -780,18 +867,17 @@ class AndroidBuildUtilTest(unittest.TestCase):
 
   def test_get_apk_filenames_debug(self):
     build_environment = android.BuildEnvironment(
-      android.BuildEnvironment.build_defaults())
+        android.BuildEnvironment.build_defaults())
     build_environment.ant_target = 'debug'
     signed_apk, unsigned_apk = build_environment.get_apk_filenames(
-      'libfplutil_example')
+        'libfplutil_example')
     expected_apk = os.path.join(os.getcwd(), 'bin',
                                 'libfplutil_example-debug.apk')
     self.assertEquals(expected_apk, unsigned_apk)
     self.assertEquals(expected_apk, signed_apk)
 
-
   def test_build_android_apk_unsigned(self):
-    build_environment, manifest, buildxml_filename = (
+    build_environment, manifest, _ = (
         self._create_update_build_xml_setup())
     os.path.exists = lambda unused_filename: True
     os.path.getmtime = lambda unused_filename: 1
@@ -805,7 +891,7 @@ class AndroidBuildUtilTest(unittest.TestCase):
     build_environment.build_android_apk(manifest=manifest)
 
   def test_clean_android_apk(self):
-    build_environment, manifest, buildxml_filename = (
+    build_environment, manifest, _ = (
         self._create_update_build_xml_setup())
     os.path.exists = lambda unused_filename: True
     os.path.getmtime = lambda unused_filename: 1
@@ -877,7 +963,7 @@ class AndroidBuildUtilTest(unittest.TestCase):
             build_environment._find_binary(android.BuildEnvironment.ADB)),
         stdout='List of devices attached\n\n', shell=True)
     with self.assertRaises(common.AdbError):
-        build_environment.check_adb_devices()
+      build_environment.check_adb_devices()
 
   def test_check_adb_devices_one_device(self):
     build_environment = android.BuildEnvironment(
@@ -960,19 +1046,20 @@ class AndroidBuildUtilTest(unittest.TestCase):
     os.path.exists = lambda unused_filename: True
     adb_path = build_environment._find_binary(android.BuildEnvironment.ADB)
     build_environment.run_subprocess = common_test.RunCommandMock(
-      self, args='%s -s 06d8bd43 shell pm list packages' % adb_path,
-      stdout=('package:com.google.earth\n'
-              'junk\n'
-              'package:com.google.android.gsf\n'
-              'package:com.android.keyguard\n'
-              'nothing useful\n'))
+        self, args='%s -s 06d8bd43 shell pm list packages' % adb_path,
+        stdout=('package:com.google.earth\n'
+                'junk\n'
+                'package:com.google.android.gsf\n'
+                'package:com.android.keyguard\n'
+                'nothing useful\n'))
     expected = ['com.google.earth', 'com.google.android.gsf',
-               'com.android.keyguard']
+                'com.android.keyguard']
     self.assertListEqual(expected, build_environment.list_installed_packages(
         '06d8bd43'))
 
   def test_install_android_apk(self):
     class MockBuildEnvironment(android.BuildEnvironment):
+
       def __init__(self, defaults):
         android.BuildEnvironment.__init__(self, defaults)
 
@@ -980,15 +1067,19 @@ class AndroidBuildUtilTest(unittest.TestCase):
         manifest = android.AndroidManifest(None)
         manifest._parse(FileMock(
             '<manifest '
-            '  xmlns:android="http://schemas.android.com/apk/res/android"\n'
-            '  package="com.google.fpl.libfplutil_test">\n'
-            '  <uses-sdk android:minSdkVersion="1"/>\n'
-            '  <application>\n'
-            '    <activity android:name="android.app.NativeActivity">\n'
-            '      <meta-data android:name="android.app.lib_name"\n'
-            '                 android:value="test"/>\n'
-            '    </activity>\n'
-            '  </application>\n'
+            ' xmlns:android="http://schemas.android.com/apk/res/android"\n'
+            ' package="com.google.fpl.libfplutil_test">\n'
+            ' <uses-sdk android:minSdkVersion="1"/>\n'
+            ' <application>\n'
+            '  <activity android:name="android.app.NativeActivity">\n'
+            '   <meta-data android:name="android.app.lib_name"\n'
+            '              android:value="test"/>\n'
+            '   <intent-filter>\n'
+            '    <action android:name="android.intent.action.MAIN"/>\n'
+            '    <category android:name="android.intent.category.LAUNCHER"/>\n'
+            '   </intent-filter>\n'
+            '  </activity>\n'
+            ' </application>\n'
             '</manifest>'))
         return manifest
 
@@ -1007,7 +1098,7 @@ class AndroidBuildUtilTest(unittest.TestCase):
                 'com.android.keyguard']
 
     build_environment = MockBuildEnvironment(
-      android.BuildEnvironment.build_defaults())
+        android.BuildEnvironment.build_defaults())
     build_environment.sdk_home = ''
 
     os.path.exists = lambda unused_filename: True
@@ -1021,13 +1112,13 @@ class AndroidBuildUtilTest(unittest.TestCase):
                     '06d8bd43               device usb:2-3.3 product:razor '
                     'model:Nexus_7 device:flo\n')),
          common_test.RunCommandMock(
-            self, args=('%s -s 06d8bd43 uninstall '
-                        'com.google.fpl.libfplutil_test' % adb_path)),
+             self, args=('%s -s 06d8bd43 uninstall '
+                         'com.google.fpl.libfplutil_test' % adb_path)),
          common_test.RunCommandMock(
-            self, args=(
-                '%s -s 06d8bd43 install %s' % (adb_path, os.path.join(
-                    build_environment.get_project_directory(), 'bin',
-                    'libfplutil_test.apk'))))])
+             self, args=(
+                 '%s -s 06d8bd43 install %s' % (adb_path, os.path.join(
+                     build_environment.get_project_directory(), 'bin',
+                     'libfplutil_test.apk'))))])
 
     build_environment.install_android_apk(adb_device='06d8bd43')
 
@@ -1043,6 +1134,10 @@ class AndroidBuildUtilTest(unittest.TestCase):
         '    <activity android:name="android.app.NativeActivity">\n'
         '      <meta-data android:name="android.app.lib_name"\n'
         '                 android:value="test"/>\n'
+        '      <intent-filter>\n'
+        '       <action android:name="android.intent.action.MAIN"/>\n'
+        '       <category android:name="android.intent.category.LAUNCHER"/>\n'
+        '      </intent-filter>\n'
         '    </activity>\n'
         '  </application>\n'
         '</manifest>')
@@ -1052,15 +1147,17 @@ class AndroidBuildUtilTest(unittest.TestCase):
     expected_logoutput = (
         'Random log output\n'
         'Some other log output\n'
-        'Another application log output.\n')
-    logoutput = expected_logoutput + (
+        'Another application log output.\n'
         'Displayed com.google.fpl.libfplutil_test/'
         'android.app.NativeActivity\n'
-        'Line noise\n')
+        )
+    logoutput = expected_logoutput + 'Line noise\n'
 
     # Configure the set of expected commands executed by run_android_apk.
     os.path.exists = lambda unused_filename: True
     build_environment.sdk_home = 'sdk_home'
+    package = 'com.google.fpl.libfplutil_test'
+    activity = 'android.app.NativeActivity'
     adb_path = build_environment._find_binary(android.BuildEnvironment.ADB)
     run_command_mock = common_test.RunCommandMockList(
         [common_test.RunCommandMock(
@@ -1069,11 +1166,15 @@ class AndroidBuildUtilTest(unittest.TestCase):
                     '123456\tdevice\tusb:2-3.4\tproduct:razor\tmodel:Nexus_7\t'
                     'device:flo\n')),
          common_test.RunCommandMock(
-             self, args='%s -s 123456 logcat -c' % adb_path),
+             self, args=('%s -s 123456 shell am force-stop %s' %
+                         (adb_path, package))),
          common_test.RunCommandMock(
-             self, args=('%s -s 123456 shell am start -S -n '
-                         'com.google.fpl.libfplutil_test/'
-                         'android.app.NativeActivity' % adb_path))])
+             self, args=('%s -s 123456 logcat -c' %
+                         (adb_path))),
+         common_test.RunCommandMock(
+             self, args=('%s -s 123456 shell am start -n %s/%s' %
+                         (adb_path, package, activity)),
+             stdout=(''))])
     build_environment.run_subprocess = run_command_mock
 
     subprocess.Popen = SubprocessMockStdOut(
@@ -1082,7 +1183,121 @@ class AndroidBuildUtilTest(unittest.TestCase):
     self.assertEquals(expected_logoutput,
                       build_environment.run_android_apk(adb_device='123456'))
 
+  def test_adb_device_with_poorly_formatted_device_line(self):
+    adb_device = android.AdbDevice('serial')
+    self.assertEquals(adb_device.serial, '')
+
+  def test_adb_device_with_short_device_line(self):
+    adb_device = android.AdbDevice('serial type')
+    self.assertEquals(adb_device.serial, 'serial')
+    self.assertEquals(adb_device.type, 'type')
+
+  def test_run_android_apk_custom_endpoint(self):
+    os.path.exists = lambda unused_filename: True
+    __builtin__.open = FileMockFactory(
+        self,
+        '<manifest '
+        '  xmlns:android="http://schemas.android.com/apk/res/android"\n'
+        '  package="com.google.fpl.libfplutil_test">\n'
+        '  <uses-sdk android:minSdkVersion="1"/>\n'
+        '  <application>\n'
+        '    <activity android:name="android.app.NativeActivity">\n'
+        '      <meta-data android:name="android.app.lib_name"\n'
+        '                 android:value="test"/>\n'
+        '      <intent-filter>\n'
+        '       <action android:name="android.intent.action.MAIN"/>\n'
+        '       <category android:name="android.intent.category.LAUNCHER"/>\n'
+        '      </intent-filter>\n'
+        '    </activity>\n'
+        '  </application>\n'
+        '</manifest>')
+    build_environment = android.BuildEnvironment(
+        android.BuildEnvironment.build_defaults())
+
+    end_str = 'This is the end condition!'
+    end_cond = re.compile(end_str)
+
+    expected_logoutput = (
+        'Random log output\n'
+        'Some other log output\n'
+        'Another application log output.\n' + end_str + '\n')
+
+    logoutput = expected_logoutput + '\nLine noise\n'
+
+    # Configure the set of expected commands executed by run_android_apk.
+    os.path.exists = lambda unused_filename: True
+    build_environment.sdk_home = 'sdk_home'
+    adb_path = build_environment._find_binary(android.BuildEnvironment.ADB)
+    package = 'com.google.fpl.libfplutil_test'
+    activity = 'android.app.NativeActivity'
+    run_command_mock = common_test.RunCommandMockList(
+        [common_test.RunCommandMock(
+            self, args='%s devices -l' % adb_path,
+            stdout=('List of devices attached\n'
+                    '123456\tdevice\tusb:2-3.4\tproduct:razor\tmodel:Nexus_7\t'
+                    'device:flo\n')),
+         common_test.RunCommandMock(
+             self, args=('%s -s 123456 shell am force-stop %s' %
+                         (adb_path, package))),
+         common_test.RunCommandMock(
+             self, args=('%s -s 123456 logcat -c' %
+                         (adb_path))),
+         common_test.RunCommandMock(
+             self, args=('%s -s 123456 shell am start -n %s/%s' %
+                         (adb_path, package, activity)),
+             stdout=(''))])
+    build_environment.run_subprocess = run_command_mock
+    subprocess.Popen = SubprocessMockStdOut(
+        self, args=[adb_path, '-s', '123456', 'logcat'],
+        stdout=logoutput)
+    self.assertEquals(expected_logoutput,
+                      build_environment.run_android_apk(adb_device='123456',
+                                                        end_match=end_cond))
+  def test_take_screencap(self):
+    uuid.uuid4 = lambda: 'test_uuid.png'
+    build_environment = android.BuildEnvironment(
+        android.BuildEnvironment.build_defaults())
+    adb_path = build_environment._find_binary(android.BuildEnvironment.ADB)
+    test_dest = '/fake/directory/structure.png'
+    run_command_mock = common_test.RunCommandMockList(
+        [common_test.RunCommandMock(
+            self, args='%s devices -l' % adb_path,
+            stdout=('List of devices attached\n'
+                    '123456\tdevice\tusb:2-3.4\tproduct:razor\tmodel:Nexus_7\t'
+                    'device:flo\n')),
+         common_test.RunCommandMock(
+             self, args=('%s -s 123456 shell screencap -p /sdcard/%s' %
+                         (adb_path, uuid.uuid4()))),
+         common_test.RunCommandMock(
+             self, args=('%s -s 123456 pull /sdcard/%s %s' %
+                         (adb_path, uuid.uuid4(), test_dest))),
+         common_test.RunCommandMock(
+             self, args=('%s -s 123456 shell rm /sdcard/%s' %
+                         (adb_path, uuid.uuid4()))),
+         ])
+    build_environment.run_subprocess = run_command_mock
+    build_environment.take_screencap(test_dest, adb_device='123456')
+
+  def test_get_device_dpi(self):
+    build_environment = android.BuildEnvironment(
+        android.BuildEnvironment.build_defaults())
+    adb_path = build_environment._find_binary(android.BuildEnvironment.ADB)
+    run_command_mock = common_test.RunCommandMockList(
+        [common_test.RunCommandMock(
+            self, args='%s devices -l' % adb_path,
+            stdout=('List of devices attached\n'
+                    '123456\tdevice\tusb:2-3.4\tproduct:razor\tmodel:Nexus_7\t'
+                    'device:flo\n')),
+         common_test.RunCommandMock(
+             self, args=('%s -s 123456 shell getprop ro.sf.lcd_density' %
+                         adb_path),
+             stdout='240'),
+         ])
+    build_environment.run_subprocess = run_command_mock
+    dpi = build_environment.get_device_dpi(adb_device='123456')
+    self.assertEqual(dpi, 240)
 
 
 if __name__ == '__main__':
   unittest.main()
+

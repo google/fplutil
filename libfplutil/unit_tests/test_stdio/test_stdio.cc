@@ -21,13 +21,14 @@
 #include "fplutil/main.h"
 
 class AndroidStdioTests : public ::testing::Test {
-public:
+ public:
   static const int NO_PRIORITY = -1;
   static const char *NO_TAG;
   static void Validate(const char *expect_str,
                        int expect_priority = ANDROID_LOG_WARN,
                        const char *expect_tag = "test");
-protected:
+
+ protected:
   virtual void SetUp() {
     SetAndroidStdioOutputFunction(Intercept);
     SetAndroidLogWrapperBufferSize(PRINTSIZE);
@@ -45,7 +46,7 @@ protected:
     SetAndroidStdioOutputFunction(__android_log_vprint);
   }
 
-private:
+ private:
   static int Intercept(int priority, const char *tag, const char *fmt,
                        va_list ap);
 
@@ -115,7 +116,7 @@ TEST_F(AndroidStdioTests, TestPrintfBuffered) {
 TEST_F(AndroidStdioTests, TestPrintfBufferedSequential) {
   SCOPED_TRACE("TestPrintfBufferedSequential");
   const size_t SIZE = 64;
-  char expected[SIZE+1];
+  char expected[SIZE + 1];
   for (int i = 0; i < SIZE; ++i) {
     char c = 'a' + (i % ('z' - 'a'));
     printf("%c", c);
@@ -153,7 +154,7 @@ TEST_F(AndroidStdioTests, TestPrintfEdge) {
 TEST_F(AndroidStdioTests, TestPutc) {
   SCOPED_TRACE("TestPutc");
   const size_t SIZE = 64;
-  char expected[SIZE+1];
+  char expected[SIZE + 1];
   for (int i = 0; i < SIZE; ++i) {
     char c = 'a' + (i % ('z' - 'a'));
     putc(c, stdout);
@@ -170,7 +171,7 @@ TEST_F(AndroidStdioTests, TestPutc) {
 TEST_F(AndroidStdioTests, TestPutchar) {
   SCOPED_TRACE("TestPutchar");
   const size_t SIZE = 64;
-  char expected[SIZE+1];
+  char expected[SIZE + 1];
   for (int i = 0; i < SIZE; ++i) {
     char c = 'A' + (i % ('Z' - 'A'));
     putchar(c);
@@ -187,7 +188,7 @@ TEST_F(AndroidStdioTests, TestPutchar) {
 TEST_F(AndroidStdioTests, TestFputc) {
   SCOPED_TRACE("TestFputc");
   const size_t SIZE = 64;
-  char expected[SIZE+1];
+  char expected[SIZE + 1];
   for (int i = 0; i < SIZE; ++i) {
     char c = 'a' + (i % ('z' - 'a'));
     fputc(c, stderr);
@@ -243,11 +244,11 @@ TEST_F(AndroidStdioTests, TestWritevTrivial) {
   const char *msg2 = __PRETTY_FUNCTION__;
   struct iovec iov;
   iov.iov_len = strlen(msg) + 1;
-  iov.iov_base = (void *) msg;
+  iov.iov_base = (void *)msg;
   writev(fileno(stdout), &iov, 1);
   AndroidStdioTests::Validate(msg);
   iov.iov_len = strlen(msg2) + 1;
-  iov.iov_base = (void *) msg2;
+  iov.iov_base = (void *)msg2;
   writev(fileno(stderr), &iov, 1);
   AndroidStdioTests::Validate(msg2);
 }
@@ -256,7 +257,7 @@ TEST_F(AndroidStdioTests, TestFprintfOther) {
   SCOPED_TRACE("TestFprintfOther");
   const char *msg = "TestFprintfOther\n";
   FILE *devnull = fopen("/dev/null", "w");
-  EXPECT_NE((intptr_t) devnull, NULL);
+  EXPECT_NE((intptr_t)devnull, NULL);
   fprintf(devnull, msg);
   // Should get nothing.
   AndroidStdioTests::Validate("", AndroidStdioTests::NO_PRIORITY,
@@ -278,15 +279,21 @@ TEST_F(AndroidStdioTests, TestFputcOther) {
 TEST_F(AndroidStdioTests, TestCoutTrivial) {
   SCOPED_TRACE("TestCoutTrivial");
   const char *msg = __PRETTY_FUNCTION__;
-  std::cout << msg << std::endl; // Since Android will add an extra newline,
-                                 // endl should be trimmed internally.
+  std::cout << msg << std::endl;  // Since Android will add an extra newline,
+                                  // endl should be trimmed internally.
   AndroidStdioTests::Validate(msg);
 }
 
 TEST_F(AndroidStdioTests, TestCerrTrivial) {
   SCOPED_TRACE("TestCerrTrivial");
   const char *msg = __PRETTY_FUNCTION__;
-  std::cerr << msg << std::endl; // Since Android will add an extra newline,
-                                 // endl should be trimmed internally.
+  std::cerr << msg << std::endl;  // Since Android will add an extra newline,
+                                  // endl should be trimmed internally.
   AndroidStdioTests::Validate(msg);
 }
+
+int main(int argc, char **argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
+

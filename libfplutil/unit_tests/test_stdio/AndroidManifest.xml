@@ -15,18 +15,18 @@ limitations under the License.
 <!-- Empty Manifest so the NDK build process can find the project
      directory. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="com.google.fpl.libfplutil.tests"
+          package="com.google.fpl.libfplutil.test_stdio"
           android:versionCode="1"
           android:versionName="1.0">
 
     <uses-sdk android:minSdkVersion="9"/>
 
-    <application android:label="fplutiltests" android:hasCode="false"
+    <application android:label="test_stdio" android:hasCode="false"
                  android:debuggable="true">
         <activity android:name="android.app.NativeActivity"
-                  android:label="fplutiltests">
+                  android:label="test_stdio">
             <meta-data android:name="android.app.lib_name"
-                       android:value="fplutiltests" />
+                       android:value="test_stdio" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
