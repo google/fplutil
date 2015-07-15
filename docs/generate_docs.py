@@ -186,6 +186,10 @@ def main():
 
   this_dir = os.path.realpath(os.path.dirname(__file__))
 
+  # Import this module to get its' path
+  import generate_docs as gen_docs_path
+  generate_docs_dir = os.path.realpath(os.path.dirname(gen_docs_path.__file__))
+
   # Process the arguments.
   linklint_dir = os.path.realpath(
       args.linklint_dir if args.linklint_dir else this_dir)
@@ -196,7 +200,9 @@ def main():
   # py_filter scripts.
   os.environ['PATH'] = os.pathsep.join([this_dir, os.getenv('PATH')])
 
-  shared_docs_path = os.environ.get('SHARED_DOCS_PATH', '')
+  shared_docs_path = os.environ.get('SHARED_DOCS_PATH',
+                                    os.path.join(generate_docs_dir, 'src'))
+  os.environ['SHARED_DOCS_PATH'] = shared_docs_path
 
   # Get the documentation output directory.
   output_dir = doxyfile_get_output_dir(source_dir)
