@@ -466,7 +466,7 @@ class Adb(object):
     error_message = []
     if not number_of_devices:
       error_message.append('No Android devices are connected to this host.')
-    elif serial and serial not in [d.split()[0] for d in devices]:
+    elif serial and serial not in [d.split()[0] for d in devices if d]:
       error_message = ['%s is not connected to the host.' % serial,
                        'The connected devices are:']
       error_message.extend(devices)
