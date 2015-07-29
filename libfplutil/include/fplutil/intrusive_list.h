@@ -217,7 +217,7 @@ class intrusive_list {
 
   iterator end() { return iterator(&data_); }
 
-  const_iterator end() const { return iterator(&data_); }
+  const_iterator end() const { return const_iterator(&data_); }
 
   const_iterator cend() const { return const_iterator(&data_); }
 
