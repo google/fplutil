@@ -74,6 +74,8 @@ _CATEGORY_LAUNCHER = 'android.intent.category.LAUNCHER'
 _NATIVE_ACTIVITY = 'android.app.NativeActivity'
 _ANDROID_MANIFEST_SCHEMA = 'http://schemas.android.com/apk/res/android'
 
+# Regular expression used to extract the SDK location from local.properties.
+_LOCAL_PROPERTIES_SDK_LOCATION = re.compile(r'^\s*sdk.dir=(.*)')
 
 class XMLFile(object):
   """XML file base class factored for testability.
@@ -790,6 +792,30 @@ class BuildEnvironment(common.BuildEnvironment):
     manifest.parse()
     return manifest
 
+  @staticmethod
+  def parse_delete_local_properties(project_path, build_xml_path,
+                                    sdk_location):
+    """Parse local properties and if the sdk location changed delete it.
+
+    This also deletes build.xml so the entire project is refreshed if the
+    tools path changes.
+
+    Args:
+      project_path: Path containing local.properties file.
+      sdk_location: Install location of the sdk.
+    """
+    local_properties = os.path.join(project_path, 'local.properties')
+    if os.path.exists(local_properties):
+      old_sdk_location = ''
+      with open(local_properties) as f:
+        for line in f:
+          m = _LOCAL_PROPERTIES_SDK_LOCATION.match(line)
+          if m:
+            old_sdk_location = m.groups()[0]
+      if old_sdk_location != sdk_location:
+        os.unlink(local_properties)
+        os.unlink(build_xml_path)
+
   def create_update_build_xml(self, manifest, path='.'):
     """Create or update ant build.xml for an Android project.
 
@@ -804,6 +830,12 @@ class BuildEnvironment(common.BuildEnvironment):
 
     project = self.get_project_directory(path=path)
     buildxml_path = os.path.join(project, 'build.xml')
+
+    # delete local.properties and build.xml if local.properties is out of date.
+    BuildEnvironment.parse_delete_local_properties(
+        project, buildxml_path,
+        os.path.normpath(os.path.join(os.path.dirname(android),
+                                      os.path.pardir)))
 
     # Get the last component of the package name for the application name.
     app_name = manifest.package_name[manifest.package_name.rfind('.') + 1:]
