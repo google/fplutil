@@ -643,23 +643,23 @@ class AndroidBuildUtilTest(unittest.TestCase):
     lpath = os.path.abspath(os.path.join(b.project_directory, l))
     expect = [ndk_build, '-j' + str(b.cpu_count), '-C', lpath]
     m.expect(expect)
-    b.build_android_libraries([l])
+    b.build_android_libraries([l], check_ndk_install_path=False)
     b.verbose = True
     expect.append('V=1')
     m.expect(expect)
-    b.build_android_libraries([l])
+    b.build_android_libraries([l], check_ndk_install_path=False)
     expect.append('NDK_OUT=%s' % lpath)
     m.expect(expect)
-    b.build_android_libraries([l], output=l)
+    b.build_android_libraries([l], output=l, check_ndk_install_path=False)
     b.make_flags = '-DFOO -DBAR -DBAZ'
     flaglist = ['-DFOO', '-DBAR', '-DBAZ']
     expect += flaglist
     m.expect(expect)
-    b.build_android_libraries([l], output=l)
+    b.build_android_libraries([l], output=l, check_ndk_install_path=False)
     common._find_executable = self.find_executable
     b.ndk_home = '/dev/null'
     with self.assertRaises(common.ToolPathError):
-      b.build_android_libraries([l], output=l)
+      b.build_android_libraries([l], output=l, check_ndk_install_path=False)
 
   def test_clean_libraries(self):
     d = android.BuildEnvironment.build_defaults()
@@ -674,23 +674,23 @@ class AndroidBuildUtilTest(unittest.TestCase):
                                     b.cpu_count),
               '-C', lpath, 'clean']
     m.expect(expect)
-    b.build_android_libraries([l])
+    b.build_android_libraries([l], check_ndk_install_path=False)
     b.verbose = True
     expect.append('V=1')
     m.expect(expect)
-    b.build_android_libraries([l])
+    b.build_android_libraries([l], check_ndk_install_path=False)
     expect.append('NDK_OUT=%s' % lpath)
     m.expect(expect)
-    b.build_android_libraries([l], output=l)
+    b.build_android_libraries([l], output=l, check_ndk_install_path=False)
     b.make_flags = '-DFOO -DBAR -DBAZ'
     flaglist = ['-DFOO', '-DBAR', '-DBAZ']
     expect += flaglist
     m.expect(expect)
-    b.build_android_libraries([l], output=l)
+    b.build_android_libraries([l], output=l, check_ndk_install_path=False)
     common._find_executable = self.find_executable
     b.ndk_home = '/dev/null'
     with self.assertRaises(common.ToolPathError):
-      b.build_android_libraries([l], output=l)
+      b.build_android_libraries([l], output=l, check_ndk_install_path=False)
 
   def test_find_android_sdk(self):
     d = android.BuildEnvironment.build_defaults()
