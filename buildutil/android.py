@@ -686,7 +686,7 @@ class BuildEnvironment(common.BuildEnvironment):
         os.makedirs(project_dir)
       with open(ndk_location_filename, 'w') as f:
         f.write(current_ndk_path)
-    return changed and old_ndk_path
+    return changed
 
   def build_android_libraries(self, subprojects, output=None,
                               check_ndk_install_path=True):
