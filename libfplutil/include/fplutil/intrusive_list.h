@@ -17,6 +17,7 @@
 
 #include <cstddef>
 #include <cassert>
+#include <functional>
 
 #if defined(_MSC_FULL_VER)
 #pragma warning(push)
@@ -275,14 +276,12 @@ class intrusive_list {
   static void insert_before(reference value, reference other) {
     node_type* value_node = node_from_object(value);
     node_type* other_node = node_from_object(other);
-    assert(value_node->in_list() && !other_node->in_list());
     value_node->insert_before(other_node);
   }
 
   static void insert_after(reference value, reference other) {
     node_type* value_node = node_from_object(value);
     node_type* other_node = node_from_object(other);
-    assert(value_node->in_list() && !other_node->in_list());
     value_node->insert_after(other_node);
   }
 
