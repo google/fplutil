@@ -27,9 +27,7 @@ class IntegerListNode {
   IntegerListNode(int value) : node(), value_(value) {}
   // Older versions of Visual Studio don't generate move constructors or move
   // assignment operators.
-  IntegerListNode(IntegerListNode&& other) {
-    *this = std::move(other);
-  }
+  IntegerListNode(IntegerListNode&& other) { *this = std::move(other); }
   IntegerListNode& operator=(IntegerListNode&& other) {
     value_ = other.value_;
     node = std::move(other.node);
@@ -63,7 +61,8 @@ bool operator==(const IntegerListNode& a, const IntegerListNode& b) {
 class intrusive_list_test : public testing::Test {
  protected:
   intrusive_list_test()
-      : one_(1),
+      : list_(&IntegerListNode::node),
+        one_(1),
         two_(2),
         three_(3),
         four_(4),
@@ -78,7 +77,7 @@ class intrusive_list_test : public testing::Test {
         fourty_(40),
         fifty_(50) {}
 
-  fpl::intrusive_list<IntegerListNode, &IntegerListNode::node> list_;
+  fpl::intrusive_list<IntegerListNode> list_;
   IntegerListNode one_;
   IntegerListNode two_;
   IntegerListNode three_;
@@ -346,7 +345,7 @@ TEST_F(intrusive_list_test, insert_before) {
   auto iter = list_.begin();
   ++iter;
   ++iter;
-  fpl::intrusive_list<IntegerListNode, &IntegerListNode::node>::insert_before(
+  fpl::intrusive_list<IntegerListNode>::insert_before<&IntegerListNode::node>(
       *iter, ten_);
 
   iter = list_.begin();
@@ -374,7 +373,7 @@ TEST_F(intrusive_list_test, insert_after) {
 
   auto iter = list_.begin();
   ++iter;
-  fpl::intrusive_list<IntegerListNode, &IntegerListNode::node>::insert_after(
+  fpl::intrusive_list<IntegerListNode>::insert_after<&IntegerListNode::node>(
       *iter, ten_);
 
   iter = list_.begin();
@@ -696,7 +695,7 @@ TEST_F(intrusive_list_test, splice_empty) {
   list_.push_back(four_);
   list_.push_back(five_);
 
-  fpl::intrusive_list<IntegerListNode, &IntegerListNode::node> other_list;
+  fpl::intrusive_list<IntegerListNode> other_list(&IntegerListNode::node);
 
   list_.splice(list_.begin(), other_list);
 
@@ -724,7 +723,7 @@ TEST_F(intrusive_list_test, splice_other_at_beginning) {
   list_.push_back(four_);
   list_.push_back(five_);
 
-  fpl::intrusive_list<IntegerListNode, &IntegerListNode::node> other_list;
+  fpl::intrusive_list<IntegerListNode> other_list(&IntegerListNode::node);
   other_list.push_back(ten_);
   other_list.push_back(twenty_);
   other_list.push_back(thirty_);
@@ -767,7 +766,7 @@ TEST_F(intrusive_list_test, splice_other_at_end) {
   list_.push_back(four_);
   list_.push_back(five_);
 
-  fpl::intrusive_list<IntegerListNode, &IntegerListNode::node> other_list;
+  fpl::intrusive_list<IntegerListNode> other_list(&IntegerListNode::node);
   other_list.push_back(ten_);
   other_list.push_back(twenty_);
   other_list.push_back(thirty_);
@@ -810,7 +809,7 @@ TEST_F(intrusive_list_test, splice_other_at_middle) {
   list_.push_back(four_);
   list_.push_back(five_);
 
-  fpl::intrusive_list<IntegerListNode, &IntegerListNode::node> other_list;
+  fpl::intrusive_list<IntegerListNode> other_list(&IntegerListNode::node);
   other_list.push_back(ten_);
   other_list.push_back(twenty_);
   other_list.push_back(thirty_);
@@ -857,7 +856,7 @@ TEST_F(intrusive_list_test, merge_alternating) {
   list_.push_back(seven_);
   list_.push_back(nine_);
 
-  fpl::intrusive_list<IntegerListNode, &IntegerListNode::node> other_list;
+  fpl::intrusive_list<IntegerListNode> other_list(&IntegerListNode::node);
   other_list.push_back(two_);
   other_list.push_back(four_);
   other_list.push_back(six_);
@@ -901,7 +900,7 @@ TEST_F(intrusive_list_test, merge_alternating2) {
   list_.push_back(nine_);
   list_.push_back(ten_);
 
-  fpl::intrusive_list<IntegerListNode, &IntegerListNode::node> other_list;
+  fpl::intrusive_list<IntegerListNode> other_list(&IntegerListNode::node);
   other_list.push_back(three_);
   other_list.push_back(four_);
   other_list.push_back(seven_);
@@ -943,7 +942,7 @@ TEST_F(intrusive_list_test, merge_this_other) {
   list_.push_back(four_);
   list_.push_back(five_);
 
-  fpl::intrusive_list<IntegerListNode, &IntegerListNode::node> other_list;
+  fpl::intrusive_list<IntegerListNode> other_list(&IntegerListNode::node);
   other_list.push_back(six_);
   other_list.push_back(seven_);
   other_list.push_back(eight_);
@@ -986,7 +985,7 @@ TEST_F(intrusive_list_test, merge_other_this) {
   list_.push_back(nine_);
   list_.push_back(ten_);
 
-  fpl::intrusive_list<IntegerListNode, &IntegerListNode::node> other_list;
+  fpl::intrusive_list<IntegerListNode> other_list(&IntegerListNode::node);
   other_list.push_back(one_);
   other_list.push_back(two_);
   other_list.push_back(three_);
@@ -1029,8 +1028,7 @@ TEST_F(intrusive_list_test, move_constructor) {
   list_.push_back(four_);
   list_.push_back(five_);
 
-  fpl::intrusive_list<IntegerListNode, &IntegerListNode::node> other(
-      std::move(list_));
+  fpl::intrusive_list<IntegerListNode> other(std::move(list_));
 
   EXPECT_TRUE(one_.node.in_list());
   EXPECT_TRUE(two_.node.in_list());
@@ -1059,7 +1057,7 @@ TEST_F(intrusive_list_test, move_assignment) {
   list_.push_back(four_);
   list_.push_back(five_);
 
-  fpl::intrusive_list<IntegerListNode, &IntegerListNode::node> other;
+  fpl::intrusive_list<IntegerListNode> other(&IntegerListNode::node);
   other = std::move(list_);
 
   EXPECT_TRUE(one_.node.in_list());
@@ -1089,7 +1087,7 @@ TEST_F(intrusive_list_test, swap) {
   list_.push_back(four_);
   list_.push_back(five_);
 
-  fpl::intrusive_list<IntegerListNode, &IntegerListNode::node> other;
+  fpl::intrusive_list<IntegerListNode> other(&IntegerListNode::node);
   other.push_back(ten_);
   other.push_back(twenty_);
   other.push_back(thirty_);
@@ -1152,4 +1150,3 @@ int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
-
