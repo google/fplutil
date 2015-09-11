@@ -199,6 +199,20 @@ class intrusive_list {
     return *this;
   }
 
+  // Disallow copying. Ideally we'd put this in the `private` section so that
+  // copying will generate a compiler error. We can't do that (explained below),
+  // so we leave off the impelmentation to generate a linker error instead.
+  //
+  // Note: Must be in public section because Visual Studio aggressively
+  // generates copy constructors, even if they're unused. For example, if an
+  // intrusive_list is used in an std::pair<> (as it would be when part of an
+  // std::map<>), then the copy constructor is generated. But the copy
+  // constructor is not for most normal usages of map<>.
+  //
+  // TODO: Find a better way around this limitation.
+  intrusive_list(const intrusive_list<value_type>&);
+  void operator=(const this_type&);
+
   template <class InputIt>
   intrusive_list(InputIt first, InputIt last)
       : data_(&data_, &data_) {
@@ -584,10 +598,6 @@ class intrusive_list {
     return reinterpret_cast<pointer>(reinterpret_cast<const char*>(node) -
                                      reinterpret_cast<const char*>(offset));
   }
-
-  // Disallow copying.
-  intrusive_list(const intrusive_list<value_type>&);
-  void operator=(const this_type&);
 };
 
 }  // namespace fpl

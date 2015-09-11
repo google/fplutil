@@ -13,7 +13,11 @@
 // limitations under the License.
 
 #include <fstream>
-#include <sys/stat.h>  // POSIX functions, for directory creation.
+#if defined(_MSC_VER)
+#include <direct.h>  // Windows functions for directory creation.
+#else
+#include <sys/stat.h>  // POSIX functions for directory creation.
+#endif
 
 #include "fplutil/file_utils.h"
 
@@ -69,6 +73,21 @@ bool FileExists(const std::string& file_name) {
   return stat(file_name.c_str(), &buffer) == 0;
 }
 
+#if defined(_MSC_VER)
+static bool CreateSubDirectory(const std::string& sub_dir) {
+  return _mkdir(sub_dir.c_str()) == 0;
+}
+#else
+static bool CreateSubDirectory(const std::string& sub_dir) {
+  // Create the sub-directory using the POSIX mkdir function.
+  // If slash is npos, we take the entire `dir` and create it.
+  const mode_t kDirectoryMode = 0755;
+  const int mkdir_result = mkdir(sub_dir.c_str(), kDirectoryMode);
+  const bool dir_created = mkdir_result == 0 || errno == EEXIST;
+  return dir_created;
+}
+#endif
+
 bool CreateDirectory(const std::string& dir) {
   if (dir.length() == 0) return true;
 
@@ -77,12 +96,11 @@ bool CreateDirectory(const std::string& dir) {
     // Find the next sub-directory after the last one we just created.
     slash = dir.find_first_of(kDirectorySeparators, slash + 1);
 
-    // Create the sub-directory using the POSIX mkdir function.
     // If slash is npos, we take the entire `dir` and create it.
-    const mode_t kDirectoryMode = 0755;
     const std::string sub_dir = dir.substr(0, slash);
-    const int mkdir_result = mkdir(sub_dir.c_str(), kDirectoryMode);
-    const bool dir_created = mkdir_result == 0 || errno == EEXIST;
+
+    // Create the sub-directory using the POSIX mkdir function.
+    const bool dir_created = CreateSubDirectory(sub_dir);
     if (!dir_created) return false;
 
     // If no more slashes left, get out of here.
