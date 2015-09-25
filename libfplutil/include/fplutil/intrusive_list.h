@@ -210,8 +210,8 @@ class intrusive_list {
   // constructor is not for most normal usages of map<>.
   //
   // TODO: Find a better way around this limitation.
-  intrusive_list(const intrusive_list<value_type>&);
-  void operator=(const this_type&);
+  intrusive_list(const intrusive_list<value_type>&) { assert(false); }
+  void operator=(const this_type&) { assert(false); }
 
   template <class InputIt>
   intrusive_list(InputIt first, InputIt last)

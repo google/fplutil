@@ -14,10 +14,9 @@
 
 #include <fstream>
 #if defined(_MSC_VER)
-#include <direct.h>  // Windows functions for directory creation.
-#else
-#include <sys/stat.h>  // POSIX functions for directory creation.
+#include <direct.h>    // Windows functions for directory creation.
 #endif
+#include <sys/stat.h>  // POSIX functions for directory creation.
 
 #include "fplutil/file_utils.h"
 
@@ -75,7 +74,9 @@ bool FileExists(const std::string& file_name) {
 
 #if defined(_MSC_VER)
 static bool CreateSubDirectory(const std::string& sub_dir) {
-  return _mkdir(sub_dir.c_str()) == 0;
+  const int mkdir_result = _mkdir(sub_dir.c_str());
+  const bool dir_created = mkdir_result == 0 || errno == EEXIST;
+  return dir_created;
 }
 #else
 static bool CreateSubDirectory(const std::string& sub_dir) {
