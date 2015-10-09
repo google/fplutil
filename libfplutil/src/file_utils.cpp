@@ -12,15 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <fstream>
+#include <assert.h>
 #if defined(_MSC_VER)
 #include <direct.h>    // Windows functions for directory creation.
 #endif
+#include <fstream>
+#include <dirent.h>
 #include <sys/stat.h>  // POSIX functions for directory creation.
 
 #include "fplutil/file_utils.h"
 
 namespace fpl {
+
+using std::string;
 
 #if defined(_WIN32)
 static const char kDirectorySeparator = '\\';
@@ -29,57 +33,97 @@ static const char kDirectorySeparator = '/';
 #endif
 static const char kDirectorySeparators[] = "\\/";
 
-std::string FormatAsDirectoryName(const std::string& s) {
+string FormatAsDirectoryName(const string& s) {
   const bool needs_slash = s.length() > 0 &&
                            s.find_first_of(kDirectorySeparators,
-                                           s.length() - 1) == std::string::npos;
+                                           s.length() - 1) == string::npos;
   return needs_slash ? s + kDirectorySeparator : s;
 }
 
-std::string RemoveExtensionFromName(const std::string& s) {
+string RemoveExtensionFromName(const string& s) {
   const size_t dot = s.find_last_of('.');
-  return dot == std::string::npos ? s : s.substr(0, dot);
+  return dot == string::npos ? s : s.substr(0, dot);
 }
 
-std::string RemoveDirectoryFromName(const std::string& s) {
+string RemoveDirectoryFromName(const string& s) {
   const size_t slash = s.find_last_of(kDirectorySeparators);
-  return slash == std::string::npos ? s : s.substr(slash + 1);
+  return slash == string::npos ? s : s.substr(slash + 1);
 }
 
-std::string BaseFileName(const std::string& s) {
+string BaseFileName(const string& s) {
   return RemoveExtensionFromName(RemoveDirectoryFromName(s));
 }
 
-std::string DirectoryName(const std::string& s) {
+string DirectoryName(const string& s) {
   const size_t slash = s.find_last_of(kDirectorySeparators);
-  return slash == std::string::npos ? std::string("") : s.substr(0, slash + 1);
+  return slash == string::npos ? string("") : s.substr(0, slash + 1);
 }
 
-std::string FileExtension(const std::string& s) {
+string FileExtension(const string& s) {
   const size_t dot = s.find_last_of('.');
-  return dot == std::string::npos ? std::string("") : s.substr(dot + 1);
+  return dot == string::npos ? string("") : s.substr(dot + 1);
 }
 
-bool AbsoluteFileName(const std::string& s) {
+bool AbsoluteFileName(const string& s) {
   const bool starts_with_slash =
       s.length() > 0 &&
-      s.find_first_of(kDirectorySeparators, 0, 1) != std::string::npos;
+      s.find_first_of(kDirectorySeparators, 0, 1) != string::npos;
   return starts_with_slash;
 }
 
-bool FileExists(const std::string& file_name) {
-  struct stat buffer;
-  return stat(file_name.c_str(), &buffer) == 0;
+static void MatchCase(CaseSensitivity case_sensitivity, string* s) {
+  switch (case_sensitivity) {
+    case kOsDefaultCaseSensitivity:
+      assert(false); // not implemented
+      break;
+
+    case kCaseSensitive:
+      break;
+
+    case kCaseInsensitive:
+      std::transform(s->begin(), s->end(), s->begin(), ::tolower);
+      break;
+  }
+}
+
+bool FileExists(const string& file_name,
+                CaseSensitivity case_sensitivity) {
+  // The standard functions use the OS's case sensitivity.
+  if (case_sensitivity == kOsDefaultCaseSensitivity) {
+    struct stat buffer;
+    return stat(file_name.c_str(), &buffer) == 0;
+  }
+
+  // There are no standard functions that allow case sensitivity to be
+  // specified, so we have to use directory functions.
+  const string dir_name = DirectoryName(file_name);
+  DIR* dir = opendir(dir_name.c_str());
+  if (dir == NULL) return false;
+
+  // Get the name of the file we want to find in this directory.
+  string desired_name = RemoveDirectoryFromName(file_name);
+  MatchCase(case_sensitivity, &desired_name);
+
+  // Loop through every file in the directory.
+  for (;;) {
+    dirent* ent = readdir(dir);
+    if (ent == nullptr) return false;
+
+    // Return true if file name, respecting case sensitivity, is found.
+    string actual_name(ent->d_name);
+    MatchCase(case_sensitivity, &actual_name);
+    if (desired_name == actual_name) return true;
+  }
 }
 
 #if defined(_MSC_VER)
-static bool CreateSubDirectory(const std::string& sub_dir) {
+static bool CreateSubDirectory(const string& sub_dir) {
   const int mkdir_result = _mkdir(sub_dir.c_str());
   const bool dir_created = mkdir_result == 0 || errno == EEXIST;
   return dir_created;
 }
 #else
-static bool CreateSubDirectory(const std::string& sub_dir) {
+static bool CreateSubDirectory(const string& sub_dir) {
   // Create the sub-directory using the POSIX mkdir function.
   // If slash is npos, we take the entire `dir` and create it.
   const mode_t kDirectoryMode = 0755;
@@ -89,7 +133,7 @@ static bool CreateSubDirectory(const std::string& sub_dir) {
 }
 #endif
 
-bool CreateDirectory(const std::string& dir) {
+bool CreateDirectory(const string& dir) {
   if (dir.length() == 0) return true;
 
   size_t slash = 0;
@@ -98,20 +142,20 @@ bool CreateDirectory(const std::string& dir) {
     slash = dir.find_first_of(kDirectorySeparators, slash + 1);
 
     // If slash is npos, we take the entire `dir` and create it.
-    const std::string sub_dir = dir.substr(0, slash);
+    const string sub_dir = dir.substr(0, slash);
 
     // Create the sub-directory using the POSIX mkdir function.
     const bool dir_created = CreateSubDirectory(sub_dir);
     if (!dir_created) return false;
 
     // If no more slashes left, get out of here.
-    if (slash == std::string::npos) break;
+    if (slash == string::npos) break;
   }
   return true;
 }
 
-bool CopyFile(const std::string& target_file_name,
-              const std::string& source_file_name) {
+bool CopyFile(const string& target_file_name,
+              const string& source_file_name) {
   std::ifstream source(source_file_name, std::ios::binary);
   std::ofstream target(target_file_name, std::ios::binary);
   if (!source || !target) return false;
