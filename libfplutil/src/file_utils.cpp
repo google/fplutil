@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
 #include <assert.h>
 #if defined(_MSC_VER)
 #include <direct.h>    // Windows functions for directory creation.
