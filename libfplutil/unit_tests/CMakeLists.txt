@@ -47,6 +47,9 @@ endif()
 
 set(COMMON_LIBS "gtest;${CMAKE_THREAD_LIBS_INIT}")
 
+# Extra .cpp files to compile for tests
+set(SUPPORT_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/../src/string_utils.cpp")
+
 # PUT ADDITIONAL UNIT TEST BINARIES BELOW!
 # The commands should be of the form:
 #
@@ -67,3 +70,4 @@ endfunction()
 
 test_executable(index_allocator)
 test_executable(intrusive_list)
+test_executable(string)

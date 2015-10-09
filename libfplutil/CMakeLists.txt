@@ -54,7 +54,8 @@ include_directories(include)
 
 # Source files for the fplutil library.
 set(fplutil_SRCS
-    src/file_utils.cpp)
+    src/file_utils.cpp
+    src/string_utils.cpp)
 
 # Detect clang
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
