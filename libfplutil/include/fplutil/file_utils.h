@@ -52,8 +52,12 @@ std::string FileExtension(const std::string& s);
 bool AbsoluteFileName(const std::string& s);
 
 /// Return true if the specified file exists. Can be absolute or relative path.
-bool FileExists(const std::string& file_name,
-                CaseSensitivity case_sensitivity = kOsDefaultCaseSensitivity);
+/// Use the file system's default case sensitivity.
+bool FileExists(const std::string& file_name);
+
+/// Return true if the specified file exists. Can be absolute or relative path.
+/// Use the specified case sensitivity.
+bool FileExists(const std::string& file_name, CaseSensitivity case_sensitivity);
 
 /// Create the sequence of directories specified by `dir`.
 /// @param dir Directory to create. Can be and absolute path, or a path

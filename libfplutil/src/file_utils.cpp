@@ -87,15 +87,19 @@ static void MatchCase(CaseSensitivity case_sensitivity, string* s) {
   }
 }
 
+bool FileExists(const string& file_name) {
+  struct stat buffer;
+  return stat(file_name.c_str(), &buffer) == 0;
+}
+
 bool FileExists(const string& file_name,
                 CaseSensitivity case_sensitivity) {
-  // The standard functions use the OS's case sensitivity.
+  // The standard C++ functions use the OS's case sensitivity.
   if (case_sensitivity == kOsDefaultCaseSensitivity) {
-    struct stat buffer;
-    return stat(file_name.c_str(), &buffer) == 0;
+    return FileExists(file_name);
   }
 
-  // There are no standard functions that allow case sensitivity to be
+  // There are no standard C++ functions that allow case sensitivity to be
   // specified, so we have to use directory functions.
   const string dir_name = DirectoryName(file_name);
   DIR* dir = opendir(dir_name.c_str());
