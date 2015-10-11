@@ -110,15 +110,24 @@ bool FileExists(const string& file_name,
   MatchCase(case_sensitivity, &desired_name);
 
   // Loop through every file in the directory.
+  bool exists = false;
   for (;;) {
     dirent* ent = readdir(dir);
-    if (ent == nullptr) return false;
+    if (ent == nullptr) break;
 
     // Return true if file name, respecting case sensitivity, is found.
     string actual_name(ent->d_name);
     MatchCase(case_sensitivity, &actual_name);
-    if (desired_name == actual_name) return true;
+    if (desired_name == actual_name) {
+      exists = true;
+      break;
+    }
   }
+
+  // Strange things happen if the directory isn't closed.
+  closedir(dir);
+  dir = nullptr;
+  return exists;
 }
 
 #if defined(_MSC_VER)
