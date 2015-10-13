@@ -20,7 +20,6 @@ libfplutil/unit_tests/Makefile
 libfplutil/unit_tests/bin/
 libfplutil/unit_tests/cmake_install.cmake
 libfplutil/unit_tests/googletest/
-libfplutil/unit_tests/test_string/
 libfplutil/unit_tests/test*/CMakeFiles/
 libfplutil/unit_tests/test*/Debug/
 libfplutil/unit_tests/test*/Makefile
