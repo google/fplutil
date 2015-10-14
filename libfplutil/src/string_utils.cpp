@@ -34,19 +34,25 @@ std::string SnakeCase(const std::string& source) {
   std::string snake;
   snake.reserve(2 * source.size());
 
+  bool prev_is_digit = false;
   for (size_t i = 0; i < source.size(); ++i) {
     const char c = source[i];
 
-    // Convert upper case letters into '_' + lower case letter.
-    if (isupper(c)) {
-      if (CanAppendSnakeBar(snake)) snake += '_';
-      snake += tolower(c);
-      continue;
-    }
+    // When transitioning to or from a string of digits, we want to insert '_'.
+    const bool is_digit = isdigit(c);
+    const bool is_digit_transition = is_digit != prev_is_digit;
+    prev_is_digit = is_digit;
 
     // Convert spaces to underbars.
     if (IsSpace(c)) {
       if (CanAppendSnakeBar(snake)) snake += '_';
+      continue;
+    }
+
+    // Convert upper case letters into '_' + lower case letter.
+    if (isupper(c) || is_digit_transition) {
+      if (CanAppendSnakeBar(snake)) snake += '_';
+      snake += tolower(c); // tolower() returns digits unchanged.
       continue;
     }
 

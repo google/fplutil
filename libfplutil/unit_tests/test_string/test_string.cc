@@ -40,6 +40,9 @@ static const StringVariant kTestStrings[] = {
   { "three_of_em", "ThreeOfEm", "three_OfEm", "three OfEm", "_three_ OfEm " },
   { "a_b_c_mart", "ABCMart", "_a_BC__Mart____", " a BC  Mart    ",
     "_ a BC__Mart    " },
+  { "1_digit", "1Digit", "1__Digit", "1  Digit", " 1 Digit__" },
+  { "99_digit", "99Digit", "__99Digit", "  99Digit", "99_ Digit " },
+  { "digit_123", "Digit123", "Digit_123_", "Digit 123 ", "Digit 123  __" },
 };
 
 TEST_F(StringTests, Snake_FromSnake) {
