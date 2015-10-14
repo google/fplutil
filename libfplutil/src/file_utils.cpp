@@ -66,10 +66,12 @@ string FileExtension(const string& s) {
 }
 
 bool AbsoluteFileName(const string& s) {
-  const bool starts_with_slash =
-      s.length() > 0 &&
-      s.find_first_of(kDirectorySeparators, 0, 1) != string::npos;
-  return starts_with_slash;
+  if (s.length() == 0) return false;
+  const char c = s[0];
+  for (const char* slash = kDirectorySeparators; *slash != '\0'; ++slash) {
+    if (c == *slash) return true;
+  }
+  return false;
 }
 
 static void MatchCase(CaseSensitivity case_sensitivity, string* s) {
@@ -102,7 +104,7 @@ bool FileExists(const string& file_name,
   // There are no standard C++ functions that allow case sensitivity to be
   // specified, so we have to use directory functions.
   const string dir_name = DirectoryName(file_name);
-  DIR* dir = opendir(dir_name.c_str());
+  DIR* dir = opendir(dir_name.length() == 0 ? "." : dir_name.c_str());
   if (dir == NULL) return false;
 
   // Get the name of the file we want to find in this directory.
