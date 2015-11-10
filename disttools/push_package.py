@@ -17,6 +17,7 @@
 
 import argparse
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -62,18 +63,11 @@ class GitError(Exception):
 
 class Subprocess(object):
   """Wrapper for subprocess to optionally display all commands excecuted.
-
-  Attributes:
-    verbose: Whether to display all subprocess comamnds.
   """
 
-  def __init__(self, verbose):
-    """Initialize the instance.
-
-    Args:
-      verbose: Whether to display all subprocess comamnds.
-    """
-    self.verbose = verbose
+  def __init__(self):
+    """Initialize the instance."""
+    pass
 
   def display_command(self, args, **argv):
     """Display a command and optionally remove the "dryrun" arg from argv.
@@ -92,8 +86,8 @@ class Subprocess(object):
     if 'dryrun' in argv:
       dryrun = argv.get('dryrun')
       del filtered_argv['dryrun']
-    if self.verbose or dryrun:
-      print args, str(argv)
+    if logging.getLogger().isEnabledFor(logging.DEBUG) or dryrun:
+      logging.debug(str(args) + ' ' + str(argv))
     if dryrun:
       return (False, filtered_argv)
     return (True, filtered_argv)
@@ -116,7 +110,7 @@ class Subprocess(object):
     try:
       subprocess.check_call(args, **argv)
     except subprocess.CalledProcessError as e:
-      print e.output
+      logging.error(e.output)
       raise e
 
   def get_output(self, args, **argv):
@@ -156,6 +150,14 @@ class Package(object):
     third_party: If this project is a 3rd party.
     prebuilts: Whether the package is prebuilt.
     push: Whether to push this project to the branch in the upstream_url.
+    fetch_dependencies: Whether to pull in dependencies of this package.  If
+      this is the root package this flag is ignored as dependencies are
+     explicitly specified.
+    config_path: Path of the config file (relative to the package path) that
+      specifies dependencies of this package.  This is optionally used when
+      fetch_dependencies is True to pull dependencies of the package.  If
+      this is not set it is assumed the config.json is in the same directory
+      as the parent package.
     package_json: "package" dictionary parsed from the JSON file.
     path: Local path of the package.
     git_remote_upstream: Name of the git remote associated with the package's
@@ -169,7 +171,8 @@ class Package(object):
       package.
   """
 
-  def __init__(self, package_json, subprocess_runner, working_copy):
+  def __init__(self, package_json, subprocess_runner, working_copy,
+               config_path):
     """Initialize this instance.
 
     Args:
@@ -177,6 +180,7 @@ class Package(object):
       subprocess_runner: Subprocess instance used to run commands.
       working_copy: Path to git working copy used to stage changes for this
         package.
+      config_path: Path to the file the configuration was read from.
 
     Raises:
       ConfigJsonError: If an expected key isn't found in the JSON dictionary.
@@ -189,8 +193,10 @@ class Package(object):
     self.git_remote_local = ''
     self.subprocess_runner = subprocess_runner
     self.working_copy = working_copy
-    self.prebuilts = self.package_json.get('prebuilts', False)
+    self.prebuilts = self.package_json.get('prebuilts', 0)
     self.revision = self.package_json.get('revision', '')
+    self.fetch_dependencies = self.package_json.get('fetch_dependencies', 0)
+    self.config_path = self.package_json.get('config_path', config_path)
     try:
       self.name = self.package_json['name']
       self.url = self.package_json['url']
@@ -206,16 +212,39 @@ class Package(object):
     """Convert to a string representation."""
     output_lines = ['name: %s' % self.name]
     for variable in ('path', 'url', 'branch', 'push', 'is_library',
-                     'third_party', 'git_remote_upstream', 'git_remote_local'):
+                     'third_party', 'git_remote_upstream', 'git_remote_local',
+                     'prebuilts', 'revision', 'fetch_dependencies',
+                     'config_path'):
       output_lines.append('  %s: %s' % (variable, getattr(self, variable)))
     return os.linesep.join(output_lines)
 
-  def resolve_dependency_paths(self):
-    """Resolve the path of all dependencies."""
-    for dependency in self.dependencies:
+  def allow_dryrun(self, dryrun):
+    """Whether to enable dryruns for this project.
+
+    Args:
+      dryrun: Whether to execute a dry run.
+
+    Returns:
+      True if dryrun is set and this project's URL isn't a local filesystem
+      path (only works for *nix filesystems).
+    """
+    return dryrun and not self.url.startswith(os.path.sep)
+
+  def resolve_dependency_paths(self, dependencies):
+    """Resolve the path of the specified dependencies.
+
+    Args:
+      dependencies: List of Package instances that are dependencies of this
+        package.
+
+    Returns:
+      List of Package instances (dependencies) with paths resolved.
+    """
+    for dependency in dependencies:
       dependency.path = self.find_dependency(dependency.name,
                                              dependency.third_party,
                                              dependency.prebuilts)
+    return dependencies
 
   def find_dependency(self, package_name, third_party, prebuilts):
     """Finds a dependency relative to the directory containing this script.
@@ -267,11 +296,17 @@ class Package(object):
     raise DependencyNotFoundError('Dependency %s not found in set %s' % (
         package_name, str(search_paths)))
 
-  def add_git_remotes(self):
+  def add_git_remotes(self, git_remote_name):
     """Add the git remotes for this package.
 
     Adds the upstream and local remote names to the
     git_remote_upstream and git_remote_local attributes.
+
+    Args:
+      git_remote_name: Local remote to use from each package.  This is only
+        required if more than one remote is present in each package.  If this
+        remote is not present and only *one* remote is present the sole remote
+        is used instead.
 
     Raises:
       subprocess.CalledProcessError: If git encounters an error.
@@ -287,6 +322,13 @@ class Package(object):
         local_remotes.append((remote, url))
     if not local_remotes:
       raise GitError('No remotes in package %s (%s).' % (self.name, self.path))
+
+    # If a git remote name is specified, try using it.
+    if git_remote_name:
+      local_remotes_dict = dict(local_remotes)
+      if git_remote_name in local_remotes_dict:
+        local_remotes = [(git_remote_name, local_remotes_dict[git_remote_name])]
+
     if len(local_remotes) > 1:
       raise GitError(
           'Too many remotes (%s) in package %s.  This script can only support '
@@ -301,16 +343,20 @@ class Package(object):
         GIT_REMOTE_PREFIX_LOCAL + self.name, local_url, self.working_copy,
         self.subprocess_runner)
 
-  def add_all_git_remotes(self):
+  def add_all_git_remotes(self, git_remote_name):
     """Add the git remotes for this package and its dependencies.
+
+    Args:
+      git_remote_name: Local remote to use from each package.  This is only
+        required if more than one remote is present in each package.
 
     Raises:
       subprocess.CalledProcessError: If git encounters an error.
       GitError: If there is a configuration problem the git working copies.
     """
-    self.add_git_remotes()
+    self.add_git_remotes(git_remote_name)
     for dependency in self.dependencies:
-      dependency.add_git_remotes()
+      dependency.add_git_remotes(git_remote_name)
 
   @staticmethod
   def get_git_branches(working_copy_dir, subprocess_runner):
@@ -473,6 +519,8 @@ class Package(object):
       local_branch_name: Name of the local branch (in the local remote)
         to push.
       dryrun: Don't actually perform the push just print the command.
+        This is ignored if the repository is a local filesystem path
+        (only *nix style filesystems) since this is useful for testing.
 
     Raises:
       subprocess.CalledProcessError: If git encounters an error.
@@ -482,9 +530,11 @@ class Package(object):
     # Checkout the local branch.
     self.checkout_clean_branch(self.git_remote_local, local_branch_name)
     # Push the head to the remote branch.
+    # If this is a local filesystem path, unconditionally push to it.
     self.subprocess_runner.check_call(
         ['git', 'push', self.git_remote_upstream, 'HEAD:%s' % self.branch],
-        cwd=self.working_copy, dryrun=dryrun)
+        cwd=self.working_copy,
+        dryrun=self.allow_dryrun(dryrun))
 
   def push_git_project_and_dependencies(self, local_branch_name, dryrun):
     """Push this project and its dependencies their remotes.
@@ -549,8 +599,8 @@ class Package(object):
              submodule_path], cwd=submodule_path)
         if dependency.revision:
           self.subprocess_runner.check_call(
-            ['git', 'reset', '--hard', dependency.revision],
-            cwd=submodule_path)
+              ['git', 'reset', '--hard', dependency.revision],
+              cwd=submodule_path)
         # NOTE: The submodule path needs to be relative to the working copy.
         # Also, submodule add occasionally complains about the directory
         # being ignored by .gitignore (it's not) so force the add.
@@ -580,9 +630,11 @@ class Package(object):
           ['git', 'commit', '-a', '-m',
            os.linesep.join(dependencies_commit_message)],
           cwd=self.working_copy)
+    # Force upstream push if the project URL is on the local filesystem.
     self.subprocess_runner.check_call(
         ['git', 'push', self.git_remote_upstream, 'HEAD:%s' % master_branch],
-        cwd=self.working_copy, dryrun=dryrun)
+        cwd=self.working_copy,
+        dryrun=self.allow_dryrun(dryrun))
 
   # TODO(smiles): Add method that tags the release?
 
@@ -659,17 +711,20 @@ class Package(object):
         # Push the change.
         self.subprocess_runner.check_call(
             ['git', 'push', self.git_remote_upstream, 'HEAD:%s' % docs_branch],
-            cwd=self.working_copy, dryrun=dryrun)
+            cwd=self.working_copy, dryrun=self.allow_dryrun(dryrun))
 
     finally:
       shutil.rmtree(docs_temp)
 
   @staticmethod
-  def parse_json(config_json, project_path, subprocess_runner, working_copy):
-    """Parse dictionary read from a config.json file.
+  def parse_root_json(config_json, config_path, project_path, subprocess_runner,
+                      working_copy):
+    """Parse root package from a dictionary read from a config.json file.
 
     Args:
       config_json: Dictionary parsed from config.json file.
+      config_path: Path of the file config_json was parsed from (relative to
+        the project).
       project_path: Local path to the project containing the config.json file.
       subprocess_runner: Subprocess instance used to run commands.
       working_copy: Directory to stage git changes in.
@@ -682,20 +737,88 @@ class Package(object):
       ConfigJsonError: If an expected key isn't found in the JSON dictionary.
     """
     try:
-      root_package_dict = config_json['package']
+      package_dict = config_json['package']
     except KeyError as e:
       raise ConfigJsonError('Package [root] not found: (%s)' % str(e))
-    root_package = Package(root_package_dict, subprocess_runner, working_copy)
-    root_package.path = os.path.realpath(project_path)
+    package = Package(package_dict, subprocess_runner, working_copy,
+                      config_path)
+    package.path = os.path.realpath(project_path)
+    return package
 
+  def parse_dependencies_json(self, config_json, subprocess_runner,
+                              working_copy, config_reader, parent_package):
+    """Parse dependencies from a dictionary read from a config.json file.
+
+    All dependencies are added to the "dependencies" attribute.
+
+    Args:
+      config_json: Dictionary parsed from config.json file.
+      subprocess_runner: Subprocess instance used to run commands.
+      working_copy: Directory to stage git changes in.
+      config_reader: Callable that read_config()'s signature used to recursively
+        read dependencies of the package.
+      parent_package: Package instance which is a parent of the dependencies
+        specified in config_json.
+
+    Raises:
+      ConfigJsonError: If an expected key isn't found in the JSON dictionary.
+    """
     try:
       dependencies_list = config_json['dependencies']
     except KeyError as e:
       raise ConfigJsonError('Dependencies not found: (%s)' % str(e))
-    for dependency_dict in dependencies_list:
-      dependency = Package(dependency_dict, subprocess_runner, working_copy)
-      root_package.dependencies.append(dependency)
-    return root_package
+
+    # Parse packages from the config and resolve all packages.
+    additional_dependencies = parent_package.resolve_dependency_paths(
+        [Package(dependency_dict, subprocess_runner, working_copy,
+                 parent_package.config_path)
+         for dependency_dict in dependencies_list])
+
+    # Extend the list of dependencies with newly discovered packages.
+    path_dependency_dict = dict([(d.path, d) for d in self.dependencies])
+    new_dependencies = []
+    for dependency in additional_dependencies:
+      if (dependency.path not in path_dependency_dict and
+          dependency.path != self.path):
+        path_dependency_dict[dependency.path] = dependency
+        new_dependencies.append(dependency)
+    self.dependencies = path_dependency_dict.values()
+
+    # Recursively read dependencies.
+    for dependency in new_dependencies:
+      if dependency.fetch_dependencies:
+        self.parse_dependencies_json(
+            config_reader(os.path.join(dependency.path,
+                                       dependency.config_path)),
+            subprocess_runner, working_copy, config_reader, dependency)
+
+  @staticmethod
+  def parse_json(config_json, config_path, project_path, subprocess_runner,
+                 working_copy, config_reader):
+    """Parse dictionary read from a config.json file.
+
+    Args:
+      config_json: Dictionary parsed from config.json file.
+      config_path: Path of the file config_json was parsed from (relative to
+        the project).
+      project_path: Local path to the project containing the config.json file.
+      subprocess_runner: Subprocess instance used to run commands.
+      working_copy: Directory to stage git changes in.
+      config_reader: Callable that read_config()'s signature used to recursively
+        read dependencies of the package.
+
+    Returns:
+      Package instance representing the root package in the config file which
+      should reference a set of dependencies.
+
+    Raises:
+      ConfigJsonError: If an expected key isn't found in the JSON dictionary.
+    """
+    package = Package.parse_root_json(config_json, config_path, project_path,
+                                      subprocess_runner, working_copy)
+    package.parse_dependencies_json(config_json, subprocess_runner,
+                                    working_copy, config_reader, package)
+    return package
 
   def delete_git_branch(self, branch):
     """Delete branch in the package's working copy.
@@ -728,28 +851,26 @@ class Package(object):
     for dependency in self.dependencies:
       dependency.delete_temporary_git_objects()
 
-  def create_symlinks(self, symlink_dir, verbose):
+  def create_symlinks(self, symlink_dir):
     """Create symlinks to this package and it's dependencies.
 
     Args:
       symlink_dir: Directory where symlinks will be stored.
-      verbose: Whether to display verbose output.
 
     Raises:
       OSError: If this method fails to create symlinks or directories.
     """
     for package_file in os.listdir(self.path):
       link = os.path.join(symlink_dir, package_file)
-      if verbose: print 'Creating ' + link
+      logging.debug('Creating ' + link)
       os.symlink(os.path.join(self.path, package_file), link)
     dependencies_dir = os.path.join(symlink_dir, 'dependencies')
-    if verbose: print 'Creating ' + dependencies_dir
+    logging.debug('Creating ' + dependencies_dir)
     os.mkdir(dependencies_dir)
     for dependency in self.dependencies:
       link = os.path.join(dependencies_dir, dependency.name)
-      if verbose: print 'Creating ' + link
+      logging.debug('Creating ' + link)
       os.symlink(dependency.path, link)
-
 
 
 def read_config(config_filename):
@@ -771,6 +892,18 @@ def read_config(config_filename):
   except (OSError, ValueError) as error:
     raise ConfigJsonError('Unable to read %s (%s)' % (
         config_filename, str(error)))
+
+
+def display_package(package, logging_callable):
+  """Display a package with all dependencies.
+
+  Args:
+    package: Package to display.
+    logging_callable: Method called to log the package.
+  """
+  logging_callable(str(package))
+  for dep in package.dependencies:
+    logging_callable(str(dep))
 
 
 def parse_arguments(project_dir=None, config_json=None):
@@ -800,6 +933,10 @@ def parse_arguments(project_dir=None, config_json=None):
                       help='Local name branch to push in each dependency.')
   parser.add_argument('-m', '--master-branch', default='master',
                       help='Name of the remote master branch to update.')
+  parser.add_argument('-r', '--remote-name', default='',
+                      help=('Optional name of the git remote for each package.'
+                            '  This is preferentially used to select a remote '
+                            'when more than one remote exists in a package.'))
   parser.add_argument('-i', '--docs-branch', default='gh-pages',
                       help='Name of the remote docs branch to update.')
   parser.add_argument('--push-docs', action='store_true',
@@ -838,45 +975,47 @@ def main(args=None):
   """
   args = args if args else parse_arguments()
 
-  subprocess_runner = Subprocess(args.verbose)
+  subprocess_runner = Subprocess()
   if args.staging_area:
     working_copy = os.path.realpath(args.staging_area)
   else:
     working_copy = tempfile.mkdtemp()
 
+  logging.basicConfig(format='%(message)s')
+  logging.getLogger().setLevel(
+      logging.DEBUG if args.verbose else logging.INFO)
+
   if args.create_symlinks:
-    print 'symlink target directory: %s' % args.create_symlinks
+    logging.info('symlink target directory: %s', args.create_symlinks)
   elif args.verbose or args.leave_working_copy:
-    print 'git staging area in: %s' % working_copy
+    logging.info('git staging area in: %s', working_copy)
   try:
     subprocess_runner.check_call(['git', 'init'], cwd=working_copy)
     try:
+      config_path = os.path.relpath(args.config_json, args.package_dir)
       package = Package.parse_json(read_config(args.config_json),
-                                   args.package_dir, subprocess_runner,
-                                   working_copy)
-      package.resolve_dependency_paths()
+                                   config_path, args.package_dir,
+                                   subprocess_runner, working_copy, read_config)
     except (ConfigJsonError, DependencyNotFoundError) as error:
-      print >>sys.stderr, str(error)
+      logging.error(str(error))
       return 1
 
-    print str(package)
-    for dep in package.dependencies:
-      print str(dep)
-
     if args.create_symlinks:
-      package.create_symlinks(args.create_symlinks, args.verbose)
+      display_package(package, logging.info)
+      package.create_symlinks(args.create_symlinks)
       return 0
 
     try:
-      print '===== Adding Remotes ===='
-      package.add_all_git_remotes()
-      print '===== Fetching Remotes ===='
+      logging.info('===== Adding Remotes ====')
+      package.add_all_git_remotes(args.remote_name)
+      display_package(package, logging.debug)
+      logging.info('===== Fetching Remotes ====')
       package.fetch_all_remotes()
-      print '===== Pushing Dependencies ===='
+      logging.info('===== Pushing Dependencies ====')
       package.push_git_project_and_dependencies(args.local_branch, args.dryrun)
-      print '===== Updating Master ===='
+      logging.info('===== Updating Master ====')
       package.update_master(args.local_branch, args.master_branch, args.dryrun)
-      print '===== Updating Docs ===='
+      logging.info('===== Updating Docs ====')
       package.update_docs(args.local_branch, args.docs_branch,
                           args.dryrun or not args.push_docs)
     finally:
