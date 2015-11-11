@@ -851,26 +851,25 @@ class Package(object):
     for dependency in self.dependencies:
       dependency.delete_temporary_git_objects()
 
-  def create_symlinks(self, symlink_dir):
-    """Create symlinks to this package and it's dependencies.
+  def create_mirror(self, mirror_dir):
+    """Create mirror of this package and it's dependencies.
 
     Args:
-      symlink_dir: Directory where symlinks will be stored.
+      mirror_dir: Directory where mirror will be stored.
 
     Raises:
-      OSError: If this method fails to create symlinks or directories.
+      OSError: If this method fails to create mirror.
     """
-    for package_file in os.listdir(self.path):
-      link = os.path.join(symlink_dir, package_file)
-      logging.debug('Creating ' + link)
-      os.symlink(os.path.join(self.path, package_file), link)
-    dependencies_dir = os.path.join(symlink_dir, 'dependencies')
+    ignore_git = shutil.ignore_patterns('.git')
+    logging.debug('Copying %s to %s', self.path, mirror_dir)
+    shutil.copytree(self.path, mirror_dir, ignore=ignore_git)
+    dependencies_dir = os.path.join(mirror_dir, 'dependencies')
     logging.debug('Creating ' + dependencies_dir)
     os.mkdir(dependencies_dir)
     for dependency in self.dependencies:
-      link = os.path.join(dependencies_dir, dependency.name)
-      logging.debug('Creating ' + link)
-      os.symlink(dependency.path, link)
+      mirrored_dependency = os.path.join(dependencies_dir, dependency.name)
+      logging.debug('Copying %s to %s ', dependency.path, mirrored_dependency)
+      shutil.copytree(dependency.path, mirrored_dependency, ignore=ignore_git)
 
 
 def read_config(config_filename):
@@ -949,10 +948,10 @@ def parse_arguments(project_dir=None, config_json=None):
   parser.add_argument('-c', '--config-json',
                       default=config_json if config_json else CONFIG_JSON,
                       help='JSON file that describes the package contents.')
-  parser.add_argument('-S', '--create-symlinks',
-                      help=('Create a tree of dependency symlinks in the '
-                            'specified directory for testing.  NOTE: This '
-                            'disables all git publishing operations.'))
+  parser.add_argument('-M', '--create-mirror',
+                      help=('Create a mirror in the specified directory for '
+                            'testing.  NOTE: This disables all git publishing '
+                            'operations.'))
   return parser.parse_args()
 
 
@@ -985,8 +984,8 @@ def main(args=None):
   logging.getLogger().setLevel(
       logging.DEBUG if args.verbose else logging.INFO)
 
-  if args.create_symlinks:
-    logging.info('symlink target directory: %s', args.create_symlinks)
+  if args.create_mirror:
+    logging.info('mirror target directory: %s', args.create_mirror)
   elif args.verbose or args.leave_working_copy:
     logging.info('git staging area in: %s', working_copy)
   try:
@@ -1000,9 +999,9 @@ def main(args=None):
       logging.error(str(error))
       return 1
 
-    if args.create_symlinks:
+    if args.create_mirror:
       display_package(package, logging.info)
-      package.create_symlinks(args.create_symlinks)
+      package.create_mirror(args.create_mirror)
       return 0
 
     try:
