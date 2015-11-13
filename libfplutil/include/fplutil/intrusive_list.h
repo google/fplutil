@@ -15,8 +15,8 @@
 #ifndef FPLUTIL_INTRUSIVE_LIST_H_
 #define FPLUTIL_INTRUSIVE_LIST_H_
 
-#include <cstddef>
 #include <cassert>
+#include <cstddef>
 #include <functional>
 
 #if defined(_MSC_FULL_VER)
@@ -93,6 +93,18 @@ class intrusive_list_node {
     return *this;
   }
 
+#if defined(_MSC_FULL_VER)
+  // Copy contructor.
+  intrusive_list_node(intrusive_list_node& other) { move(other); }
+  // Copy assignment operator.
+  intrusive_list_node& operator=(intrusive_list_node& other) {
+    next_->previous_ = previous_;
+    previous_->next_ = next_;
+    move(other);
+    return *this;
+  }
+#endif  // defined(_MSC_FULL_VER)
+
   // Retuns true if this node is in a list.
   bool in_list() const { return next_ != this; }
 
@@ -150,9 +162,11 @@ class intrusive_list_node {
   template <typename T, bool is_const>
   friend class intrusive_list_iterator;
 
+#if !defined(_MSC_FULL_VER)
   // Disallow copying.
-  intrusive_list_node(const intrusive_list_node&);
-  void operator=(const intrusive_list_node&);
+  intrusive_list_node(intrusive_list_node&);
+  intrusive_list_node& operator=(intrusive_list_node&);
+#endif  // !defined(_MSC_FULL_VER)
 };
 
 // intrusive_list is a container that supports constant time insertion and
@@ -199,23 +213,31 @@ class intrusive_list {
     return *this;
   }
 
-  // Disallow copying. Ideally we'd put this in the `private` section so that
-  // copying will generate a compiler error. We can't do that (explained below),
-  // so we leave off the impelmentation to generate a linker error instead.
+#if defined(_MSC_FULL_VER)
+  // Normally we need to disallow copying. Ideally we'd put this in the
+  // `private` section so that copying will generate a compiler error. We can't
+  // do that (explained below), so we leave off the impelmentation to generate a
+  // linker error instead.
   //
-  // Note: Must be in public section because Visual Studio aggressively
-  // generates copy constructors, even if they're unused. For example, if an
+  // Visual Studio aggressively generates copy constructors. For example, if an
   // intrusive_list is used in an std::pair<> (as it would be when part of an
-  // std::map<>), then the copy constructor is generated. But the copy
-  // constructor is not for most normal usages of map<>.
+  // std::map<>), then the copy constructor is generated, even though it really
+  // should be using the move constructor for operations in the map.
   //
   // TODO: Find a better way around this limitation.
+  intrusive_list(intrusive_list<value_type>& other) { *this = other; }
+  intrusive_list& operator=(this_type& other) {
+    data_ = other.data_;
+    node_offset_ = other.node_offset_;
+    return *this;
+  }
+#else
   intrusive_list(const intrusive_list<value_type>&) { assert(false); }
-  void operator=(const this_type&) { assert(false); }
+  intrusive_list& operator=(const this_type&) { assert(false); }
+#endif  // defined(_MSC_FULL_VER)
 
   template <class InputIt>
-  intrusive_list(InputIt first, InputIt last)
-      : data_(&data_, &data_) {
+  intrusive_list(InputIt first, InputIt last) : data_(&data_, &data_) {
     insert(begin(), first, last);
   }
 

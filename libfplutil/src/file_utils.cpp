@@ -16,9 +16,10 @@
 #include <assert.h>
 #if defined(_MSC_VER)
 #include <direct.h>    // Windows functions for directory creation.
+#else
+#include <dirent.h>
 #endif
 #include <fstream>
-#include <dirent.h>
 #include <sys/stat.h>  // POSIX functions for directory creation.
 
 #include "fplutil/file_utils.h"
@@ -74,6 +75,7 @@ bool AbsoluteFileName(const string& s) {
   return false;
 }
 
+#if !defined(_MSC_VER)
 static void MatchCase(CaseSensitivity case_sensitivity, string* s) {
   switch (case_sensitivity) {
     case kOsDefaultCaseSensitivity:
@@ -88,6 +90,7 @@ static void MatchCase(CaseSensitivity case_sensitivity, string* s) {
       break;
   }
 }
+#endif  // !defined(_MSC_VER)
 
 bool FileExists(const string& file_name) {
   struct stat buffer;
@@ -96,6 +99,11 @@ bool FileExists(const string& file_name) {
 
 bool FileExists(const string& file_name,
                 CaseSensitivity case_sensitivity) {
+  // TODO: Implement case insensitive file name checking.
+#if defined(_MSC_VER)
+  (void)case_sensitivity;
+  return FileExists(file_name);
+#else
   // The standard C++ functions use the OS's case sensitivity.
   if (case_sensitivity == kOsDefaultCaseSensitivity) {
     return FileExists(file_name);
@@ -130,6 +138,7 @@ bool FileExists(const string& file_name,
   closedir(dir);
   dir = nullptr;
   return exists;
+#endif  // defined(_MSC_VER)
 }
 
 #if defined(_MSC_VER)

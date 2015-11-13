@@ -39,7 +39,7 @@ std::string SnakeCase(const std::string& source) {
     const char c = source[i];
 
     // When transitioning to or from a string of digits, we want to insert '_'.
-    const bool is_digit = isdigit(c);
+    const bool is_digit = isdigit(c) != 0;
     const bool is_digit_transition = is_digit != prev_is_digit;
     prev_is_digit = is_digit;
 
@@ -52,8 +52,8 @@ std::string SnakeCase(const std::string& source) {
     // Convert upper case letters into '_' + lower case letter.
     if (isupper(c) || is_digit_transition) {
       if (CanAppendSnakeBar(snake)) snake += '_';
-      snake += tolower(c); // tolower() returns digits unchanged.
-      continue;
+      // tolower() returns digits unchanged.
+      snake += static_cast<char>(tolower(c));      continue;
     }
 
     // Send through as-is.
@@ -86,7 +86,7 @@ std::string CamelCase(const std::string& source) {
 
     // If flagged for capitalization, capitalize and clear flag.
     if (capitalize_next) {
-      camel += toupper(c);
+      camel += static_cast<char>(toupper(c));
       capitalize_next = false;
       continue;
     }
