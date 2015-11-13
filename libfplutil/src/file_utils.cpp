@@ -24,7 +24,7 @@
 
 #include "fplutil/file_utils.h"
 
-namespace fpl {
+namespace fplutil {
 
 using std::string;
 
@@ -189,4 +189,4 @@ bool CopyFile(const string& target_file_name,
   return true;
 }
 
-}  // namespace fpl
+}  // namespace fplutil

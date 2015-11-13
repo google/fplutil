@@ -45,7 +45,7 @@
 #endif
 #endif
 
-namespace fpl {
+namespace fplutil {
 
 class intrusive_list_node;
 
@@ -64,15 +64,15 @@ class intrusive_list;
 //
 // struct ExampleStruct {
 //   int value;
-//   fpl::intrusive_list_node node;
+//   fplutil::intrusive_list_node node;
 // };
 //
 // Or if you want the object to be present in multiple lists at once:
 //
 // struct ExampleStruct {
 //   int value;
-//   fpl::intrusive_list_node node_a;
-//   fpl::intrusive_list_node node_b;
+//   fplutil::intrusive_list_node node_a;
+//   fplutil::intrusive_list_node node_b;
 // };
 class intrusive_list_node {
  public:
@@ -622,7 +622,7 @@ class intrusive_list {
   }
 };
 
-}  // namespace fpl
+}  // namespace fplutil
 
 #if defined(_MSC_FULL_VER)
 #pragma warning(pop)

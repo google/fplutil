@@ -17,7 +17,7 @@
 
 #include <string>
 
-namespace fpl {
+namespace fplutil {
 
 enum CaseSensitivity {
   // Use the default case sensitivity of the operating system.
@@ -71,6 +71,6 @@ bool CreateDirectory(const std::string& dir);
 bool CopyFile(const std::string& target_file_name,
               const std::string& source_file_name);
 
-}  // namespace fpl
+}  // namespace fplutil
 
 #endif  // FPLUTIL_FILE_UTILS_H

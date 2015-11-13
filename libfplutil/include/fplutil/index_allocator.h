@@ -32,7 +32,7 @@
 #define FPL_INDEX_ALLOCATOR_VERIFY_INTERNAL_STATE 1
 #endif
 
-namespace fpl {
+namespace fplutil {
 
 /// @class IndexAllocator "fplutil/index_allocator.h"
 /// @brief Allocate, free, and defragment array indices.
@@ -510,6 +510,6 @@ class IndexAllocator {
   std::vector<Index> unused_indices_;
 };
 
-}  // namespace fpl
+}  // namespace fplutil
 
 #endif  // FPLUTIL_INDEX_ALLOCATOR_H

@@ -17,7 +17,7 @@
 
 #include <string>
 
-namespace fpl {
+namespace fplutil {
 
 /// Return `source` as a_string_in_snake_case.
 /// https://en.wikipedia.org/wiki/Snake_case
@@ -27,6 +27,6 @@ std::string SnakeCase(const std::string& source);
 /// https://en.wikipedia.org/wiki/CamelCase
 std::string CamelCase(const std::string& source);
 
-}  // namespace fpl
+}  // namespace fplutil
 
 #endif  // FPLUTIL_STRING_UTILS_H

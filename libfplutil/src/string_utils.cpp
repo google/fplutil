@@ -15,7 +15,7 @@
 #include <assert.h>
 #include "fplutil/string_utils.h"
 
-namespace fpl {
+namespace fplutil {
 
 static const char kSpaceChars[] = { '_', ' ' };
 
@@ -97,4 +97,4 @@ std::string CamelCase(const std::string& source) {
   return camel;
 }
 
-}  // namespace fpl
+}  // namespace fplutil

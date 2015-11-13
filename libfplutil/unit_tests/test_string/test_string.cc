@@ -15,8 +15,8 @@
 #include "gtest/gtest.h"
 #include "fplutil/string_utils.h"
 
-using fpl::SnakeCase;
-using fpl::CamelCase;
+using fplutil::SnakeCase;
+using fplutil::CamelCase;
 
 class StringTests : public ::testing::Test {
  public:
