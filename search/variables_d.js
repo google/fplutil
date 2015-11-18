@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['target_5fsdk',['target_sdk',['../classtmpxgs_c_ru_1_1buildutil_1_1android_1_1_android_manifest.html#a3676715cc557366b26f32adf33b7c2fe',1,'tmpxgsCRu::buildutil::android::AndroidManifest']]],
-  ['type',['type',['../classtmpxgs_c_ru_1_1buildutil_1_1android_1_1_adb_device.html#afed3263a96f7cdc3f6895767207e6bcd',1,'tmpxgsCRu::buildutil::android::AdbDevice']]]
+  ['target_5fsdk',['target_sdk',['../classtmp25ar3m_1_1buildutil_1_1android_1_1_android_manifest.html#ae5ba73c20ae9afd0e2efd6230807b602',1,'tmp25ar3m::buildutil::android::AndroidManifest']]],
+  ['type',['type',['../classtmp25ar3m_1_1buildutil_1_1android_1_1_adb_device.html#aa8087b1e9e3a34fa97898f4033640327',1,'tmp25ar3m::buildutil::android::AdbDevice']]]
 ];
