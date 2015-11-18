@@ -1,6 +1,7 @@
 var searchData=
 [
-  ['ndk_5fhome',['ndk_home',['../classtmp9s_p3i_g_1_1buildutil_1_1android_1_1_build_environment.html#a3f66916fc90cea8b3b9e349098cd96dc',1,'tmp9sP3iG::buildutil::android::BuildEnvironment']]],
-  ['num_5findices',['num_indices',['../classfpl_1_1_index_allocator.html#a9f052d6f65e1458f01bf7f8125deac72',1,'fpl::IndexAllocator']]],
-  ['numunusedindices',['NumUnusedIndices',['../classfpl_1_1_index_allocator.html#a30c14aea9dd924d426fe7c1f299bef30',1,'fpl::IndexAllocator']]]
+  ['ndk_5fhome',['ndk_home',['../classtmp1_j_it_a_c_1_1buildutil_1_1android_1_1_build_environment.html#a30310cdb6320f413bcf87b6a467f86bd',1,'tmp1JItAC::buildutil::android::BuildEnvironment']]],
+  ['ndk_5flocation_5fchanged',['ndk_location_changed',['../classtmp1_j_it_a_c_1_1buildutil_1_1android_1_1_build_environment.html#af51bf1099e22064652a8f9f76eedcaf4',1,'tmp1JItAC::buildutil::android::BuildEnvironment']]],
+  ['num_5findices',['num_indices',['../classfplutil_1_1_index_allocator.html#a9648974205dbd13252ed8aaa4d026be7',1,'fplutil::IndexAllocator']]],
+  ['numunusedindices',['NumUnusedIndices',['../classfplutil_1_1_index_allocator.html#a40b054d9a0ab898307098054e3ae3188',1,'fplutil::IndexAllocator']]]
 ];
