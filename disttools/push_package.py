@@ -597,10 +597,7 @@ class Package(object):
         self.subprocess_runner.check_call(
             ['git', 'clone', '-b', dependency.branch, dependency.url,
              submodule_path], cwd=submodule_path)
-        if dependency.revision:
-          self.subprocess_runner.check_call(
-              ['git', 'reset', '--hard', dependency.revision],
-              cwd=submodule_path)
+
         # NOTE: The submodule path needs to be relative to the working copy.
         # Also, submodule add occasionally complains about the directory
         # being ignored by .gitignore (it's not) so force the add.
@@ -608,6 +605,12 @@ class Package(object):
             ['git', 'submodule', 'add', '-f', dependency.url,
              os.path.join(os.path.basename(dependencies_dir),
                           dependency.name)], cwd=self.working_copy)
+      if dependency.revision:
+        self.subprocess_runner.check_call(
+            ['git', 'reset', '--hard', dependency.revision],
+            cwd=submodule_path)
+        self.subprocess_runner.check_call(
+            ['git', 'add', submodule_path], cwd=self.working_copy)
 
       submodule_remotes = Package.get_git_remotes(submodule_path,
                                                   self.subprocess_runner)
@@ -619,6 +622,11 @@ class Package(object):
       self.subprocess_runner.check_call(
           ['git', 'checkout', '-q', '/'.join(
               (remote_name, dependency.branch))], cwd=submodule_path)
+      # TODO: revisit this see similar reset --hard above.
+      if dependency.revision:
+        self.subprocess_runner.check_call(
+            ['git', 'reset', '--hard', dependency.revision],
+            cwd=submodule_path)
       dependencies_commit_message.append(self.subprocess_runner.get_output(
           ['git', 'log', '-n', '1', '--oneline'], cwd=submodule_path))
 
