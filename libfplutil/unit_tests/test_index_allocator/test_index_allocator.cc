@@ -15,7 +15,7 @@
 #include "gtest/gtest.h"
 #include "fplutil/index_allocator.h"
 
-using fpl::IndexAllocator;
+using fplutil::IndexAllocator;
 
 #define TEST_ALL_SIZES_F(MY_TEST)                \
   TEST_F(IndexAllocatorTests, MY_TEST##_int8) {  \

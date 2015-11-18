@@ -30,7 +30,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE:=test_intrusive_list
 LOCAL_SRC_FILES:=$(wildcard $(LOCAL_PATH)/test_*.cc)
 LOCAL_WHOLE_STATIC_LIBRARIES:=android_native_app_glue libfplutil_main \
-	libfplutil_print libgtest
+  libfplutil_print libgtest
 LOCAL_LDLIBS:=-llog -landroid
 LOCAL_ARM_MODE:=arm
 include $(BUILD_SHARED_LIBRARY)

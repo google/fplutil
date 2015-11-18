@@ -42,6 +42,7 @@ Download and install:
      applications.<br/>
      Download and unpack the latest version of the [Android NDK][] to a
      directory on your machine.
+     * Tested using `android-ndk-r10e`.
 
 # Python    {#fplutil_install_python}
 

@@ -1,4 +1,4 @@
-// Copyright 2014 Google Inc. All rights reserved.
+// Copyright 2015 Google Inc. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,18 @@
 
 #include <string>
 
-namespace fpl {
+namespace fplutil {
+
+enum CaseSensitivity {
+  // Use the default case sensitivity of the operating system.
+  kOsDefaultCaseSensitivity,
+
+  // Case must match.
+  kCaseSensitive,
+
+  // All comparisons are performed independent of case.
+  kCaseInsensitive,
+};
 
 /// Ensure that `s` has a directory slash on the end of it.
 std::string FormatAsDirectoryName(const std::string& s);
@@ -41,7 +52,12 @@ std::string FileExtension(const std::string& s);
 bool AbsoluteFileName(const std::string& s);
 
 /// Return true if the specified file exists. Can be absolute or relative path.
+/// Use the file system's default case sensitivity.
 bool FileExists(const std::string& file_name);
+
+/// Return true if the specified file exists. Can be absolute or relative path.
+/// Use the specified case sensitivity.
+bool FileExists(const std::string& file_name, CaseSensitivity case_sensitivity);
 
 /// Create the sequence of directories specified by `dir`.
 /// @param dir Directory to create. Can be and absolute path, or a path
@@ -55,6 +71,6 @@ bool CreateDirectory(const std::string& dir);
 bool CopyFile(const std::string& target_file_name,
               const std::string& source_file_name);
 
-}  // namespace fpl
+}  // namespace fplutil
 
 #endif  // FPLUTIL_FILE_UTILS_H

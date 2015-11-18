@@ -228,7 +228,7 @@ def main():
     link_lint(output_dir, os.path.join(linklint_dir, 'linklint_results'))
   except subprocess.CalledProcessError as e:
     print >> sys.stderr, 'Error %d while running %s' % (e.returncode, e.cmd)
-    return e.status
+    return 'You must have "doxygen" installed to run "generate_docs.py".'
   except LinkLintError, e:
     print >> sys.stderr, 'Error %s' % str(e)
     return 1

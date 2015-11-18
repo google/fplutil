@@ -27,8 +27,9 @@ endif
 
 # --- project ---
 include $(CLEAR_VARS)
-LOCAL_MODULE:=test_index_allocator
-LOCAL_SRC_FILES:=$(wildcard $(LOCAL_PATH)/test_*.cc)
+LOCAL_MODULE:=test_string
+LOCAL_SRC_FILES:=$(wildcard $(LOCAL_PATH)/test_*.cc) \
+  $(PROJECT_ROOT)/libfplutil/src/string_utils.cpp
 LOCAL_WHOLE_STATIC_LIBRARIES:=android_native_app_glue libfplutil_main \
   libfplutil_print libgtest
 LOCAL_LDLIBS:=-llog -landroid

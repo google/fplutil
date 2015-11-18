@@ -81,6 +81,10 @@ class FileMock(object):
     """Empty file close."""
     pass
 
+  def __iter__(self):
+    """Iterates over all lines in the file."""
+    return iter(self.string.splitlines())
+
 
 class FileSetMockFactory(object):
   """Factory for FileMock instances which can be used to override open.
@@ -259,6 +263,7 @@ class AndroidBuildUtilTest(unittest.TestCase):
     self.os_walk = os.walk
     self.os_path_exists = os.path.exists
     self.os_path_getmtime = os.path.getmtime
+    self.os_unlink = os.unlink
     self.find_executable = common._find_executable
     self.file_open = __builtin__.open
     self.subprocess_popen = subprocess.Popen
@@ -638,23 +643,23 @@ class AndroidBuildUtilTest(unittest.TestCase):
     lpath = os.path.abspath(os.path.join(b.project_directory, l))
     expect = [ndk_build, '-j' + str(b.cpu_count), '-C', lpath]
     m.expect(expect)
-    b.build_android_libraries([l])
+    b.build_android_libraries([l], check_ndk_install_path=False)
     b.verbose = True
     expect.append('V=1')
     m.expect(expect)
-    b.build_android_libraries([l])
+    b.build_android_libraries([l], check_ndk_install_path=False)
     expect.append('NDK_OUT=%s' % lpath)
     m.expect(expect)
-    b.build_android_libraries([l], output=l)
+    b.build_android_libraries([l], output=l, check_ndk_install_path=False)
     b.make_flags = '-DFOO -DBAR -DBAZ'
     flaglist = ['-DFOO', '-DBAR', '-DBAZ']
     expect += flaglist
     m.expect(expect)
-    b.build_android_libraries([l], output=l)
+    b.build_android_libraries([l], output=l, check_ndk_install_path=False)
     common._find_executable = self.find_executable
     b.ndk_home = '/dev/null'
     with self.assertRaises(common.ToolPathError):
-      b.build_android_libraries([l], output=l)
+      b.build_android_libraries([l], output=l, check_ndk_install_path=False)
 
   def test_clean_libraries(self):
     d = android.BuildEnvironment.build_defaults()
@@ -669,23 +674,23 @@ class AndroidBuildUtilTest(unittest.TestCase):
                                     b.cpu_count),
               '-C', lpath, 'clean']
     m.expect(expect)
-    b.build_android_libraries([l])
+    b.build_android_libraries([l], check_ndk_install_path=False)
     b.verbose = True
     expect.append('V=1')
     m.expect(expect)
-    b.build_android_libraries([l])
+    b.build_android_libraries([l], check_ndk_install_path=False)
     expect.append('NDK_OUT=%s' % lpath)
     m.expect(expect)
-    b.build_android_libraries([l], output=l)
+    b.build_android_libraries([l], output=l, check_ndk_install_path=False)
     b.make_flags = '-DFOO -DBAR -DBAZ'
     flaglist = ['-DFOO', '-DBAR', '-DBAZ']
     expect += flaglist
     m.expect(expect)
-    b.build_android_libraries([l], output=l)
+    b.build_android_libraries([l], output=l, check_ndk_install_path=False)
     common._find_executable = self.find_executable
     b.ndk_home = '/dev/null'
     with self.assertRaises(common.ToolPathError):
-      b.build_android_libraries([l], output=l)
+      b.build_android_libraries([l], output=l, check_ndk_install_path=False)
 
   def test_find_android_sdk(self):
     d = android.BuildEnvironment.build_defaults()
@@ -801,6 +806,36 @@ class AndroidBuildUtilTest(unittest.TestCase):
 
     return build_environment, manifest, buildxml_filename
 
+  def test_parse_delete_local_properties_sdk(self):
+    """Verify project files are deleted when the sdk location changes."""
+    unlinked_files = set()
+    os.unlink = lambda filename: unlinked_files.add(filename)
+    os.path.exists = lambda path: True
+    project_path = 'test'
+    current_sdk_path = os.path.join('dev', 'tools', 'android', 'sdk')
+    old_sdk_path = os.path.join('dev', 'tools', 'android')
+
+    # Verify temporary files are deleted when the SDK location changes.
+    __builtin__.open = FileSetMockFactory(
+        self, {os.path.join(project_path, 'local.properties'):
+               '# This is a test\nsdk.dir=%s\n' % old_sdk_path})
+    android.BuildEnvironment.parse_delete_local_properties(
+        project_path, os.path.join(project_path, 'build.xml'),
+        current_sdk_path)
+    self.assertEqual(unlinked_files,
+                     set((os.path.join(project_path, 'local.properties'),
+                          os.path.join(project_path, 'build.xml'))))
+
+    # Verify temporary files are not deleted when the SDK location is constant.
+    unlinked_files = set()
+    __builtin__.open = FileSetMockFactory(
+        self, {os.path.join(project_path, 'local.properties'):
+               '# This is a test\nsdk.dir=%s\n' % current_sdk_path})
+    android.BuildEnvironment.parse_delete_local_properties(
+        project_path, os.path.join(project_path, 'build.xml'),
+        current_sdk_path)
+    self.assertEqual(unlinked_files, set())
+
   def test_create_update_build_xml_update(self):
     build_environment, manifest, buildxml_filename = (
         self._create_update_build_xml_setup())
@@ -881,6 +916,7 @@ class AndroidBuildUtilTest(unittest.TestCase):
         self._create_update_build_xml_setup())
     os.path.exists = lambda unused_filename: True
     os.path.getmtime = lambda unused_filename: 1
+    os.unlink = lambda unused_filename: None
     build_environment.ant_path = 'ant'
     build_environment.ant_flags = 'a b "c d"'
     run_command_mock = common_test.RunCommandMock(self)
@@ -895,6 +931,7 @@ class AndroidBuildUtilTest(unittest.TestCase):
         self._create_update_build_xml_setup())
     os.path.exists = lambda unused_filename: True
     os.path.getmtime = lambda unused_filename: 1
+    os.unlink = lambda unused_filename: None
     build_environment.clean = True
     build_environment.ant_path = 'ant'
     run_command_mock = common_test.RunCommandMock(self)
@@ -1300,4 +1337,3 @@ class AndroidBuildUtilTest(unittest.TestCase):
 
 if __name__ == '__main__':
   unittest.main()
-
