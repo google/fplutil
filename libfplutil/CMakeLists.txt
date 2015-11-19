@@ -37,7 +37,7 @@ endif()
 # If the dependencies directory exists, assume this is the root directory for
 # all libraries required by this project.
 if(NOT DEFINED dependencies_root)
-  set(dependencies_root "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
+  set(dependencies_root "${CMAKE_CURRENT_SOURCE_DIR}/../dependencies")
   if(EXISTS "${dependencies_root}")
     set(third_party_root "${dependencies_root}")
     set(fpl_root "${dependencies_root}")
