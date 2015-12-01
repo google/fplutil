@@ -36,7 +36,7 @@
 #define FPLUTIL_NOEXCEPT noexcept
 #endif
 #elif defined(_MSC_FULL_VER)
-#if _MSC_FULL_VER >= 180021114
+#if _MSC_VER >= 1900  // MSVC++ 14.0 (Visual Studio 2015)
 #define FPLUTIL_NOEXCEPT noexcept
 #endif
 #endif
@@ -93,7 +93,7 @@ class intrusive_list_node {
     return *this;
   }
 
-#if defined(_MSC_FULL_VER)
+#if defined(_MSC_VER)
   // Copy contructor.
   intrusive_list_node(intrusive_list_node& other) { move(other); }
   // Copy assignment operator.
@@ -103,7 +103,7 @@ class intrusive_list_node {
     move(other);
     return *this;
   }
-#endif  // defined(_MSC_FULL_VER)
+#endif  // defined(_MSC_VER)
 
   // Retuns true if this node is in a list.
   bool in_list() const { return next_ != this; }
@@ -162,11 +162,11 @@ class intrusive_list_node {
   template <typename T, bool is_const>
   friend class intrusive_list_iterator;
 
-#if !defined(_MSC_FULL_VER)
+#if !defined(_MSC_VER)
   // Disallow copying.
   intrusive_list_node(intrusive_list_node&);
   intrusive_list_node& operator=(intrusive_list_node&);
-#endif  // !defined(_MSC_FULL_VER)
+#endif  // !defined(_MSC_VER)
 };
 
 // intrusive_list is a container that supports constant time insertion and
@@ -213,7 +213,7 @@ class intrusive_list {
     return *this;
   }
 
-#if defined(_MSC_FULL_VER)
+#if defined(_MSC_VER)
   // Normally we need to disallow copying. Ideally we'd put this in the
   // `private` section so that copying will generate a compiler error. We can't
   // do that (explained below), so we leave off the impelmentation to generate a
@@ -234,7 +234,7 @@ class intrusive_list {
 #else
   intrusive_list(const intrusive_list<value_type>&) { assert(false); }
   intrusive_list& operator=(const this_type&) { assert(false); }
-#endif  // defined(_MSC_FULL_VER)
+#endif  // defined(_MSC_VER)
 
   template <class InputIt>
   intrusive_list(InputIt first, InputIt last) : data_(&data_, &data_) {
@@ -624,8 +624,8 @@ class intrusive_list {
 
 }  // namespace fplutil
 
-#if defined(_MSC_FULL_VER)
+#if defined(_MSC_VER)
 #pragma warning(pop)
-#endif
+#endif  // defined(_MSC_VER)
 
 #endif  // FPLUTIL_INTRUSIVE_LIST_H_
