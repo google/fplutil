@@ -14,7 +14,6 @@
 #
 
 """@file buildutil/android.py Android-specific BuildEnvironment.
-@namespace buildutil.android
 
 Optional environment variables:
 
@@ -24,6 +23,8 @@ or not passed on command line.
 on the command line.
 @li NDK_HOME = Path to the Android NDK. Required if it is not in passed on the
 command line.
+
+@package fplutil.buildutil.android Android-specific BuildEnvironment.
 """
 
 import datetime

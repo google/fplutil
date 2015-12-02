@@ -988,6 +988,11 @@ def main(args=None):
   else:
     working_copy = tempfile.mkdtemp()
 
+  # Create a directory inside the `staging area` with the project name.
+  project_name = os.path.basename(args.package_dir)
+  working_copy = os.path.join(working_copy, project_name)
+  os.mkdir(working_copy)
+
   logging.basicConfig(format='%(message)s')
   logging.getLogger().setLevel(
       logging.DEBUG if args.verbose else logging.INFO)

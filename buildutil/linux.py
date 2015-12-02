@@ -14,15 +14,15 @@
 #
 
 """@file buildutil/linux.py Linux-specific BuildEnvironment sub-module.
-@namespace buildutil.linux
 
 Optional environment variables:
 
 @li CMAKE_PATH = Path to CMake binary. Required if cmake is not in $PATH,
 or not passed on command line.
 @li CMAKE_FLAGS = String to override the default CMake flags with.
-"""
 
+@package fplutil.buildutil.linux Linux-specific BuildEnvironment sub-module.
+"""
 
 import distutils.spawn
 import os

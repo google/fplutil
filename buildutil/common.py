@@ -14,7 +14,6 @@
 #
 
 """@file buildutil/common.py Common BuildEnvironment.
-@namespace buildutil.common
 
 This is the base implementation for target-specific build environments.
 Common utility classes are assembled here as well.
@@ -25,8 +24,9 @@ Optional environment variables:
 @li MAKE_PATH = Path to make binary. Required if make is not in $PATH,
 or not passed on command line.
 @li MAKE_FLAGS = String to override the default make flags with.
-"""
 
+@package fplutil.buildutil.common Common BuildEnvironment.
+"""
 
 import datetime
 import distutils.spawn
@@ -38,41 +38,41 @@ import shutil
 import subprocess
 import zipfile
 
-## @internal Flag which specifies directory of the project to build.
+## @cond FPLUTIL_INTERNAL
+# Flag which specifies directory of the project to build.
 _PROJECT_DIR = 'project_dir'
-## @internal Environment variable which specifies the path to `make`.
+# Environment variable which specifies the path to `make`.
 _MAKE_PATH_ENV_VAR = 'MAKE_PATH'
-## @internal Environment variable which specifies the path to `git`.
+# Environment variable which specifies the path to `git`.
 _GIT_PATH_ENV_VAR = 'GIT_PATH'
-## @internal Environment variable which specifies flags for `make`.
+# Environment variable which specifies flags for `make`.
 _MAKE_FLAGS_ENV_VAR = 'MAKE_FLAGS'
-## @internal Flag which specifies the number of CPUs to use during the build
-## process.
+# Flag which specifies the number of CPUs to use during the build process.
 _CPU_COUNT = 'cpu_count'
-## @internal Flag which specifies the path to `make`.
+# Flag which specifies the path to `make`.
 _MAKE_PATH = 'make_path'
-## @internal Flag which specifies the path to `git`.
+# Flag which specifies the path to `git`.
 _GIT_PATH = 'git_path'
-## @internal Flag which specifies flags for `make`.
+# Flag which specifies flags for `make`.
 _MAKE_FLAGS = 'make_flags'
-## @internal Flag that controls whether the git working copy should be cleaned.
+# Flag that controls whether the git working copy should be cleaned.
 _GIT_CLEAN = 'git_clean'
-## @internal Flag which controls the verbosity of BuildEnvironment's output.
+# Flag which controls the verbosity of BuildEnvironment's output.
 _VERBOSE = 'verbose'
-## @internal Flag which specifies the output directory for archived build
-## artifacts.
+# Flag which specifies the output directory for archived build artifacts.
 _OUTPUT_DIR = 'output_dir'
-## @internal Flag which controls whether the project should be cleaned.
+# Flag which controls whether the project should be cleaned.
 _CLEAN = 'clean'
+## @endcond FPLUTIL_INTERNAL
 
 class Error(Exception):
 
   """Base class for exceptions in this module.
 
   Attributes:
-    error_message: An error message composited by specific error subclasses.
-    error_code: An error integer unique to each error subclass, suitable for
-      return from main()
+    _error_message: An error message composited by specific error subclasses.
+    _error_code: An error integer unique to each error subclass, suitable for
+      return from main().
   """
 
   CODE = -1
