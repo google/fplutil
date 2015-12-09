@@ -24,6 +24,85 @@
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,400italic,500,500italic,700,700italic|Roboto+Mono:400,700" rel="stylesheet">
 <link href="style.css" rel="stylesheet" type="text/css"/>
+<script>
+  /**
+   * Check if the browser rendering this page is being run on an Android device.
+   * It checks if the string 'android' is found in the browser's `userAgent`.
+   * @return {boolean} This returns `true` if the browser's `userAgent` contains
+   * the string 'android' (indicating that the browser is on an Android device).
+   * Otherwise, it returns `false`.
+   */
+  function isAndroidDevice() {
+    if (navigator && navigator.userAgent) {
+      return navigator.userAgent.toLowerCase().indexOf('android') != -1;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Check if an HTML `class` attribute is in the browser-specific format.
+   * @param {string} An HTML `class` attribute in the format 'browser-{device}'.
+   * @return {boolean} Returns `true` if `browserClass` was in the valid format,
+   * prefixed with 'browser-'. Otherwise, it returns false.
+   */
+  function isBrowserSpecificClassName(browserClass) {
+    if (browserClass && browserClass.substring(0, 8) == 'browser-' &&
+        browserClass.length > 8) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Get all the HTML Elements with browser-specific `class` attributes.
+   * @return {array} Returns an array of all the HTML Elements with a `class`
+   * attribute that is prefixed with `browser-`.
+   */
+  function getAllBrowserSpecificElements() {
+    if (document) {
+      var htmlElements = document.getElementsByTagName("*");
+      var browserSpecificElements = [];
+      for (var i = 0; i < htmlElements.length; i++) {
+        if (isBrowserSpecificClassName(htmlElements[i].className)) {
+          browserSpecificElements.push(htmlElements[i]);
+        }
+      }
+      return browserSpecificElements;
+    } else {
+      return null;
+    }
+  }
+  /**
+   * Given a browser-specific HTML `class` attribute, extract the device name.
+   * @param {string} browserClass The string name of an HTML `class` attribute,
+   * in the format `browser-{device}`.
+   * @return {string} Returns a string containing only the device portion of
+   * the class name. If the input was invalid, then it returns `null`.
+   */
+  function extractDeviceFromBrowserClass(browserClass) {
+    if (isBrowserSpecificClassName(browserClass)) {
+      return browserClass.substring(8);
+    }
+    else {
+      return null;
+    }
+  }
+  /**
+   * Hide device specific elements that do not apply to the current device.
+   */
+  function handleDeviceSpecificLoading() {
+    var browserSpecificElements = getAllBrowserSpecificElements();
+    for (var i = 0; i < browserSpecificElements.length; i++) {
+      var device = extractDeviceFromBrowserClass(browserSpecificElements[i].className);
+      if (device && !isAndroidDevice() && device == 'android') {
+        browserSpecificElements[i].innerHTML = '';
+      } else if(device && isAndroidDevice() && device == 'desktop') {
+        browserSpecificElements[i].innerHTML = '';
+      }
+    }
+  }
+  $(document).ready(handleDeviceSpecificLoading);
+</script>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -151,7 +230,7 @@ $(document).ready(function(){initNavTree('intrusive__list_8h_source.html','');})
 <div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define FPLUTIL_NOEXCEPT noexcept</span></div>
 <div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#endif</span></div>
 <div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#elif defined(_MSC_FULL_VER)</span></div>
-<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#if _MSC_FULL_VER &gt;= 180021114</span></div>
+<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#if _MSC_VER &gt;= 1900  // MSVC++ 14.0 (Visual Studio 2015)</span></div>
 <div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#define FPLUTIL_NOEXCEPT noexcept</span></div>
 <div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#endif</span></div>
 <div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#endif</span></div>
@@ -208,7 +287,7 @@ $(document).ready(function(){initNavTree('intrusive__list_8h_source.html','');})
 <div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160;    <span class="keywordflow">return</span> *<span class="keyword">this</span>;</div>
 <div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160;  }</div>
 <div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;</div>
-<div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160;<span class="preprocessor">#if defined(_MSC_FULL_VER)</span></div>
+<div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160;<span class="preprocessor">#if defined(_MSC_VER)</span></div>
 <div class="line"><a name="l00097"></a><span class="lineno">   97</span>&#160;<span class="preprocessor"></span>  <span class="comment">// Copy contructor.</span></div>
 <div class="line"><a name="l00098"></a><span class="lineno">   98</span>&#160;  <a class="code" href="classfplutil_1_1intrusive__list__node.html">intrusive_list_node</a>(<a class="code" href="classfplutil_1_1intrusive__list__node.html">intrusive_list_node</a>&amp; other) { move(other); }</div>
 <div class="line"><a name="l00099"></a><span class="lineno">   99</span>&#160;  <span class="comment">// Copy assignment operator.</span></div>
@@ -218,7 +297,7 @@ $(document).ready(function(){initNavTree('intrusive__list_8h_source.html','');})
 <div class="line"><a name="l00103"></a><span class="lineno">  103</span>&#160;    move(other);</div>
 <div class="line"><a name="l00104"></a><span class="lineno">  104</span>&#160;    <span class="keywordflow">return</span> *<span class="keyword">this</span>;</div>
 <div class="line"><a name="l00105"></a><span class="lineno">  105</span>&#160;  }</div>
-<div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;<span class="preprocessor">#endif  // defined(_MSC_FULL_VER)</span></div>
+<div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;<span class="preprocessor">#endif  // defined(_MSC_VER)</span></div>
 <div class="line"><a name="l00107"></a><span class="lineno">  107</span>&#160;<span class="preprocessor"></span></div>
 <div class="line"><a name="l00108"></a><span class="lineno">  108</span>&#160;  <span class="comment">// Retuns true if this node is in a list.</span></div>
 <div class="line"><a name="l00109"></a><span class="lineno">  109</span>&#160;  <span class="keywordtype">bool</span> in_list()<span class="keyword"> const </span>{ <span class="keywordflow">return</span> next_ != <span class="keyword">this</span>; }</div>
@@ -277,11 +356,11 @@ $(document).ready(function(){initNavTree('intrusive__list_8h_source.html','');})
 <div class="line"><a name="l00162"></a><span class="lineno">  162</span>&#160;  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> T, <span class="keywordtype">bool</span> is_const&gt;</div>
 <div class="line"><a name="l00163"></a><span class="lineno">  163</span>&#160;  <span class="keyword">friend</span> <span class="keyword">class </span>intrusive_list_iterator;</div>
 <div class="line"><a name="l00164"></a><span class="lineno">  164</span>&#160;</div>
-<div class="line"><a name="l00165"></a><span class="lineno">  165</span>&#160;<span class="preprocessor">#if !defined(_MSC_FULL_VER)</span></div>
+<div class="line"><a name="l00165"></a><span class="lineno">  165</span>&#160;<span class="preprocessor">#if !defined(_MSC_VER)</span></div>
 <div class="line"><a name="l00166"></a><span class="lineno">  166</span>&#160;<span class="preprocessor"></span>  <span class="comment">// Disallow copying.</span></div>
 <div class="line"><a name="l00167"></a><span class="lineno">  167</span>&#160;  <a class="code" href="classfplutil_1_1intrusive__list__node.html">intrusive_list_node</a>(<a class="code" href="classfplutil_1_1intrusive__list__node.html">intrusive_list_node</a>&amp;);</div>
 <div class="line"><a name="l00168"></a><span class="lineno">  168</span>&#160;  intrusive_list_node&amp; operator=(intrusive_list_node&amp;);</div>
-<div class="line"><a name="l00169"></a><span class="lineno">  169</span>&#160;<span class="preprocessor">#endif  // !defined(_MSC_FULL_VER)</span></div>
+<div class="line"><a name="l00169"></a><span class="lineno">  169</span>&#160;<span class="preprocessor">#endif  // !defined(_MSC_VER)</span></div>
 <div class="line"><a name="l00170"></a><span class="lineno">  170</span>&#160;<span class="preprocessor"></span>};</div>
 <div class="line"><a name="l00171"></a><span class="lineno">  171</span>&#160;</div>
 <div class="line"><a name="l00172"></a><span class="lineno">  172</span>&#160;<span class="comment">// intrusive_list is a container that supports constant time insertion and</span></div>
@@ -328,7 +407,7 @@ $(document).ready(function(){initNavTree('intrusive__list_8h_source.html','');})
 <div class="line"><a name="l00213"></a><span class="lineno">  213</span>&#160;    <span class="keywordflow">return</span> *<span class="keyword">this</span>;</div>
 <div class="line"><a name="l00214"></a><span class="lineno">  214</span>&#160;  }</div>
 <div class="line"><a name="l00215"></a><span class="lineno">  215</span>&#160;</div>
-<div class="line"><a name="l00216"></a><span class="lineno">  216</span>&#160;<span class="preprocessor">#if defined(_MSC_FULL_VER)</span></div>
+<div class="line"><a name="l00216"></a><span class="lineno">  216</span>&#160;<span class="preprocessor">#if defined(_MSC_VER)</span></div>
 <div class="line"><a name="l00217"></a><span class="lineno">  217</span>&#160;<span class="preprocessor"></span>  <span class="comment">// Normally we need to disallow copying. Ideally we&#39;d put this in the</span></div>
 <div class="line"><a name="l00218"></a><span class="lineno">  218</span>&#160;  <span class="comment">// `private` section so that copying will generate a compiler error. We can&#39;t</span></div>
 <div class="line"><a name="l00219"></a><span class="lineno">  219</span>&#160;  <span class="comment">// do that (explained below), so we leave off the impelmentation to generate a</span></div>
@@ -349,7 +428,7 @@ $(document).ready(function(){initNavTree('intrusive__list_8h_source.html','');})
 <div class="line"><a name="l00234"></a><span class="lineno">  234</span>&#160;<span class="preprocessor">#else</span></div>
 <div class="line"><a name="l00235"></a><span class="lineno">  235</span>&#160;<span class="preprocessor"></span>  intrusive_list(<span class="keyword">const</span> intrusive_list&lt;value_type&gt;&amp;) { assert(<span class="keyword">false</span>); }</div>
 <div class="line"><a name="l00236"></a><span class="lineno">  236</span>&#160;  intrusive_list&amp; operator=(<span class="keyword">const</span> this_type&amp;) { assert(<span class="keyword">false</span>); }</div>
-<div class="line"><a name="l00237"></a><span class="lineno">  237</span>&#160;<span class="preprocessor">#endif  // defined(_MSC_FULL_VER)</span></div>
+<div class="line"><a name="l00237"></a><span class="lineno">  237</span>&#160;<span class="preprocessor">#endif  // defined(_MSC_VER)</span></div>
 <div class="line"><a name="l00238"></a><span class="lineno">  238</span>&#160;<span class="preprocessor"></span></div>
 <div class="line"><a name="l00239"></a><span class="lineno">  239</span>&#160;  <span class="keyword">template</span> &lt;<span class="keyword">class</span> InputIt&gt;</div>
 <div class="line"><a name="l00240"></a><span class="lineno">  240</span>&#160;  intrusive_list(InputIt first, InputIt last) : data_(&amp;data_, &amp;data_) {</div>
@@ -739,9 +818,9 @@ $(document).ready(function(){initNavTree('intrusive__list_8h_source.html','');})
 <div class="line"><a name="l00624"></a><span class="lineno">  624</span>&#160;</div>
 <div class="line"><a name="l00625"></a><span class="lineno">  625</span>&#160;}  <span class="comment">// namespace fplutil</span></div>
 <div class="line"><a name="l00626"></a><span class="lineno">  626</span>&#160;</div>
-<div class="line"><a name="l00627"></a><span class="lineno">  627</span>&#160;<span class="preprocessor">#if defined(_MSC_FULL_VER)</span></div>
+<div class="line"><a name="l00627"></a><span class="lineno">  627</span>&#160;<span class="preprocessor">#if defined(_MSC_VER)</span></div>
 <div class="line"><a name="l00628"></a><span class="lineno">  628</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#pragma warning(pop)</span></div>
-<div class="line"><a name="l00629"></a><span class="lineno">  629</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00629"></a><span class="lineno">  629</span>&#160;<span class="preprocessor"></span><span class="preprocessor">#endif  // defined(_MSC_VER)</span></div>
 <div class="line"><a name="l00630"></a><span class="lineno">  630</span>&#160;<span class="preprocessor"></span></div>
 <div class="line"><a name="l00631"></a><span class="lineno">  631</span>&#160;<span class="preprocessor">#endif  // FPLUTIL_INTRUSIVE_LIST_H_</span></div>
 <div class="ttc" id="classfplutil_1_1intrusive__list_html"><div class="ttname"><a href="classfplutil_1_1intrusive__list.html">fplutil::intrusive_list</a></div><div class="ttdef"><b>Definition:</b> intrusive_list.h:53</div></div>

@@ -24,6 +24,85 @@
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,400italic,500,500italic,700,700italic|Roboto+Mono:400,700" rel="stylesheet">
 <link href="style.css" rel="stylesheet" type="text/css"/>
+<script>
+  /**
+   * Check if the browser rendering this page is being run on an Android device.
+   * It checks if the string 'android' is found in the browser's `userAgent`.
+   * @return {boolean} This returns `true` if the browser's `userAgent` contains
+   * the string 'android' (indicating that the browser is on an Android device).
+   * Otherwise, it returns `false`.
+   */
+  function isAndroidDevice() {
+    if (navigator && navigator.userAgent) {
+      return navigator.userAgent.toLowerCase().indexOf('android') != -1;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Check if an HTML `class` attribute is in the browser-specific format.
+   * @param {string} An HTML `class` attribute in the format 'browser-{device}'.
+   * @return {boolean} Returns `true` if `browserClass` was in the valid format,
+   * prefixed with 'browser-'. Otherwise, it returns false.
+   */
+  function isBrowserSpecificClassName(browserClass) {
+    if (browserClass && browserClass.substring(0, 8) == 'browser-' &&
+        browserClass.length > 8) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Get all the HTML Elements with browser-specific `class` attributes.
+   * @return {array} Returns an array of all the HTML Elements with a `class`
+   * attribute that is prefixed with `browser-`.
+   */
+  function getAllBrowserSpecificElements() {
+    if (document) {
+      var htmlElements = document.getElementsByTagName("*");
+      var browserSpecificElements = [];
+      for (var i = 0; i < htmlElements.length; i++) {
+        if (isBrowserSpecificClassName(htmlElements[i].className)) {
+          browserSpecificElements.push(htmlElements[i]);
+        }
+      }
+      return browserSpecificElements;
+    } else {
+      return null;
+    }
+  }
+  /**
+   * Given a browser-specific HTML `class` attribute, extract the device name.
+   * @param {string} browserClass The string name of an HTML `class` attribute,
+   * in the format `browser-{device}`.
+   * @return {string} Returns a string containing only the device portion of
+   * the class name. If the input was invalid, then it returns `null`.
+   */
+  function extractDeviceFromBrowserClass(browserClass) {
+    if (isBrowserSpecificClassName(browserClass)) {
+      return browserClass.substring(8);
+    }
+    else {
+      return null;
+    }
+  }
+  /**
+   * Hide device specific elements that do not apply to the current device.
+   */
+  function handleDeviceSpecificLoading() {
+    var browserSpecificElements = getAllBrowserSpecificElements();
+    for (var i = 0; i < browserSpecificElements.length; i++) {
+      var device = extractDeviceFromBrowserClass(browserSpecificElements[i].className);
+      if (device && !isAndroidDevice() && device == 'android') {
+        browserSpecificElements[i].innerHTML = '';
+      } else if(device && isAndroidDevice() && device == 'desktop') {
+        browserSpecificElements[i].innerHTML = '';
+      }
+    }
+  }
+  $(document).ready(handleDeviceSpecificLoading);
+</script>
 </head>
 <body>
 <div id="top"><!-- do not remove this div, it is closed by doxygen! -->
@@ -122,13 +201,13 @@ $(document).ready(function(){initNavTree('buildutil_api_reference.html','');});
 <p>The <a class="el" href="common_8py.html">common.py</a> module implements functionality shared across multiple build environments.</p>
 <p><a class="el" href="android_8py.html">android.py</a> implements functions to build <a href="http://www.android.com">Android</a> projects, sign APKs, deploy APKs to <a href="http://www.android.com">Android</a> devices and launch the built applications.</p>
 <p><a class="el" href="linux_8py.html">linux.py</a> implements functions to build applications using <a href="http://www.cmake.org">CMake</a> and <a href="http://www.gnu.org/software/make">make</a> on Unix-like operating systems (e.g <a href="http://en.m.wikipedia.org/wiki/Linux">Linux</a> and <a href="http;//www.apple.com/osx">OSX</a>).</p>
-<p>Each module implements a BuildEnvironment class which contains functions to build for a specific build environment.</p>
-<p>Each BuildEnvironment class implements an add_arguments which adds a set of arguments to an ArgumentParser instance. The arguments parsed by ArgumentParser can be passed to a BuildEnvironment on construction to configure the instance.</p>
-<p>After constructing a BuildEnvironment instance, it's possible to build projects for the selected build environment using methods like the following:</p>
+<p>Each module implements a <a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html">BuildEnvironment</a> class which contains functions to build for a specific build environment.</p>
+<p>Each <a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html">BuildEnvironment</a> class implements an <a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html#af60a79f377c12225b3adda6e576c0447">add_arguments</a> which adds a set of arguments to an ArgumentParser instance. The arguments parsed by ArgumentParser can be passed to a <a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html">BuildEnvironment</a> on construction to configure the instance.</p>
+<p>After constructing a <a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html">BuildEnvironment</a> instance, it's possible to build projects for the selected build environment using methods like the following:</p>
 <ul>
-<li>run_make</li>
-<li>run_cmake</li>
-<li>build_all </li>
+<li><a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html#a497840dc65497e0144d6b3540f9ac21f">run_make</a></li>
+<li><a class="el" href="classfplutil_1_1buildutil_1_1linux_1_1_build_environment.html#a29e9257d06534010cbc570d9761416c5">run_cmake</a></li>
+<li><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a4cfc11b1a905840e53535f6fb8cf88f6">build_all</a> </li>
 </ul>
 </div></div><!-- contents -->
 </div><!-- doc-content -->
