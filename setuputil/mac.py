@@ -17,13 +17,13 @@
 from datetime import date
 from distutils.spawn import find_executable
 import logging
-from optparse import OptionParser
 import os
 import platform
 import subprocess
 import urlparse
 
-import setup_util
+import common
+import util
 
 """Contains all necessary methods for setting up Mac OS."""
 
@@ -37,22 +37,22 @@ OSX_10_9_MAVERICKS = 9
 OSX_10_10_YOSEMITE = 10
 OSX_10_11_EL_CAPITAN = 11
 
-# The user's home directory, and the default location for installing
-#   cmake and cwebp folders.
-BASE_DIR = os.path.expanduser("~")
+# The path from the base CMake directory to where the executables are
+CMAKE_BIN = "CMake.app/Contents/bin"
 
-# The default names of the folders cmake and cwebp will be downloaded and
-#   installed to.
-CWEBP_DIR = "cwebp"
-CMAKE_DIR = "cmake"
-
-# SHA-1 hash for the cwebp tarfile
+# SHA-1 hash for the cwebp and ant tarfile
 CWEBP_HASH = "18c9a9bbfdd988b44d393895bad7de422b40228c"
-# Version of cwebp that will be downloaded
+ANT_HASH = "2442eff9ff2aa2b3df4aac75c9d9681232fc747a"
+
+# Version of cwebp and ant that will be downloaded
 CWEBP_VERSION = "libwebp-0.4.4-mac-10.9"
-# Download link for cwebp tarfile
+ANT_VERSION = "apache-ant-1.9.6"
+
+# Download link for cwebp and ant tarfile
 CWEBP_URL = ("http://downloads.webmproject.org/releases/webp/"
              + CWEBP_VERSION + ".tar.gz")
+ANT_URL = ("https://www.apache.org/dist/ant/binaries/" +
+           ANT_VERSION + "-bin.tar.gz")
 
 # Download prefixes for cmake and MacPorts. All download links for cmake and
 #   MacPorts must have the prefix in front.
@@ -120,67 +120,46 @@ CMAKE_VERSIONS = {
                            "2667dca9103b227a0235de745ac40260052fe284")
 }
 
+JAVA_UPDATE_URL = ("http://support.apple.com/downloads/DL1572/en_US/"
+                   "javaforosx.dmg")
+JAVA_UPDATE_HASH = "c0b05cb70904350c12d4f34c8afd3fa51bc47d72"
+
 MACPORTS_LOCATION = "/opt/local/bin/port"
 
-parser = OptionParser()
-parser.add_option("--cwebp", action="store", type="string",
-                  dest="cwebp_location", default=BASE_DIR,
-                  help="Specify path to cwebp directory. Can either be a "
-                       "reference to existing cwebp tools, or an indication "
-                       "of where to install them. Path can either be the "
-                       "full file path, or relative to the home directory.")
-parser.add_option("--cmake", action="store", type="string",
-                  dest="cmake_location", default=BASE_DIR,
-                  help="Specify path to CMake directory. Can either be a "
-                       "reference to existing CMake tools, or an indication "
-                       "of where to install them. Path can either be the "
-                       "full file path, or relative to the home directory.")
-parser.add_option("--no_macports", action="store_true",
-                  dest="no_macports", default=False,
-                  help="Don't attempt to install Mac Ports. If Mac Ports is "
-                       "already installed, then installation will be skipped "
-                       "irrespectively. Intended to people that wish to "
-                       "install ImageMagick using Homebrew.")
 
-(options, args) = parser.parse_args()
-
-
-class MacSetup(object):
+class MacSetup(common.Setup):
   """Contains all necessary methods for setting up the Mac.
 
   Attributes:
-    bash_profile_changed: A boolean indicating whether or not the bash profile
-        has been edited by the script, and the user should call source.
     os_version: An int indicating the user's current version of OS X.
     bash_profile: A string of the path of the user's bash profile.
-    cwebp_path: A string of the path to the location of the cwebp directory.
-    cmake_path: A string of the path to the location of the cmake directory.
+  Raises:
+    VersionUnsupportedError: If Mac OS is a version other than OS X.
+    VersionTooHighError: If Mac OSX version is higher than 10.11 (El Capitan)
+    VersionTooLowError: If Mac OSX version is lower than 10.4 (Tiger)
+    BadDirectoryError: If a path given in the cwebp, cmake or ant flag does not
+        exist.
   """
 
-  def __init__(self, skip_version_check=False):
-    self.bash_profile_changed = False
+  def __init__(self, options, skip_version_check=False):
+    common.Setup.__init__(self, options)
     major, minor, _ = get_mac_version()
     if major != "10":
       # Script only supports Mac OS X
-      raise VersionUnsupportedError(major)
+      raise common.VersionUnsupportedError(major)
     self.os_version = int(minor)
     if self.os_version > OSX_10_11_EL_CAPITAN:
       if skip_version_check:
         self.os_version = OSX_10_11_EL_CAPITAN
       else:
-        raise VersionTooHighError(minor)
+        raise common.VersionTooHighError(minor)
     elif self.os_version < OSX_10_4_TIGER:
       if skip_version_check:
         self.os_version = OSX_10_4_TIGER
       else:
-        raise VersionTooLowError(minor)
-    self.bash_profile = os.path.join(BASE_DIR, ".bash_profile")
-    self.cwebp_path = os.path.join(BASE_DIR, options.cwebp_location)
-    if not os.path.isdir(self.cwebp_path):
-      raise BadDirectoryError(self.cwebp_path)
-    self.cmake_path = os.path.join(BASE_DIR, options.cmake_location)
-    if not os.path.isdir(self.cmake_path):
-      raise BadDirectoryError(self.cmake_path)
+        raise common.VersionTooLowError(minor)
+    self.macports = not options.no_macports
+    self.install_android_prereqs = not options.no_android
 
   def mac_install_xcode(self):
     """Check for and install Xcode and Xcode command line tools.
@@ -188,25 +167,34 @@ class MacSetup(object):
     Raises:
       InstallInterruptError: If the user cancels either the Xcode or Xcode
           Command Line Tools setup.
+      PermissionsDeniedError: If sudo permissions are not granted for accepting
+          the Xcode terms and conditions.
+      CommandFailedError: Xcode is unable to install using its command line
+          installer
     """
-    try:
-      subprocess.check_output("xcodebuild -version", shell=True)
+    if find_executable("xcodebuild"):
       logging.info("Xcode already installed.")
-    except subprocess.CalledProcessError:
+    else:
       logging.warn("Please download and install Xcode from the Apple "
                    "Developers website:\nhttps://itunes.apple.com/us/app/"
                    "xcode/id497799835?ls=1&mt=12")
-      if not setup_util.wait_for_installation("xcodebuild -version"):
-        raise InstallInterruptError("Xcode")
+      if not util.wait_for_installation("xcodebuild -version"):
+        raise common.InstallInterruptError("Xcode")
       # View and accept terms and conditions for Xcode
-      subprocess.call("sudo xcodebuild -license", shell=True)
+      logging.info("Please accept the Xcode terms and conditions.\nSudo may "
+                   "prompt you for your password.")
+      try:
+        subprocess.call("sudo xcodebuild -license", shell=True)
+      except subprocess.CalledProcessError:
+        raise common.PermissionDeniedError("Xcode license", "Please enter your "
+                                           "password to accept the Xcode terms "
+                                           "and conditions")
 
     # Checks to see if xcode command line tools is installed
-    try:
-      subprocess.check_output("xcode-select -p", shell=True)
+    if find_executable("xcode-select"):
       logging.info("Xcode command line tools already installed.")
       return
-    except subprocess.CalledProcessError:
+    else:
       logging.info("Xcode Command Line Tools not installed. "
                    "Installing Xcode Command Line Tools now.")
     method, info = XCODE_VERSIONS.get(self.os_version, (None, None))
@@ -221,10 +209,14 @@ class MacSetup(object):
                    "https://guide.macports.org/#installing.xcode")
     elif method == "COMMAND":
       logging.warn("Please click 'Install' in the dialog box.")
-      subprocess.call(info, shell=True)
+      try:
+        subprocess.call(info, shell=True)
+      except subprocess.CalledProcessError:
+        raise common.CommandFailedError(info, "http://railsapps.github.io/"
+                                              "xcode-command-line-tools.html")
     # Wait for user to complete setup
-    if not setup_util.wait_for_installation("xcode-select -p"):
-      raise InstallInterruptError("Xcode Command Line Tools")
+    if not util.wait_for_installation("xcode-select -p"):
+      raise common.InstallInterruptError("Xcode Command Line Tools")
     logging.info("Xcode successfully installed.")
 
   def mac_install_cmake(self):
@@ -238,53 +230,58 @@ class MacSetup(object):
           downloaded.
       ExtractionError: If the cmake tar cannot be properly extracted.
     """
-    try:
-      subprocess.check_output("cmake --version", shell=True)
+    if find_executable("cmake"):
       logging.info("CMake already installed.")
       return
-    except subprocess.CalledProcessError:
-      logging.info("CMake not installed. Downloading now.")
+    cmake_version = util.get_file_name(
+        CMAKE_VERSIONS.get(self.version)[0], False)
+    location = util.check_dir(self.cmake_path, cmake_version, "bin/cmake")
+    if location:
+      self.cmake_path = location
+      logging.info("CMake found at " + self.cmake_path)
+      return
+
+    logging.info("CMake not installed. Downloading now.")
     url, file_hash = CMAKE_VERSIONS.get(self.os_version, (None, None))
     url = urlparse.urljoin(CMAKE_DOWNLOAD_PREFIX, url)
-    location = os.path.join(BASE_DIR, "cmake.tar.gz")
-    location = setup_util.download_file(url, location, "cmake", file_hash)
+    location = os.path.join(common.BASE_DIR, "cmake.tar.gz")
+    location = util.download_file(url, location, "cmake", file_hash)
     if not location:
-      raise FileDownloadError("https://cmake.org/download/",
-                              "Please rerun this script afterwards with the "
-                              "flag\n\t--cmake=/path/to/cmake")
-    if not setup_util.extract_tarfile(location, "r:gz", self.cmake_path,
-                                      "cmake"):
-      raise ExtractionError(location)
-    logging.info("cmake successfully installed.")
+      raise common.FileDownloadError("https://cmake.org/download/", "Please "
+                                     "rerun this script afterwards with the "
+                                     "flag\n\t--cmake=/path/to/cmake")
+    if not util.extract_tarfile(location, "r:gz", self.cmake_path, "cmake"):
+      raise common.ExtractionError(location)
+    logging.info("CMake successfully installed.")
 
   def mac_install_cwebp(self):
     """Check for and install cwebp.
 
     Assumes that if cwebp is already installed, then the user has correctly set
     their path variable such that the command "cwebp -h" will work.
-
     Raises:
       FileDownloadError: If the cwebp tar fails to download, or is incorrectly
           downloaded.
       ExtractionError: If the cwebp tar cannot be properly extracted.
     """
-    try:
-      subprocess.check_output("cwebp -h", shell=True)
+    if find_executable("cwebp"):
       logging.info("cwebp already installed.")
       return
-    except subprocess.CalledProcessError:
-      logging.info("cwebp not installed. Downloading now.")
-    location = os.path.join(BASE_DIR, "cwebp.tar.gz")
-    location = setup_util.download_file(CWEBP_URL, location, "cwebp",
-                                        CWEBP_HASH)
+    location = util.check_dir(self.cwebp_path, CWEBP_VERSION, "cwebp")
+    if location:
+      self.cwebp_path = location
+      logging.info("cwebp found at " + self.cwebp_path)
+      return
+    logging.info("cwebp not installed. Downloading now.")
+    location = os.path.join(common.BASE_DIR, "cwebp.tar.gz")
+    location = util.download_file(CWEBP_URL, location, "cwebp", CWEBP_HASH)
     if not location:
-      raise FileDownloadError("https://developers.google.com/speed/webp/docs/"
-                              "precompiled", "Please rerun this script "
-                              "afterwards with the flag\n"
-                              "\t--cwebp=/path/to/cwebp")
-    if not setup_util.extract_tarfile(location, "r:gz", self.cwebp_path,
-                                      "cwebp"):
-      raise ExtractionError(location)
+      raise common.FileDownloadError("https://developers.google.com/speed/webp/"
+                                     "docs/precompiled", "Please rerun this "
+                                     "script afterwards with the flag\n"
+                                     "\t--cwebp=/path/to/cwebp")
+    if not util.extract_tarfile(location, "r:gz", self.cwebp_path, "cwebp"):
+      raise common.ExtractionError(location)
     logging.info("cwebp successfully installed.")
 
   def mac_install_macports(self):
@@ -293,25 +290,37 @@ class MacSetup(object):
     Raises:
       FileDownloadError: If the MacPorts package fails to download, or is
           incorrectly downloaded.
+      UnknownFileTypeError: If the type of the downloaded package does not match
+          any of the supported types.
     """
     if os.path.isfile(MACPORTS_LOCATION):
       logging.info("MacPorts already installed.")
       return
     else:
       logging.info("MacPorts not installed. Downloading now.")
-    url, file_hash = MACPORTS_VERSIONS.get(self.os_version, (None, None))
-    url = urlparse.urljoin(MACPORTS_DOWNLOAD_PREFIX, url)
-    suffix = url.split(".")[-1]
-    location = os.path.join(BASE_DIR, "macports" + suffix)
-    location = setup_util.download_file(url, location, "macports", file_hash)
+    url, file_hash = MACPORTS_VERSIONS.get(self.os_version)
+    url = MACPORTS_DOWNLOAD_PREFIX + url
+    suffix = util.get_file_type(url)
+    location = os.path.join(common.BASE_DIR, "macports." + suffix)
+    location = util.download_file(url, location, "macports", file_hash)
     if not location:
-      raise FileDownloadError("https://guide.macports.org/chunked/installing."
-                              "macports.html", "Please rerun this script "
-                              "again afterwards.")
-    logging.info("Installing Mac Ports. Sudo may prompt you for your "
-                 "password.")
-    subprocess.call("sudo installer -pkg " + location + " -target /",
-                    shell=True)
+      raise common.FileDownloadError("https://guide.macports.org/chunked/"
+                                     "installing.macports.html", "Please rerun "
+                                     "this script again afterwards.")
+    logging.info("Installing Mac Ports. Sudo may prompt you for your password.")
+    if suffix == "pkg":
+      try:
+        subprocess.call("sudo installer -pkg " + location + " -target /",
+                        shell=True)
+      except subprocess.CalledProcessError:
+        raise common.PermissionDeniedError("installer", "Please enter your "
+                                           "password to install MacPorts")
+    elif suffix == "dmg":
+      subprocess.call("hdiutil attach " + location, shell=True)
+    else:
+      raise common.UnknownFileTypeError(suffix, "Please manually install "
+                                        "MacPorts, or run this script again "
+                                        "with the flag\n\t--no_macports")
     self.bash_profile_changed = True  # Mac ports installation will probably
                                       # change the bash profile, refresh just
                                       # in case
@@ -327,12 +336,10 @@ class MacSetup(object):
     Raises:
       InstallFailedError: If, for any reason, ImageMagick cannot be installed.
     """
-    try:
-      subprocess.check_output("convert --version", shell=True)
+    if find_executable("convert"):
       logging.info("Image Magick already installed.")
       return
-    except subprocess.CalledProcessError:
-      logging.info("ImageMagick not installed. Installing now.\n")
+    logging.info("ImageMagick not installed. Installing now.\n")
     if os.path.isfile(MACPORTS_LOCATION):
       # Warning, this takes forever
       logging.info("This process may take up to an hour to complete.")
@@ -344,37 +351,82 @@ class MacSetup(object):
                           shell=True)
           return
         except subprocess.CalledProcessError:
-          logging.warn("MacPorts encountered an error installing "
-                       "ImageMagick.\nPlease run this script to try again, "
-                       "or attempt installation using Homebrew or "
-                       "manually.")
+          logging.warn("MacPorts encountered an error installing ImageMagick.\n"
+                       "Please run this script to try again, or attempt "
+                       "installation using Homebrew or manually.")
     if (raw_input("Attempt installation with Homebrew? (y/n)")
         .lower().startswith("y")):
-      try:
+      if find_executable("brew"):
         # Try installing using Homebrew, however Homebrew installation has been
         # known to miss dependencies.
-        subprocess.call("brew --version", shell=True)
-        brew = True
-      except subprocess.CalledProcessError:
-        logging.warn("Homebrew is not installed.")
-      if brew:
         try:
           subprocess.call("brew install imagemagick --with-librsvg", shell=True)
-          logging.warn("Homebrew install of ImageMagick may miss "
-                       "dependecies.")
+          logging.warn("Homebrew insall of ImageMagick may miss depenecies.")
           return
         except subprocess.CalledProcessError:
-          logging.warn("Homebrew encountered an error installing "
-                       "ImageMagick.\nPlease run this script to try again, "
-                       "or attempt manual installataion.")
+          logging.warn("Homebrew encountered an error installing ImageMagick.\n"
+                       "Please run this script to try again, or attempt manual "
+                       "installataion.")
       else:
         logging.warn("ImageMagick requires either MacPorts or Homebrew to "
                      "install.\nFor more information on Homebrew, see: "
-                     "http://brew.sh/\nFor more information on MacPorts, "
-                     "see: https://guide.macports.org/")
-    raise InstallFailedError("ImageMagick", "http://www.imagemagick.org/"
-                             "script/binary-releases.php#macosx",
-                             "Please rerun this script to try again.")
+                     "http://brew.sh/\nFor more information on MacPorts, see: "
+                     "https://guide.macports.org/")
+    raise common.InstallFailedError("ImageMagick", "http://www.imagemagick.org/"
+                                    "script/binary-releases.php#macosx",
+                                    "Please rerun this script to try again.")
+
+  def mac_install_ant(self):
+    """Check for and install Apache Ant.
+
+    Raises:
+      FileDownloadError: If the ant tar fails to download, or is incorrectly
+          downloaded.
+      ExtractionError: If the ant tar cannot be properly extracted.
+    """
+    if find_executable("ant"):
+      logging.info("Apache Ant already installed.")
+      return
+    location = util.check_dir(self.ant_path, ANT_VERSION, "bin/ant")
+    if location:
+      self.ant_path = location
+      logging.info("Apache Ant already installed.")
+      return
+    logging.info("Apache Ant not installed. Installing now.")
+    location = os.path.join(common.BASE_DIR, "ant.tar.gz")
+    location = util.download_file(ANT_URL, location, "Ant", ANT_HASH)
+    if not location:
+      raise common.FileDownloadError("https://www.apache.org/dist/ant/"
+                                     "binaries/", "Please rerun this script "
+                                     "again afterwards.")
+    if not util.extract_tarfile(location, "r:gz", self.ant_path, "Ant"):
+      raise common.ExtractionError(location)
+    logging.info("Apache Ant successfully installed.")
+
+  def update_java(self):
+    """Update Java Runtime Environment.
+
+    There's a bug in the Java installer that sees Yosemite and El Capitan
+    (10.10 and 10.11) as '10.1', and hence the android won't run. The official
+    Apple package, which is installed in this function, doesn't have that bug.
+
+    Raises:
+      InstallInterruptError: If the wait for installing Java update was
+          cancelled.
+    """
+    if self.os_version < OSX_10_10_YOSEMITE:
+      return
+    logging.info("Java update required by Android.")
+    location = os.path.join(common.BASE_DIR, "java.dmg")
+    location = util.download_file(JAVA_UPDATE_URL, location, "java",
+                                  JAVA_UPDATE_HASH)
+    if not location:
+      logging.warn("Please visit https://support.apple.com/kb/DL1572 for "
+                   "download link and extraction instructions.\nPlease rerun "
+                   "this script afterwards to complete setup.")
+    logging.info("Finder will open. Double click on \"JavaForOSX.pgk\" to "
+                 "continue installation")
+    subprocess.call("hdiutil attach " + location, shell=True)
 
   def mac_update_path(self):
     """Checks PATH variable and edits the bash profile accordingly.
@@ -385,15 +437,19 @@ class MacSetup(object):
     """
     optbin_update = True
     optsbin_update = True
+    cmake_path_update = True
     cwebp_path_update = True
-    if find_executable("cmake"):
-      optbin_update = False
+    ant_path_update = True
     if find_executable("convert"):
       optbin_update = False
       optsbin_update = False
+    if find_executable("cmake"):
+      cmake_path_update = False
     if find_executable("cwebp"):
       cwebp_path_update = False
-    if optbin_update or optsbin_update or cwebp_path_update:
+    if find_executable("ant"):
+      ant_path_update = False
+    if optbin_update or optsbin_update or cwebp_path_update or ant_path_update:
       with open(self.bash_profile, "a") as f:
         todays_date = (str(date.today().year) + "-" + str(date.today().month)
                        + "-" + str(date.today().day))
@@ -403,30 +459,35 @@ class MacSetup(object):
           f.write("export PATH=/opt/local/bin:$PATH\n")
         if optsbin_update:
           f.write("export PATH=/opt/local/sbin:$PATH\n")
+        if cmake_path_update:
+          cmake_version = util.get_file_name(
+              CMAKE_VERSIONS.get(self.version)[0], False)
+          cmake_bin = os.path.join(self.cmake_path,
+                                   os.path.join(cmake_version, CMAKE_BIN))
+          f.write("export PATH=" + cmake_bin + ":$PATH\n")
         if cwebp_path_update:
-          cwebp_bin = os.path.join(os.path.join(self.cwebp_path,
-                                                CWEBP_VERSION), "bin")
+          cwebp_bin = os.path.join(self.cwebp_path,
+                                   os.path.join(CWEBP_VERSION, "bin"))
           f.write("export PATH=" + cwebp_bin + ":$PATH\n")
+        if ant_path_update:
+          ant_bin = os.path.join(self.ant_path,
+                                 os.path.join(ANT_VERSION, "bin"))
+          f.write("export PATH=" + ant_bin + ":$PATH\n")
         f.write("\n")
         self.bash_profile_changed = True
 
-  def print_bash_profile_changed(self):
-    """Print a warning message if the bash profile has been changed."""
-    if self.bash_profile_changed:
-      logging.warn("\n~/.bash_profile has been changed. Please refresh your"
-                   " bash profile by running:\n\tsource ~/.bash_profile")
-
   def setup_all(self):
     """Performs all necessary set up."""
-    # TODO(ngibson) add android setup
     self.mac_install_xcode()
     self.mac_install_cmake()
     self.mac_install_cwebp()
-    if not options.no_macports:
+    self.mac_install_ant()
+    if self.install_android_prereqs:
+      self.mac_update_java()
+    if self.macports:
       self.mac_install_macports()
     self.mac_install_image_magick()
     self.mac_update_path()
-    self.print_bash_profile_changed()
     logging.info("Set up complete!")
 
 
@@ -435,68 +496,3 @@ def get_mac_version():
   return tuple(version.split("."))
 
 
-class VersionUnsupportedError(Exception):
-  """Raised when Mac OS is not OS X."""
-
-  def __init__(self, version):
-    Exception.__init__(self)
-    self.version = version
-
-
-class VersionTooHighError(Exception):
-  """Raised when Mac OS is greater than the highest supported version."""
-
-  def __init__(self, version):
-    Exception.__init__(self)
-    self.version = version
-
-
-class VersionTooLowError(Exception):
-  """Raised when Mac OS is less than the lowest supported version."""
-
-  def __init__(self, version):
-    Exception.__init__(self)
-    self.version = version
-
-
-class BadDirectoryError(Exception):
-  """Raised when a given directory does not exist."""
-
-  def __init__(self, directory):
-    Exception.__init__(self)
-    self.directory = directory
-
-
-class InstallInterruptError(Exception):
-  """Raised when installation of a program was interrupted by the user."""
-
-  def __init__(self, program):
-    Exception.__init__(self)
-    self.program = program
-
-
-class InstallFailedError(Exception):
-  """Raised when installation fails for reasons other than user interrupt."""
-
-  def __init__(self, program, link, instructions=""):
-    Exception.__init__(self)
-    self.program = program
-    self.link = link
-    self.instructions = instructions
-
-
-class FileDownloadError(Exception):
-  """Raised when a file was unable to download."""
-
-  def __init__(self, link, instructions=""):
-    Exception.__init__(self)
-    self.link = link
-    self.instructions = instructions
-
-
-class ExtractionError(Exception):
-  """Raised when a compressed file was unable to be extracted."""
-
-  def __init__(self, filepath):
-    Exception.__init__(self)
-    self.filepath = filepath
