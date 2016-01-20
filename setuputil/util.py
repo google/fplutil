@@ -16,30 +16,13 @@
 
 from distutils.spawn import find_executable
 import hashlib
-from os import remove
-from select import select
+import os
 import subprocess
 import sys
 import tarfile
+import time
 import urllib
-
-
-def remove_line(filename, to_remove, all_lines=""):
-  """Removes any instances of a line from a file.
-
-  Args:
-    filename: A string name (including path) of the text file
-    to_remove: The string that is to be removed from the text file
-    all_lines: An option string representing the whole of the original file.
-        If no string is provided, read the file first
-  """
-  if not all_lines:
-    with open(filename, "r") as f:
-      all_lines = f.readlines()
-  with open(filename, "w") as f:
-    for line in all_lines:
-      if line != to_remove:
-        f.write(line)
+import zipfile
 
 
 def get_file_hash(filepath):
@@ -108,13 +91,26 @@ def extract_tarfile(tar_location, tar_flag, extract_location, name_of_file):
   try:
     tar = tarfile.open(tar_location, tar_flag)
     tar.extractall(path=extract_location, members=tar)
-    remove(tar_location)
+    os.remove(tar_location)
+    print "\t" + name_of_file + " successfully extracted"
     return True
   except tarfile.ExtractError:
     return False
 
 
-def wait_for_installation(program):
+def extract_zipfile(zip_location, zip_flag, extract_location, name_of_file):
+  try:
+    zip_file = zipfile.ZipFile(zip_location, zip_flag)
+    zip_file.extractall(extract_location)
+    zip_file.close()
+    os.remove(zip_location)
+    return True
+  except zipfile.BadZipfile:
+    sys.stderr.write("\t" + name_of_file + " failed to extract.\n")
+    return False
+
+
+def wait_for_installation(program, command=False):
   """Once installation has started, poll until completion.
 
   Once an asynchronous installation has started, wait for executable to exist.
@@ -123,14 +119,73 @@ def wait_for_installation(program):
   Args:
     program: A string representing the name of the program that is being
         installed.
+    command: True if the program name needs to be run in order to test
+        installation. False if it the executable can be found in the path.
   Returns:
     Boolean: Whether or not the the package finished installing
   """
-  print("Waiting for installation to complete.\nAlternately, press Ctrl-c to "
+  print("Waiting for installation to complete.\nAlternately, press Ctrl-C to "
         "quit, and rerun this script after installation has completed.")
   try:
-    while not find_executable(program):
+    while command:
+      try:
+        subprocess.check_output(program, shell=True, stderr=subprocess.PIPE)
+        break
+      except subprocess.CalledProcessError:
+        time.sleep(1)
+
+    while not command and not find_executable(program):
       time.sleep(1)
   except KeyboardInterrupt:
+    sys.stderr.write("Setup exited before completion.")
     return False
   return True
+
+
+def check_dir(location, additional_location, check_file):
+  """Checks to see if a file exists in a location.
+
+  Determines whether or not an important file exists in the given directory,
+  or a certain subset of that directory.
+
+  Args:
+    location: A string with the full filepath of the first directory.
+    additional_location: A string with the path of an additional directory
+        to try. Can be relative to the first directory or another independent
+        full file path.
+    check_file: A string with the path to a file relative to one of the given
+        locations. Used to determine if the locations given contain the correct
+        contain the correct informaion.
+  Returns:
+    String: The correct location the checkfile was found at, or an empty string
+        if it is not.
+  """
+  if os.path.isdir(location):
+    if os.path.isfile(os.path.join(location, check_file)):
+      return location
+    elif os.path.isfile(os.path.join(
+        location, os.path.join(additional_location, check_file))):
+      return os.path.join(location, additional_location)
+  return ""
+
+
+def get_file_type(filepath):
+  """Returns the extension of a given filepath or url."""
+  return filepath.split(".")[-1]
+
+
+def get_file_name(filepath, extension=True):
+  """Returns the name of the file of a given filepath or url.
+
+  Args:
+    filepath: String of full file path
+    extension: Boolean determining whether or not the file type will be returned
+        as part of the file name
+  Returns:
+    String: The filename
+  """
+  name = filepath.split("/")[-1]
+  if extension:
+    return name
+  else:
+    return name.split(".")[0]
