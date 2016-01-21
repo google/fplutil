@@ -12,22 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-LOCAL_PATH:=$(call my-dir)/..
-
-PROJECT_ROOT:=$(LOCAL_PATH)/../../..
-
-# --- project ---
-include $(CLEAR_VARS)
-LOCAL_MODULE:=test_variable_size
-LOCAL_SRC_FILES:=$(wildcard $(LOCAL_PATH)/test_*.cc)
-LOCAL_WHOLE_STATIC_LIBRARIES:=android_native_app_glue libfplutil_main \
-  libfplutil_print libgtest
-LOCAL_LDLIBS:=-llog -landroid
-LOCAL_ARM_MODE:=arm
-include $(BUILD_SHARED_LIBRARY)
-
-$(call import-add-path,$(abspath $(PROJECT_ROOT)))
-
-$(call import-module,android/native_app_glue)
-$(call import-module,libfplutil/jni)
-$(call import-module,libfplutil/jni/libs/googletest)
+APP_PLATFORM:=android-9
+APP_ABI:=armeabi armeabi-v7a-hard mips x86 x86_64
+APP_STL:=gnustl_static
+APP_MODULES:=libgtest
+APP_CPPFLAGS += -std=c++11 -Wno-literal-suffix
+NDK_TOOLCHAIN_VERSION := 4.8

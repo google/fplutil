@@ -45,7 +45,7 @@ if(NOT DEFINED dependencies_root)
 endif()
 
 # Configurable locations of dependencies of this project.
-set(dependencies_gtest_dir "${fpl_root}/googletest"
+set(dependencies_gtest_dir "${third_party_root}/googletest"
     CACHE PATH "Directory containing the GoogleTest library.")
 
 # Includes for this project.
