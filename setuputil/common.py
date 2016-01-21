@@ -24,6 +24,8 @@ LINUX_32 = LINUX + "32"
 LINUX_64 = LINUX + "64"
 MAC = "MAC"
 WINDOWS = "WINDOWS"
+WINDOWS_32 = WINDOWS + "32"
+WINDOWS_64 = WINDOWS + "64"
 
 
 class Setup(object):
@@ -42,7 +44,8 @@ class Setup(object):
 
   def __init__(self, options):
     self.bash_profile_changed = False
-    self.bash_profile = os.path.join(BASE_DIR, ".bash_profile")
+    self.bash_profile = os.path.join(BASE_DIR, ".bash_profile") # Unused in
+                                                                # Windows
     self.cwebp_path = os.path.join(BASE_DIR, options.cwebp_location)
     if not os.path.isdir(self.cwebp_path):
       raise BadDirectoryError("--cwebp", self.cwebp_path)
@@ -102,9 +105,10 @@ class BadDirectoryError(Exception):
 class InstallInterruptError(Exception):
   """Raised when installation of a program was interrupted by the user."""
 
-  def __init__(self, program):
+  def __init__(self, program, instructions=""):
     Exception.__init__(self)
     self.program = program
+    self.instructions = instructions
 
 
 class InstallFailedError(Exception):
@@ -159,3 +163,12 @@ class PermissionDeniedError(Exception):
     Exception.__init__(self)
     self.program = program
     self.instructions = instructions
+
+
+class WebbrowserFailedError(Exception):
+  """Raised when a url was unable to be opened in the webbrowser."""
+
+  def __init__(self, pagename, link):
+    Exception.__init__(self)
+    self.pagename = pagename
+    self.link = link

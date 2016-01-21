@@ -17,6 +17,7 @@
 from distutils.spawn import find_executable
 import logging
 import os
+import platform
 import stat
 import subprocess
 
@@ -34,14 +35,22 @@ All download methods will not.
 #   downloaded/installed to.
 SDK_NAMES = {
     common.LINUX: "android-sdk-linux",
-    common.MAC: "android-sdk-macosx"
+    common.MAC: "android-sdk-macosx",
+    common.WINDOWS: "android-sdk-windows"
 }
 
 SDK_VERSIONS = {
     common.LINUX: ("http://dl.google.com/android/android-sdk_r24.4.1-linux.tgz",
                    "725bb360f0f7d04eaccff5a2d57abdd49061326d"),
     common.MAC: ("http://dl.google.com/android/android-sdk_r24.4.1-macosx.zip",
-                 "85a9cccb0b1f9e6f1f616335c5f07107553840cd")
+                 "85a9cccb0b1f9e6f1f616335c5f07107553840cd"),
+    common.WINDOWS: ("http://dl.google.com/android/android-sdk_r24.4.1-windows"
+                     ".zip", "66b6a6433053c152b22bf8cab19c0f3fef4eba49"),
+    common.WINDOWS_32: ("android-ndk-r10e-windows-x86.exe",
+                        "eb6bd8fe26f5e6ddb145fef2602dce518bf4e7b6"),
+    common.WINDOWS_64: ("android-ndk-r10e-windows-x86_64.exe",
+                        "6735993dbf94f201e789550718b64212190d617a")
+
 }
 
 ANDROID_NDK = "android-ndk-r10e"
@@ -97,7 +106,8 @@ class AndroidSetup(object):
     elif self.system == common.MAC:
       self.bash = os.path.join(common.BASE_DIR, ".bash_profile")
     elif self.system == common.WINDOWS:
-      raise common.SystemUnsupportedError(system)
+      self.bash = ""  # no bash profile on Windows
+      self.windows_path_update = ""
     else:
       raise common.SystemUnsupportedError(system)
     self.bash_changed = False
@@ -119,8 +129,10 @@ class AndroidSetup(object):
       logging.info("Android SDK found at " + self.sdk_path)
       return
     # Path is not set, but sdk may still exist
+    android_path = (os.path.join("tools", "android") +
+                    (".bat" if self.system == common.WINDOWS else ""))
     location = util.check_dir(self.sdk_path, SDK_NAMES.get(self.system),
-                              "tools/android")
+                              android_path)
     if location:
       self.sdk_path = location
       logging.info("Android SDK found at " + self.sdk_path)
@@ -160,31 +172,40 @@ class AndroidSetup(object):
     if self.system == common.MAC:
       # Sometimes, permissions aren't set correctly on tools/android on OSX.
       # Change permissions to allow execution by user
-      android = os.path.join(directory,
-                             SDK_NAMES.get(self.system) + "/tools/android")
+      android = os.path.join(directory, SDK_NAMES.get(self.system), "tools",
+                             "android")
       curr_permissions = os.stat(android)
       os.chmod(android, curr_permissions.st_mode | stat.S_IXUSR)
     # Update self.sdk_path to now include the SDK name
     self.sdk_path = os.path.join(self.sdk_path, SDK_NAMES.get(self.system))
 
   def android_update_sdk_path(self):
-    """Checks PATH variable and edits bashrc/profile for Android SDK."""
+    """Checks PATH variable and edits bashrc/profile/path for Android SDK."""
     tools_update_path = True
     platform_update_path = True
     if find_executable("android"):
       tools_update_path = False
-    if find_executable("adb"):
+    if find_executable("ndk-build"):
       platform_update_path = False
 
     if tools_update_path or platform_update_path:
-      with open(self.bash, "a") as f:
+      if self.bash:  # LINUX or MAC
+        with open(self.bash, "a") as f:
+          if tools_update_path:
+            f.write("export PATH=" + os.path.join(self.sdk_path, "tools")
+                    + ":$PATH\n")
+          if platform_update_path:
+            f.write("export PATH=" + os.path.join(self.sdk_path, "platform"
+                                                  "-tools") + ":$PATH\n")
+      else:  # WINDOWS
         if tools_update_path:
-          f.write("export PATH=" + os.path.join(self.sdk_path, "tools")
-                  + ":$PATH\n")
+          self.windows_path_update = os.path.join(
+              self.sdk_path, "tools") + os.pathsep + self.windows_path_update
         if platform_update_path:
-          f.write("export PATH=" + os.path.join(self.sdk_path, "platform-tools")
-                  + ":$PATH\n")
-        self.bash_changed = True
+          self.windows_path_update = (os.path.join(
+              self.sdk_path, "platform-tools") + os.pathsep +
+                                      self.windows_path_update)
+      self.bash_changed = True
 
   def android_update_platform_tools(self):
     """Update the Android SDK Platform Tools."""
@@ -267,18 +288,26 @@ class AndroidSetup(object):
     Args:
       directory: String indication of location to unpack NDK
     Raises:
-      FileDownloadError: NDK bin failes to download
+      FileDownloadError: NDK bin or exe fails to download
+      InstallInterruptError: if the wait for the NDK
     """
-    ndk_location = os.path.join(directory, "ndk.bin")
     if self.system == common.LINUX:
       os_version = subprocess.check_output("uname -m", shell=True)
       if os_version.strip() == "x86_64":
         url, file_hash = NDK_VERSIONS.get(common.LINUX_64)
       else:
         url, file_hash = NDK_VERSIONS.get(common.LINUX_32)
-    else:
+    elif self.system == common.WINDOWS:
+      os_version = platform.architecture()[0]
+      if os_version == "64bit":
+        url, file_hash = NDK_VERSIONS.get(common.WINDOWS_64)
+      else:
+        url, file_hash = NDK_VERSIONS.get(common.WINDOWS_32)
+    else:  # self.system = common.MAC
       url, file_hash = NDK_VERSIONS.get(self.system)
+    filetype = util.get_file_type(url)
     url = NDK_DOWNLOAD_PREFIX + url
+    ndk_location = os.path.join(directory, "ndk." + filetype)
     ndk_location = util.download_file(url, ndk_location, "Android NDK",
                                       file_hash)
     if not ndk_location:
@@ -287,20 +316,47 @@ class AndroidSetup(object):
                                      "this script afterwards with the flag\n"
                                      "\t--android_ndk=/path/to/android_ndk")
 
-    # Allow execution by all parties.
-    os.chmod(ndk_location, 0755)
-    current_dir = os.getcwd()
-    os.chdir(common.BASE_DIR)
-    os.system(ndk_location)
-    os.chdir(current_dir)
-    os.remove(ndk_location)
+    if filetype == "bin":
+      # Allow execution by all parties.
+      os.chmod(ndk_location, 0755)
+      current_dir = os.getcwd()
+      os.chdir(common.BASE_DIR)
+      os.system(ndk_location)
+      os.chdir(current_dir)
+      os.remove(ndk_location)
+    elif filetype == "exe":
+      os.chdir(self.ndk_path)
+      subprocess.call("start cmd /c " + ndk_location, shell=True)
+      # toolchain-licenses\COPYING is one of the last things to be extracted.
+      if not util.wait_for_installation("COPYING", search=True,
+                                        basedir=self.ndk_path):
+        raise common.InstallInterruptError("Android NDK")
+      os.chdir(current_dir)
+    else:
+      raise common.UnknownFileTypeError(filetype, "Please manually extract "
+                                        "Android NDK and rerun this script "
+                                        "afterwards with the flag\n\t"
+                                        "--android_ndk=/path/to/android_ndk")
 
   def android_update_ndk_path(self):
     """Checks bashrc/profile and edits it to include Android NDK path."""
     if not find_executable("ndk-build"):
-      with open(self.bash, "a") as f:
-        f.write("export PATH=" + self.ndk_path + ":$PATH\n")
+      if self.bash:
+        with open(self.bash, "a") as f:
+          f.write("export PATH=" + self.ndk_path + ":$PATH\n")
+      else:
+        self.windows_path_update = (self.ndk_path + os.pathsep +
+                                    self.windows_path_update)
       self.bash_changed = True
+
+  def get_windows_path_update(self):
+    """Return path update for android on Windows."""
+    # Windows path update must be done in one go, so return a string of the path
+    #   update, to be combined with any updates from the Windows setup.
+    if self.system == common.WINDOWS:
+      return self.windows_path_update
+    else:
+      return ""
 
   def has_bash_changed(self):
     # Sourcing bashrc/profile cannot be done within a script.

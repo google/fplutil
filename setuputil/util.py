@@ -22,7 +22,12 @@ import sys
 import tarfile
 import time
 import urllib
+import webbrowser
 import zipfile
+
+
+# Delay (in seconds) for polling installation completion
+DELAY = 1
 
 
 def get_file_hash(filepath):
@@ -76,7 +81,8 @@ def extract_tarfile(tar_location, tar_flag, extract_location, name_of_file):
   """Attempts to extract a tar file (tgz).
 
   If the file is not found, or the extraction of the contents failed, the
-  exception will be caught and the system will exit.
+  exception will be caught and the function will return False. If successful,
+  the tar file will be removed.
 
   Args:
     tar_location: A string of the current location of the tgz file
@@ -89,28 +95,44 @@ def extract_tarfile(tar_location, tar_flag, extract_location, name_of_file):
     Boolean: Whether or not the tar extraction succeeded.
   """
   try:
-    tar = tarfile.open(tar_location, tar_flag)
-    tar.extractall(path=extract_location, members=tar)
+    with tarfile.open(tar_location, tar_flag) as tar:
+      tar.extractall(path=extract_location, members=tar)
     os.remove(tar_location)
-    print "\t" + name_of_file + " successfully extracted"
+    print "\t" + name_of_file + " successfully extracted."
     return True
   except tarfile.ExtractError:
     return False
 
 
 def extract_zipfile(zip_location, zip_flag, extract_location, name_of_file):
+  """Attempts to extract a zip file (zip).
+
+  If the file is not found, or the extraction of the contents failed, the
+  exception will be caught and the function will return False. If successful,
+  the zip file will be removed.
+
+  Args:
+    zip_location: A string of the current location of the zip file
+    zip_flag: A string indicating the mode to open the zip file.
+        zipfile.extractall will generate an error if a flag with permissions
+        other than read is passed.
+    extract_location: A string of the path the file will be extracted to.
+    name_of_file: A string with the name of the file, for printing purposes.
+  Returns:
+    Boolean: Whether or not the zip extraction succeeded.
+  """
   try:
-    zip_file = zipfile.ZipFile(zip_location, zip_flag)
-    zip_file.extractall(extract_location)
-    zip_file.close()
+    with zipfile.ZipFile(zip_location, zip_flag) as zf:
+      zf.extractall(extract_location)
     os.remove(zip_location)
+    print "\t" + name_of_file + " successfully extracted."
     return True
   except zipfile.BadZipfile:
     sys.stderr.write("\t" + name_of_file + " failed to extract.\n")
     return False
 
 
-def wait_for_installation(program, command=False):
+def wait_for_installation(program, command=False, search=False, basedir=""):
   """Once installation has started, poll until completion.
 
   Once an asynchronous installation has started, wait for executable to exist.
@@ -120,7 +142,11 @@ def wait_for_installation(program, command=False):
     program: A string representing the name of the program that is being
         installed.
     command: True if the program name needs to be run in order to test
-        installation. False if it the executable can be found in the path.
+        installation. False if it the executable can be searched for.
+    search: True if the executable will not be on the path, and must be searched
+        for, starting from the base directory given.
+    basedir: If search is true, start from this directory when looking for the
+        program. If search is false, basedir will be ignored.
   Returns:
     Boolean: Whether or not the the package finished installing
   """
@@ -130,12 +156,15 @@ def wait_for_installation(program, command=False):
     while command:
       try:
         subprocess.check_output(program, shell=True, stderr=subprocess.PIPE)
-        break
+        return True
       except subprocess.CalledProcessError:
-        time.sleep(1)
+        time.sleep(DELAY)
 
-    while not command and not find_executable(program):
-      time.sleep(1)
+    while search and not find_file(basedir, program):
+      time.sleep(DELAY)
+
+    while not search and not find_executable(program):
+      time.sleep(DELAY)
   except KeyboardInterrupt:
     sys.stderr.write("Setup exited before completion.")
     return False
@@ -167,6 +196,40 @@ def check_dir(location, additional_location, check_file):
         location, os.path.join(additional_location, check_file))):
       return os.path.join(location, additional_location)
   return ""
+
+
+def find_file(basedir, filename):
+  """Will find a file if it exists in a given base directory.
+
+  Checks all files in the base directory and all files in all subdirectories.
+  May take a while, depending on how large the base directory is.
+
+  Args:
+    basedir: A string of the base file path to be checked. Must be the full
+        file path, not relative to home.
+    filename: A string of the file to be checked for. Must include the file
+        type extension.
+  Returns:
+    String: The location of the file, if found, else and empty string.
+  """
+  if not basedir or not filename:
+    return ""
+  for dirpath, subdirs, files in os.walk(basedir):
+    for f in files:
+      if f == filename:
+        return os.path.join(dirpath, filename)
+  return ""
+
+
+def open_link(url, name_of_link):
+  """Open the given URL in the user's default webbrowser."""
+  try:
+    # If possible, open in a new tab, and raise the window to the front
+    webbrowser.open(url, new=2, autoraise=True)
+    return True
+  except webbrowser.Error:
+    sys.stderr.write("\t" + name_of_link + " failed to open.\n")
+    return False
 
 
 def get_file_type(filepath):
