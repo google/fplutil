@@ -24,8 +24,8 @@ if(NOT TARGET gtest)
 endif()
 
 # Set some variables describing file locations.
-set(GUNIT_INCDIR "${dependencies_gtest_dir}/googletest/include")
-set(GTEST_LIBDIR "${dependencies_gtest_dir}/googletest")
+set(GUNIT_INCDIR "${dependencies_gtest_dir}/include")
+set(GTEST_LIBDIR "${dependencies_gtest_dir}")
 
 # Include helper functions and macros used by Google Test.
 include(${GTEST_LIBDIR}/cmake/internal_utils.cmake)
