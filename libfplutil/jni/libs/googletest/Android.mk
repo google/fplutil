@@ -27,7 +27,9 @@ else
 endif
 
 libgtest_target_includes := $(GOOGLETEST_PATH)/googletest \
-		$(GOOGLETEST_PATH)/googletest/include
+    $(GOOGLETEST_PATH)/googletest/include \
+    $(GOOGLETEST_PATH)/googlemock \
+    $(GOOGLETEST_PATH)/googlemock/include
 
 include $(CLEAR_VARS)
 ifeq ($(TARGET_ARCH), arm)
@@ -40,8 +42,12 @@ endif
 LOCAL_NDK_STL_VARIANT := stlport_static
 LOCAL_CPP_EXTENSION := .cc
 LOCAL_C_INCLUDES := $(libgtest_target_includes)
-LOCAL_SRC_FILES := $(GOOGLETEST_PATH)/googletest/src/gtest-all.cc
-LOCAL_EXPORT_C_INCLUDES := $(GOOGLETEST_PATH)/googletest/include
+LOCAL_SRC_FILES := \
+  $(GOOGLETEST_PATH)/googletest/src/gtest-all.cc \
+  $(GOOGLETEST_PATH)/googlemock/src/gmock-all.cc
+LOCAL_EXPORT_C_INCLUDES := \
+  $(GOOGLETEST_PATH)/googletest/include \
+  $(GOOGLETEST_PATH)/googlemock/include
 LOCAL_EXPORT_LDLIBS:= -llog
 LOCAL_MODULE := libgtest
 include $(BUILD_STATIC_LIBRARY)
