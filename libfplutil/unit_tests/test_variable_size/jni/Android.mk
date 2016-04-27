@@ -1,4 +1,4 @@
-# Copyright 2014 Google Inc. All rights reserved.
+# Copyright 2016 Google Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ PROJECT_ROOT:=$(LOCAL_PATH)/../../..
 
 # --- project ---
 include $(CLEAR_VARS)
-LOCAL_MODULE:=test_intrusive_list
+LOCAL_MODULE:=test_variable_size
 LOCAL_SRC_FILES:=$(wildcard $(LOCAL_PATH)/test_*.cc)
 LOCAL_WHOLE_STATIC_LIBRARIES:=android_native_app_glue libfplutil_main \
   libfplutil_print libgtest

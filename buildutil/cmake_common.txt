@@ -1,0 +1,182 @@
+# Copyright 2016 Google Inc. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Configurable locations of dependencies of this project.
+
+# One helper macro used in set_common_build_variables()
+# macro(append_flags)
+#   append ${new_flags} into cur_flags IF flags are not inside cur_flags
+macro(append_flags cur_flags  new_flags)
+  if(NOT "${new_flags}" STREQUAL "")
+    string(FIND "${${cur_flags}}" "${new_flags}" position)
+    if(${position} EQUAL -1)
+      set(${cur_flags} "${${cur_flags}} ${new_flags}")
+    endif()
+  endif()
+endmacro(append_flags)
+
+# set_common_build_variables()  set up variables of
+#    third_party_root
+#    dependencies_root
+#    fpl and third party dependency module path
+#    CMAKE_C_FLAGS
+#    CMAKE_CXX_FLAGS
+#    CMAKE_COMPILER_IS_CLANGXX
+# Input Args:
+#   msvc_extra:      extra compiler flags for MSVC build
+#   gnu/clang_extra: extra compiler flags for gnu/clang toolchain
+# Usage Example:
+#   set_common_build_variables("/W0" "-Wno-unused-parameter")
+#       if using MSVC, /W0 will be added to CMAKE_C/CXX_FLAGS
+#       if using others, -Wno-used-parameters is added to
+#                        CMAKE_C/CXX_FLAGS
+function(set_common_build_variables)
+  # Directory which contains the source for 3rd party libraries.
+  if(NOT DEFINED third_party_root)
+    get_filename_component(third_party_root
+        "${CMAKE_CURRENT_LIST_DIR}/../../../../external" REALPATH)
+  endif()
+
+  # If the dependencies directory exists, assume this is the root directory for
+  # all libraries required by this project.
+  if(NOT DEFINED dependencies_root)
+    set(dependencies_root "${CMAKE_CURRENT_SOURCE_DIR}/dependencies")
+    if(EXISTS "${dependencies_root}")
+      set(third_party_root "${dependencies_root}")
+    endif()
+  endif()
+
+  # fpl common module directory variables
+  set(dependencies_breadboard_dir "${fpl_root}/breadboard"
+      CACHE PATH "Directory containing the breadboard library.")
+  set(dependencies_module_library_dir
+      "${dependencies_breadboard_dir}/module_library" CACHE PATH
+      "Directory containing the breadboard module library.")
+  set(dependencies_corgi_dir "${fpl_root}/corgi" CACHE PATH
+      "Directory containing the CORGI library.")
+  set(dependencies_corgi_component_library_dir
+      "${dependencies_corgi_dir}/component_library" CACHE PATH
+      "Directory containing the CORGI component library")
+  set(dependencies_flatbuffers_dir "${fpl_root}/flatbuffers"
+      CACHE PATH "Directory containing the Flatbuffers library.")
+  set(dependencies_flatbuffers_cmake_dir "${fpl_root}/flatbuffers/CMake"
+      CACHE PATH "Directory containing the Flatbuffers library cmake helpers.")
+  set(dependencies_flatui_dir "${fpl_root}/flatui"
+      CACHE PATH "Directory containing the FlatUI library.")
+  set(dependencies_fplbase_dir "${fpl_root}/fplbase"
+      CACHE PATH "Directory containing the FPLBase library.")
+  set(dependencies_fplutil_dir "${fpl_root}/fplutil"
+      CACHE PATH "Directory containing the fplutil library.")
+  set(dependencies_libfplutil_dir "${fpl_root}/fplutil/libfplutil"
+      CACHE PATH "Directory containing the libfplutil library.")
+  set(dependencies_gtest_dir "${fpl_root}/googletest"
+      CACHE PATH "Directory containing the GoogleTest library.")
+  set(dependencies_mathfu_dir "${fpl_root}/mathfu"
+      CACHE PATH "Directory containing the MathFu library.")
+  set(dependencies_motive_dir "${fpl_root}/motive"
+      CACHE PATH "Directory containing the motive animation library.")
+  set(dependencies_pindrop_dir "${fpl_root}/pindrop" CACHE PATH
+      "Directory containing the pindrop library.")
+  set(dependencies_scene_lab_dir "${fpl_root}/scene_lab"
+      CACHE PATH "Directory containing the Scene Lab library.")
+
+  # third party module directory variables
+  set(dependencies_vectorial_dir "${third_party_root}/vectorial"
+      CACHE PATH "Directory containing the Vectorial library.")
+  set(dependencies_bulletphysics_distr_dir "${third_party_root}/bulletphysics"
+      CACHE PATH "Directory containing the Bullet Physics distribution.")
+  set(dependencies_sdl_dir "${third_party_root}/sdl"
+      CACHE PATH "Directory containing the SDL library.")
+  set(dependencies_libogg_distr_dir "${third_party_root}/libogg"
+      CACHE PATH "Directory containing the libogg library.")
+  set(dependencies_libvorbis_distr_dir "${third_party_root}/libvorbis"
+      CACHE PATH "Directory containing the libvorbis library.")
+  set(dependencies_sdl_mixer_distr_dir "${third_party_root}/sdl_mixer"
+      CACHE PATH "Directory containing the SDL Mixer library.")
+  set(dependencies_harfbuzz_distr_dir "${third_party_root}/harfbuzz"
+      CACHE PATH "Directory containing the harfbuzz library.")
+  set(dependencies_freetype_distr_dir "${third_party_root}/freetype"
+      CACHE PATH "Directory containing the freetype library.")
+  set(dependencies_libunibreak_distr_dir "${third_party_root}/libunibreak"
+      CACHE PATH "Directory containing the libunibreak library.")
+  set(dependencies_webp_distr_dir "${third_party_root}/webp"
+      CACHE PATH "Directory containing the Webp distribution.")
+
+  # Set up compiler flags
+  # Detect clang
+  if(${CMAKE_CXX_COMPILER_ID} STREQUAL Clang)
+    set(using_clangxx 1)
+    set(CMAKE_COMPILER_IS_CLANGXX 1 PARENT_SCOPE)
+  endif()
+
+  set(C_FLAGS_WARNINGS "")
+  if(MSVC)
+    #    C4127: conditional expression is constant
+    #    C4577: 'noexcept' used with no exception handling mode specified.
+    set(C_FLAGS_WARNINGS "/W4 /WX /wd4127 /wd4577 /wd4065 /wd4355")
+    if((${ARGC} GREATER 0) AND (NOT "${ARGV0}" STREQUAL ""))
+      set(C_FLAGS_WARNINGS "${C_FLAGS_WARNINGS} ${ARGV0}")
+    endif()
+    set(CMAKE_CXX_FLAGS "/MP")
+    add_definitions(-DNOMINMAX -D_HAS_EXCEPTIONS=0 -D_CRT_SECURE_NO_WARNINGS)
+  elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR using_clangxx)
+    add_definitions(-g)
+    append_flags(CMAKE_CXX_FLAGS
+            "-std=c++0x -Wall -pedantic -Werror -Wextra -Wno-unused-function")
+    if(${ARGC} GREATER 1)
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARGV1}")
+    endif()
+  endif()
+
+  append_flags(CMAKE_C_FLAGS "${C_FLAGS_WARNINGS}")
+  append_flags(CMAKE_CXX_FLAGS "${C_FLAGS_WARNINGS}")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+
+  set(CMAKE_CXX_FLAGS_DEFAULT "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+  set(CMAKE_C_FLAGS_DEFAULT "${CMAKE_C_FLAGS}" PARENT_SCOPE)
+endfunction(set_common_build_variables)
+
+# External code should be compiled with these compiler options.
+# Call this function before add_subdirectory([external project]), and then
+# call restore_comiler_flags() after.
+function(set_compiler_flags_for_external_libraries)
+  # Save current compiler flags so that we can restore them in
+  # restore_compiler_flags()
+  set(SAVED_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+  set(SAVED_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
+
+  # Detect clang
+  if(${CMAKE_CXX_COMPILER_ID} STREQUAL Clang)
+    set(using_clangxx 1)
+  endif()
+
+  # Suppress all warnings.
+  if( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR
+      using_clangxx OR APPLE )
+    set(CMAKE_CXX_FLAGS "-std=c++0x -w -Wno-deprecated-declarations" PARENT_SCOPE)
+    set(CMAKE_C_FLAGS "-w" PARENT_SCOPE)
+  elseif(MSVC)
+    set(CMAKE_CXX_FLAGS "/W0 /MP" PARENT_SCOPE)
+   set(CMAKE_C_FLAGS "/W0 /MP" PARENT_SCOPE)
+    add_definitions(-DNOMINMAX -D_HAS_EXCEPTIONS=0 -D_CRT_SECURE_NO_WARNINGS)
+  endif()
+endfunction(set_compiler_flags_for_external_libraries)
+
+# Restore the compiler flags to the values they had before
+# set_compiler_flags_for_external_libraries() was called.
+function(restore_compiler_flags)
+  set(CMAKE_CXX_FLAGS "${SAVED_CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+  set(CMAKE_C_FLAGS "${SAVED_CMAKE_C_FLAGS}" PARENT_SCOPE)
+endfunction()
+

@@ -21,32 +21,17 @@ option(fplutil_build_library "Build library with file utils, etc.." ON)
 # Output library files into `obj`.
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/obj)
 
-# Directory which contains the source for 3rd party libraries.
-if(NOT DEFINED third_party_root)
-  get_filename_component(
-    third_party_root "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../external"
-    REALPATH)
-endif()
-
-# Directory which contains source for FPL libraries.
+# Configure fpl_root
 if(NOT DEFINED fpl_root)
-  get_filename_component(
-      fpl_root "${CMAKE_CURRENT_SOURCE_DIR}/../../../libs" REALPATH)
+  get_filename_component(fpl_root "${CMAKE_CURRENT_LIST_DIR}/../../../libs"
+       REALPATH)
+  if(NOT EXISTS "${fpl_root}")
+    set(fpl_root "${CMAKE_CURRENT_SOURCE_DIR}/../dependencies")
+  endif ()
 endif()
 
-# If the dependencies directory exists, assume this is the root directory for
-# all libraries required by this project.
-if(NOT DEFINED dependencies_root)
-  set(dependencies_root "${CMAKE_CURRENT_SOURCE_DIR}/../dependencies")
-  if(EXISTS "${dependencies_root}")
-    set(third_party_root "${dependencies_root}")
-    set(fpl_root "${dependencies_root}")
-  endif()
-endif()
-
-# Configurable locations of dependencies of this project.
-set(dependencies_gtest_dir "${fpl_root}/googletest"
-    CACHE PATH "Directory containing the GoogleTest library.")
+include (${fpl_root}/fplutil/buildutil/cmake_common.txt)
+set_common_build_variables()
 
 # Includes for this project.
 include_directories(src)
@@ -56,25 +41,6 @@ include_directories(include)
 set(fplutil_SRCS
     src/file_utils.cpp
     src/string_utils.cpp)
-
-# Detect clang
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-  set(CMAKE_COMPILER_IS_CLANGXX 1)
-endif()
-
-# Compiler flags.
-set(C_FLAGS_WARNINGS "")
-if(MSVC)
-  set(C_FLAGS_WARNINGS "/W4 /WX")
-elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR
-       CMAKE_COMPILER_IS_CLANGXX)
-  add_definitions(-g)
-  set(CMAKE_CXX_FLAGS
-    "${CMAKE_CXX_FLAGS} -std=c++0x -Wall -pedantic -Werror -Wextra -Wno-unused-function")
-  # -Wno-unused-function is because of webp encode.h
-endif()
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_FLAGS_WARNINGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${C_FLAGS_WARNINGS}")
 
 # Library.
 if(fplutil_build_library)

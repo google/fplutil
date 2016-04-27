@@ -1,0 +1,16 @@
+{
+  "sdks": [
+    {
+      "version": "iOS 8.3",
+      "simulator": "iphonesimulator8.3"
+    },
+    {
+      "version": "iOS 8.4",
+      "simulator": "iphonesimulator8.4"
+    },
+    {
+      "version": "iOS 9.1",
+      "simulator": "iphonesimulator9.1"
+    }
+  ]
+}
