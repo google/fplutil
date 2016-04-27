@@ -687,9 +687,12 @@ class Package(object):
       # Clean the working copy and reset to the docs branch.
       dependencies_dir = os.path.join(self.working_copy, 'dependencies')
       if os.path.exists(dependencies_dir):
+        # This is only required if the docs are being built from the github
+        # master branch which includes a set of submodules.
+        if os.path.exists(os.path.join(self.working_copy, '.gitmodules')):
+          self.subprocess_runner.check_call(
+              ['git', 'submodule', 'deinit', '.'], cwd=self.working_copy)
         shutil.rmtree(dependencies_dir)
-      self.subprocess_runner.check_call(['git', 'submodule', 'deinit', '.'],
-                                        cwd=self.working_copy)
       if Package.git_remote_branch_exists(self.git_remote_upstream,
                                           docs_branch, self.working_copy,
                                           self.subprocess_runner):
