@@ -30,7 +30,7 @@ if(NOT DEFINED fpl_root)
   endif ()
 endif()
 
-include (${fpl_root}/fplutil/buildutil/cmake_common.txt)
+include (${CMAKE_CURRENT_SOURCE_DIR}/../buildutil/cmake_common.txt)
 set_common_build_variables()
 
 # Includes for this project.
