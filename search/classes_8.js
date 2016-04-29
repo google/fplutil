@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['xmlfile',['XMLFile',['../classfplutil_1_1buildutil_1_1android_1_1_x_m_l_file.html',1,'fplutil::buildutil::android']]]
+  ['variablesizebuilder',['VariableSizeBuilder',['../classfplutil_1_1_variable_size_builder.html',1,'fplutil']]],
+  ['variablesizecalculator',['VariableSizeCalculator',['../classfplutil_1_1_variable_size_calculator.html',1,'fplutil']]]
 ];

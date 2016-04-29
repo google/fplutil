@@ -1,0 +1,222 @@
+<!-- HTML header for doxygen 1.8.6-->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=9"/>
+<meta name="generator" content="Doxygen 1.8.11"/>
+<title>fplutil: variable_size.h Source File</title>
+<link href="tabs.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtreedata.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
+<script type="text/javascript">
+  $(document).ready(initResizable);
+  $(window).load(resizeHeight);
+</script>
+<link href="search/search.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="search/searchdata.js"></script>
+<script type="text/javascript" src="search/search.js"></script>
+<script type="text/javascript">
+  $(document).ready(function() { init_search(); });
+</script>
+<link href="doxygen.css" rel="stylesheet" type="text/css" />
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,400,400italic,500,500italic,700,700italic|Roboto+Mono:400,700" rel="stylesheet">
+<link href="style.css" rel="stylesheet" type="text/css"/>
+<script>
+  /**
+   * Check if the browser rendering this page is being run on an Android device.
+   * It checks if the string 'android' is found in the browser's `userAgent`.
+   * @return {boolean} This returns `true` if the browser's `userAgent` contains
+   * the string 'android' (indicating that the browser is on an Android device).
+   * Otherwise, it returns `false`.
+   */
+  function isAndroidDevice() {
+    if (navigator && navigator.userAgent) {
+      return navigator.userAgent.toLowerCase().indexOf('android') != -1;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Check if an HTML `class` attribute is in the browser-specific format.
+   * @param {string} An HTML `class` attribute in the format 'browser-{device}'.
+   * @return {boolean} Returns `true` if `browserClass` was in the valid format,
+   * prefixed with 'browser-'. Otherwise, it returns false.
+   */
+  function isBrowserSpecificClassName(browserClass) {
+    if (browserClass && browserClass.substring(0, 8) == 'browser-' &&
+        browserClass.length > 8) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Get all the HTML Elements with browser-specific `class` attributes.
+   * @return {array} Returns an array of all the HTML Elements with a `class`
+   * attribute that is prefixed with `browser-`.
+   */
+  function getAllBrowserSpecificElements() {
+    if (document) {
+      var htmlElements = document.getElementsByTagName("*");
+      var browserSpecificElements = [];
+      for (var i = 0; i < htmlElements.length; i++) {
+        if (isBrowserSpecificClassName(htmlElements[i].className)) {
+          browserSpecificElements.push(htmlElements[i]);
+        }
+      }
+      return browserSpecificElements;
+    } else {
+      return null;
+    }
+  }
+  /**
+   * Given a browser-specific HTML `class` attribute, extract the device name.
+   * @param {string} browserClass The string name of an HTML `class` attribute,
+   * in the format `browser-{device}`.
+   * @return {string} Returns a string containing only the device portion of
+   * the class name. If the input was invalid, then it returns `null`.
+   */
+  function extractDeviceFromBrowserClass(browserClass) {
+    if (isBrowserSpecificClassName(browserClass)) {
+      return browserClass.substring(8);
+    }
+    else {
+      return null;
+    }
+  }
+  /**
+   * Hide device specific elements that do not apply to the current device.
+   */
+  function handleDeviceSpecificLoading() {
+    var browserSpecificElements = getAllBrowserSpecificElements();
+    for (var i = 0; i < browserSpecificElements.length; i++) {
+      var device = extractDeviceFromBrowserClass(browserSpecificElements[i].className);
+      if (device && !isAndroidDevice() && device == 'android') {
+        browserSpecificElements[i].innerHTML = '';
+      } else if(device && isAndroidDevice() && device == 'desktop') {
+        browserSpecificElements[i].innerHTML = '';
+      }
+    }
+  }
+  $(document).ready(handleDeviceSpecificLoading);
+</script>
+</head>
+<body>
+<div id="top"><!-- do not remove this div, it is closed by doxygen! -->
+<div id="titlearea">
+<table cellspacing="0" cellpadding="0">
+ <tbody>
+ <tr style="height: 56px;">
+  <td id="commonprojectlogo">
+    <img alt="Logo" src="fpl_logo_small.png"/>
+  </td>
+  <td style="padding-left: 0.5em;">
+   <div id="projectname">fplutil
+   </div>
+   <div style="font-size:12px;">
+	 An open source project by
+     <a href="https://developers.google.com/games/#Tools">FPL</a>.
+  </div>
+  </td>
+ </tr>
+ </tbody>
+</table>
+</div>
+<!-- end header part -->
+<!-- Generated by Doxygen 1.8.11 -->
+<script type="text/javascript">
+var searchBox = new SearchBox("searchBox", "search",false,'Search');
+</script>
+  <div id="navrow1" class="tabs">
+    <ul class="tablist">
+      <li><a href="index.html"><span>Main&#160;Page</span></a></li>
+      <li><a href="fplutil_prerequisites.html"><span>Prerequisites</span></a></li>
+      <li><a href="libfplutil_overview.html"><span>libfplutil</span></a></li>
+      <li><a href="android_ndk_perf.html"><span>android_ndk_perf.py</span></a></li>
+      <li><a href="build_all_android.html"><span>build_all_android.py</span></a></li>
+      <li><a href="buildutil_overview.html"><span>buildutil</span></a></li>
+      <li><a href="md_readme.html#fplutil_readme"><span>readme</span></a></li>
+      <li><a href="contributing.html"><span>contributing</span></a></li>
+      <li>
+        <div id="MSearchBox" class="MSearchBoxInactive">
+        <span class="left">
+          <img id="MSearchSelect" src="search/mag_sel.png"
+               onmouseover="return searchBox.OnSearchSelectShow()"
+               onmouseout="return searchBox.OnSearchSelectHide()"
+               alt=""/>
+          <input type="text" id="MSearchField" value="Search" accesskey="S"
+               onfocus="searchBox.OnSearchFieldFocus(true)" 
+               onblur="searchBox.OnSearchFieldFocus(false)" 
+               onkeyup="searchBox.OnSearchFieldChange(event)"/>
+          </span><span class="right">
+            <a id="MSearchClose" href="javascript:searchBox.CloseResultsWindow()"><img id="MSearchCloseImg" border="0" src="search/close.png" alt=""/></a>
+          </span>
+        </div>
+      </li>
+    </ul>
+  </div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+$(document).ready(function(){initNavTree('variable__size_8h_source.html','');});
+</script>
+<div id="doc-content">
+<!-- window showing the filter options -->
+<div id="MSearchSelectWindow"
+     onmouseover="return searchBox.OnSearchSelectShow()"
+     onmouseout="return searchBox.OnSearchSelectHide()"
+     onkeydown="return searchBox.OnSearchSelectKey(event)">
+</div>
+
+<!-- iframe showing the search results (closed by default) -->
+<div id="MSearchResultsWindow">
+<iframe src="javascript:void(0)" frameborder="0" 
+        name="MSearchResults" id="MSearchResults">
+</iframe>
+</div>
+
+<div class="header">
+  <div class="headertitle">
+<div class="title">variable_size.h</div>  </div>
+</div><!--header-->
+<div class="contents">
+<div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;<span class="comment">// Copyright 2016 Google Inc. All rights reserved.</span></div><div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;<span class="comment">//</span></div><div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;<span class="comment">// Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span></div><div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;<span class="comment">// you may not use this file except in compliance with the License.</span></div><div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;<span class="comment">// You may obtain a copy of the License at</span></div><div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;<span class="comment">//</span></div><div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;<span class="comment">//     http://www.apache.org/licenses/LICENSE-2.0</span></div><div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;<span class="comment">//</span></div><div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;<span class="comment">// Unless required by applicable law or agreed to in writing, software</span></div><div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;<span class="comment">// distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span></div><div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;<span class="comment">// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span></div><div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;<span class="comment">// See the License for the specific language governing permissions and</span></div><div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;<span class="comment">// limitations under the License.</span></div><div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;</div><div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;<span class="preprocessor">#ifndef FPLUTIL_VARIABLE_SIZE_H_</span></div><div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;<span class="preprocessor">#define FPLUTIL_VARIABLE_SIZE_H_</span></div><div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160;</div><div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;<span class="preprocessor">#include &lt;stddef.h&gt;</span></div><div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;</div><div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;<span class="keyword">namespace </span><a class="code" href="namespacefplutil.html">fplutil</a> {</div><div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;<span class="comment"></span></div><div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;<span class="comment">/// @brief Calculates the size of a variable-size class, taking into account</span></div><div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;<span class="comment">///        type alignment.</span></div><div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;<span class="comment">///</span></div><div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;<span class="comment">/// A variable-size class is one that is contiguous in memory, but has members</span></div><div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;<span class="comment">/// (often arrays) of variable size. For example, a variable-size spline class</span></div><div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;<span class="comment">/// might end in an array of nodes that is not always the same length.</span></div><div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;<span class="comment">///</span></div><div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;<span class="comment">/// Why use a variable-size class? Why not just use std::vector?</span></div><div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;<span class="comment">/// (1) Often, memory layout is critical to performance. The spline, for</span></div><div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;<span class="comment">///     example, might have some class-wide member variables in addition to its</span></div><div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;<span class="comment">///     array of nodes. For cache-performance reasons, it&#39;s critical that</span></div><div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;<span class="comment">///     both of these reside one piece of contiguous memory.</span></div><div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;<span class="comment">/// (2) std::vectors and other dynamically-sized types require multiple</span></div><div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;<span class="comment">///     memory allocations per-class. For classes that are allocated thousands</span></div><div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;<span class="comment">///     of times on start-up, this can be a measurable cost overhead.</span></div><div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;<span class="comment">/// (3) Memory is often passed around from one processor to another, or across</span></div><div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;<span class="comment">///     the network. When all data is contiguous in memory, this becomes</span></div><div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;<span class="comment">///     simpler.</span></div><div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;<span class="comment">/// (4) From a low-level point of view, data is tidiest when each class is</span></div><div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;<span class="comment">///     contained in one chunk of memory. Some people never look at the memory</span></div><div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;<span class="comment">///     inspector in the debugger, but it is a powerful tool so other people do</span></div><div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;<span class="comment">///     spend significant time there. A simpler memory layout is nice when</span></div><div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;<span class="comment">///     things go wrong with memory (e.g. memory corruption).</span></div><div class="line"><a name="l00045"></a><span class="lineno"><a class="line" href="classfplutil_1_1_variable_size_calculator.html">   45</a></span>&#160;<span class="comment"></span><span class="keyword">class </span><a class="code" href="classfplutil_1_1_variable_size_calculator.html">VariableSizeCalculator</a> {</div><div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160; <span class="keyword">public</span>:</div><div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;  <span class="keyword">explicit</span> <a class="code" href="classfplutil_1_1_variable_size_calculator.html">VariableSizeCalculator</a>(<span class="keywordtype">size_t</span> base_size)</div><div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;      : size_(base_size), alignment_(1) {}</div><div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;<span class="comment"></span></div><div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;<span class="comment">  /// Add a raw chunk of memory of size `alloc_size` to the class.</span></div><div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;<span class="comment">  /// Return the offset of the *start* of the chunk of memory.</span></div><div class="line"><a name="l00052"></a><span class="lineno"><a class="line" href="classfplutil_1_1_variable_size_calculator.html#ac8b4065c968931fe1a4d2efe844495f0">   52</a></span>&#160;<span class="comment"></span>  <span class="keywordtype">size_t</span> <a class="code" href="classfplutil_1_1_variable_size_calculator.html#ac8b4065c968931fe1a4d2efe844495f0">Raw</a>(<span class="keywordtype">size_t</span> alloc_size, <span class="keywordtype">size_t</span> <a class="code" href="classfplutil_1_1_variable_size_calculator.html#ace1d4b41795856e609c8fb89556284db">alignment</a>) {</div><div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;    <span class="keyword">const</span> <span class="keywordtype">size_t</span> mask = alignment - 1;</div><div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;    <span class="keyword">const</span> <span class="keywordtype">size_t</span> aligned = (size_ + mask) &amp; ~mask;</div><div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;    size_ = aligned + alloc_size;</div><div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;    alignment_ = alignment_ &gt; alignment ? alignment_ : <a class="code" href="classfplutil_1_1_variable_size_calculator.html#ace1d4b41795856e609c8fb89556284db">alignment</a>; <span class="comment">// =std::max()</span></div><div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;    <span class="keywordflow">return</span> aligned;</div><div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;  }</div><div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;<span class="comment"></span></div><div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;<span class="comment">  /// Add a type T to the class.</span></div><div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;<span class="comment">  /// Return the offet to the *start* of T.</span></div><div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;<span class="comment"></span>  <span class="keyword">template</span>&lt;<span class="keyword">class</span> T&gt;</div><div class="line"><a name="l00063"></a><span class="lineno"><a class="line" href="classfplutil_1_1_variable_size_calculator.html#af683998dcd9f80fd87bd0c2110b00034">   63</a></span>&#160;  <span class="keywordtype">size_t</span> <a class="code" href="classfplutil_1_1_variable_size_calculator.html#af683998dcd9f80fd87bd0c2110b00034">Type</a>() { <span class="keywordflow">return</span> <a class="code" href="classfplutil_1_1_variable_size_calculator.html#ac8b4065c968931fe1a4d2efe844495f0">Raw</a>(<span class="keyword">sizeof</span>(T), <span class="keyword">alignof</span>(T)); }</div><div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;<span class="comment"></span></div><div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;<span class="comment">  /// Add an array T[count] to the size.</span></div><div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;<span class="comment">  /// Return the offset of the *start* of the array.</span></div><div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;<span class="comment"></span>  <span class="keyword">template</span>&lt;<span class="keyword">class</span> T&gt;</div><div class="line"><a name="l00068"></a><span class="lineno"><a class="line" href="classfplutil_1_1_variable_size_calculator.html#a4ca38b128f47fb60ee0f07a779e483a7">   68</a></span>&#160;  <span class="keywordtype">size_t</span> <a class="code" href="classfplutil_1_1_variable_size_calculator.html#a4ca38b128f47fb60ee0f07a779e483a7">Array</a>(<span class="keywordtype">size_t</span> count) { <span class="keywordflow">return</span> <a class="code" href="classfplutil_1_1_variable_size_calculator.html#ac8b4065c968931fe1a4d2efe844495f0">Raw</a>(<span class="keyword">sizeof</span>(T) * count, <span class="keyword">alignof</span>(T)); }</div><div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;<span class="comment"></span></div><div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160;<span class="comment">  /// Return the current size of class.</span></div><div class="line"><a name="l00071"></a><span class="lineno"><a class="line" href="classfplutil_1_1_variable_size_calculator.html#a28d06700f5edf31e5fd28080cceed2e4">   71</a></span>&#160;<span class="comment"></span>  <span class="keywordtype">size_t</span> <a class="code" href="classfplutil_1_1_variable_size_calculator.html#a28d06700f5edf31e5fd28080cceed2e4">size</a>()<span class="keyword"> const </span>{ <span class="keywordflow">return</span> size_; }</div><div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160;<span class="comment"></span></div><div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;<span class="comment">  /// Return the required alignment of this class.</span></div><div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;<span class="comment">  /// This equals the maximum required alignment of the class&#39;s member</span></div><div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;<span class="comment">  /// variables.</span></div><div class="line"><a name="l00076"></a><span class="lineno"><a class="line" href="classfplutil_1_1_variable_size_calculator.html#ace1d4b41795856e609c8fb89556284db">   76</a></span>&#160;<span class="comment"></span>  <span class="keywordtype">size_t</span> <a class="code" href="classfplutil_1_1_variable_size_calculator.html#ace1d4b41795856e609c8fb89556284db">alignment</a>()<span class="keyword"> const </span>{ <span class="keywordflow">return</span> alignment_; }</div><div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160;</div><div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160; <span class="keyword">private</span>:<span class="comment"></span></div><div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160;<span class="comment">  /// Current total size of the class.</span></div><div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;<span class="comment"></span>  <span class="keywordtype">size_t</span> size_;</div><div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160;<span class="comment"></span></div><div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160;<span class="comment">  /// Current required alignment of the class.</span></div><div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;<span class="comment"></span>  <span class="keywordtype">size_t</span> alignment_;</div><div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;};</div><div class="line"><a name="l00085"></a><span class="lineno">   85</span>&#160;</div><div class="line"><a name="l00086"></a><span class="lineno"><a class="line" href="classfplutil_1_1_variable_size_builder.html">   86</a></span>&#160;<span class="keyword">class </span><a class="code" href="classfplutil_1_1_variable_size_builder.html">VariableSizeBuilder</a> {</div><div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160; <span class="keyword">public</span>:</div><div class="line"><a name="l00088"></a><span class="lineno">   88</span>&#160;  <a class="code" href="classfplutil_1_1_variable_size_builder.html">VariableSizeBuilder</a>(<span class="keywordtype">void</span>* base, <span class="keywordtype">size_t</span> base_size)</div><div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;      : base_(static_cast&lt;uint8_t*&gt;(base)), size_(base_size) {}</div><div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;<span class="comment"></span></div><div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;<span class="comment">  /// Add a raw chunk of memory of size `alloc_size` to the class.</span></div><div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160;<span class="comment">  /// Return the offset of the *start* of the chunk of memory.</span></div><div class="line"><a name="l00093"></a><span class="lineno"><a class="line" href="classfplutil_1_1_variable_size_builder.html#a48dad1b43435bd8841ce74a35e1ef8f9">   93</a></span>&#160;<span class="comment"></span>  <span class="keywordtype">void</span>* <a class="code" href="classfplutil_1_1_variable_size_builder.html#a48dad1b43435bd8841ce74a35e1ef8f9">Raw</a>(<span class="keywordtype">size_t</span> alloc_size, <span class="keywordtype">size_t</span> <a class="code" href="classfplutil_1_1_variable_size_calculator.html#ace1d4b41795856e609c8fb89556284db">alignment</a>) {</div><div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160;    <span class="keywordflow">return</span> base_ + size_.Raw(alloc_size, alignment);</div><div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;  }</div><div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160;<span class="comment"></span></div><div class="line"><a name="l00097"></a><span class="lineno">   97</span>&#160;<span class="comment">  /// Add a type T to the class.</span></div><div class="line"><a name="l00098"></a><span class="lineno">   98</span>&#160;<span class="comment">  /// Return the offet to the *start* of T.</span></div><div class="line"><a name="l00099"></a><span class="lineno">   99</span>&#160;<span class="comment"></span>  <span class="keyword">template</span>&lt;<span class="keyword">class</span> T&gt;</div><div class="line"><a name="l00100"></a><span class="lineno"><a class="line" href="classfplutil_1_1_variable_size_builder.html#a4d9762502aca0e5ca9da462c5fc3e9e9">  100</a></span>&#160;  T* <a class="code" href="classfplutil_1_1_variable_size_builder.html#a4d9762502aca0e5ca9da462c5fc3e9e9">Type</a>() { <span class="keywordflow">return</span> <span class="keyword">static_cast&lt;</span>T*<span class="keyword">&gt;</span>(<a class="code" href="classfplutil_1_1_variable_size_calculator.html#ac8b4065c968931fe1a4d2efe844495f0">Raw</a>(<span class="keyword">sizeof</span>(T), <span class="keyword">alignof</span>(T))); }</div><div class="line"><a name="l00101"></a><span class="lineno">  101</span>&#160;<span class="comment"></span></div><div class="line"><a name="l00102"></a><span class="lineno">  102</span>&#160;<span class="comment">  /// Add an array T[count] to the size.</span></div><div class="line"><a name="l00103"></a><span class="lineno">  103</span>&#160;<span class="comment">  /// Return the offset of the *start* of the array.</span></div><div class="line"><a name="l00104"></a><span class="lineno">  104</span>&#160;<span class="comment"></span>  <span class="keyword">template</span>&lt;<span class="keyword">class</span> T&gt;</div><div class="line"><a name="l00105"></a><span class="lineno"><a class="line" href="classfplutil_1_1_variable_size_builder.html#a13ce389265358b8040cd66c1432fdd66">  105</a></span>&#160;  T* <a class="code" href="classfplutil_1_1_variable_size_builder.html#a13ce389265358b8040cd66c1432fdd66">Array</a>(<span class="keywordtype">size_t</span> count) {</div><div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;    <span class="keywordflow">return</span> <span class="keyword">static_cast&lt;</span>T*<span class="keyword">&gt;</span>(<a class="code" href="classfplutil_1_1_variable_size_calculator.html#ac8b4065c968931fe1a4d2efe844495f0">Raw</a>(<span class="keyword">sizeof</span>(T) * count, <span class="keyword">alignof</span>(T)));</div><div class="line"><a name="l00107"></a><span class="lineno">  107</span>&#160;  }</div><div class="line"><a name="l00108"></a><span class="lineno">  108</span>&#160;<span class="comment"></span></div><div class="line"><a name="l00109"></a><span class="lineno">  109</span>&#160;<span class="comment">  /// Return a pointer past the current end of the class.</span></div><div class="line"><a name="l00110"></a><span class="lineno"><a class="line" href="classfplutil_1_1_variable_size_builder.html#a8b79fc65f06826f45655566c73e2b09b">  110</a></span>&#160;<span class="comment"></span>  uint8_t* <a class="code" href="classfplutil_1_1_variable_size_builder.html#a8b79fc65f06826f45655566c73e2b09b">End</a>()<span class="keyword"> const </span>{ <span class="keywordflow">return</span> base_ + <a class="code" href="classfplutil_1_1_variable_size_calculator.html#a28d06700f5edf31e5fd28080cceed2e4">size</a>(); }</div><div class="line"><a name="l00111"></a><span class="lineno">  111</span>&#160;<span class="comment"></span></div><div class="line"><a name="l00112"></a><span class="lineno">  112</span>&#160;<span class="comment">  /// Return the current size of class.</span></div><div class="line"><a name="l00113"></a><span class="lineno"><a class="line" href="classfplutil_1_1_variable_size_builder.html#ac71ebfcd4e1466e1cd8ee5e6c99ae84f">  113</a></span>&#160;<span class="comment"></span>  <span class="keywordtype">size_t</span> <a class="code" href="classfplutil_1_1_variable_size_builder.html#ac71ebfcd4e1466e1cd8ee5e6c99ae84f">size</a>()<span class="keyword"> const </span>{ <span class="keywordflow">return</span> size_.size(); }</div><div class="line"><a name="l00114"></a><span class="lineno">  114</span>&#160;</div><div class="line"><a name="l00115"></a><span class="lineno">  115</span>&#160; <span class="keyword">private</span>:</div><div class="line"><a name="l00116"></a><span class="lineno">  116</span>&#160;  uint8_t* base_;</div><div class="line"><a name="l00117"></a><span class="lineno">  117</span>&#160;</div><div class="line"><a name="l00118"></a><span class="lineno">  118</span>&#160;  <a class="code" href="classfplutil_1_1_variable_size_calculator.html">VariableSizeCalculator</a> size_;</div><div class="line"><a name="l00119"></a><span class="lineno">  119</span>&#160;};</div><div class="line"><a name="l00120"></a><span class="lineno">  120</span>&#160;</div><div class="line"><a name="l00121"></a><span class="lineno">  121</span>&#160;}  <span class="comment">// namespace fplutil</span></div><div class="line"><a name="l00122"></a><span class="lineno">  122</span>&#160;</div><div class="line"><a name="l00123"></a><span class="lineno">  123</span>&#160;<span class="preprocessor">#endif  // FPLUTIL_VARIABLE_SIZE_H_</span></div><div class="line"><a name="l00124"></a><span class="lineno">  124</span>&#160;</div><div class="ttc" id="classfplutil_1_1_variable_size_calculator_html"><div class="ttname"><a href="classfplutil_1_1_variable_size_calculator.html">fplutil::VariableSizeCalculator</a></div><div class="ttdoc">Calculates the size of a variable-size class, taking into account type alignment. ...</div><div class="ttdef"><b>Definition:</b> variable_size.h:45</div></div>
+<div class="ttc" id="namespacefplutil_html"><div class="ttname"><a href="namespacefplutil.html">fplutil</a></div><div class="ttdef"><b>Definition:</b> file_utils.h:20</div></div>
+<div class="ttc" id="classfplutil_1_1_variable_size_calculator_html_af683998dcd9f80fd87bd0c2110b00034"><div class="ttname"><a href="classfplutil_1_1_variable_size_calculator.html#af683998dcd9f80fd87bd0c2110b00034">fplutil::VariableSizeCalculator::Type</a></div><div class="ttdeci">size_t Type()</div><div class="ttdef"><b>Definition:</b> variable_size.h:63</div></div>
+<div class="ttc" id="classfplutil_1_1_variable_size_calculator_html_a4ca38b128f47fb60ee0f07a779e483a7"><div class="ttname"><a href="classfplutil_1_1_variable_size_calculator.html#a4ca38b128f47fb60ee0f07a779e483a7">fplutil::VariableSizeCalculator::Array</a></div><div class="ttdeci">size_t Array(size_t count)</div><div class="ttdef"><b>Definition:</b> variable_size.h:68</div></div>
+<div class="ttc" id="classfplutil_1_1_variable_size_builder_html"><div class="ttname"><a href="classfplutil_1_1_variable_size_builder.html">fplutil::VariableSizeBuilder</a></div><div class="ttdef"><b>Definition:</b> variable_size.h:86</div></div>
+<div class="ttc" id="classfplutil_1_1_variable_size_builder_html_ac71ebfcd4e1466e1cd8ee5e6c99ae84f"><div class="ttname"><a href="classfplutil_1_1_variable_size_builder.html#ac71ebfcd4e1466e1cd8ee5e6c99ae84f">fplutil::VariableSizeBuilder::size</a></div><div class="ttdeci">size_t size() const </div><div class="ttdoc">Return the current size of class. </div><div class="ttdef"><b>Definition:</b> variable_size.h:113</div></div>
+<div class="ttc" id="classfplutil_1_1_variable_size_builder_html_a4d9762502aca0e5ca9da462c5fc3e9e9"><div class="ttname"><a href="classfplutil_1_1_variable_size_builder.html#a4d9762502aca0e5ca9da462c5fc3e9e9">fplutil::VariableSizeBuilder::Type</a></div><div class="ttdeci">T * Type()</div><div class="ttdef"><b>Definition:</b> variable_size.h:100</div></div>
+<div class="ttc" id="classfplutil_1_1_variable_size_calculator_html_a28d06700f5edf31e5fd28080cceed2e4"><div class="ttname"><a href="classfplutil_1_1_variable_size_calculator.html#a28d06700f5edf31e5fd28080cceed2e4">fplutil::VariableSizeCalculator::size</a></div><div class="ttdeci">size_t size() const </div><div class="ttdoc">Return the current size of class. </div><div class="ttdef"><b>Definition:</b> variable_size.h:71</div></div>
+<div class="ttc" id="classfplutil_1_1_variable_size_builder_html_a8b79fc65f06826f45655566c73e2b09b"><div class="ttname"><a href="classfplutil_1_1_variable_size_builder.html#a8b79fc65f06826f45655566c73e2b09b">fplutil::VariableSizeBuilder::End</a></div><div class="ttdeci">uint8_t * End() const </div><div class="ttdoc">Return a pointer past the current end of the class. </div><div class="ttdef"><b>Definition:</b> variable_size.h:110</div></div>
+<div class="ttc" id="classfplutil_1_1_variable_size_calculator_html_ac8b4065c968931fe1a4d2efe844495f0"><div class="ttname"><a href="classfplutil_1_1_variable_size_calculator.html#ac8b4065c968931fe1a4d2efe844495f0">fplutil::VariableSizeCalculator::Raw</a></div><div class="ttdeci">size_t Raw(size_t alloc_size, size_t alignment)</div><div class="ttdef"><b>Definition:</b> variable_size.h:52</div></div>
+<div class="ttc" id="classfplutil_1_1_variable_size_calculator_html_ace1d4b41795856e609c8fb89556284db"><div class="ttname"><a href="classfplutil_1_1_variable_size_calculator.html#ace1d4b41795856e609c8fb89556284db">fplutil::VariableSizeCalculator::alignment</a></div><div class="ttdeci">size_t alignment() const </div><div class="ttdef"><b>Definition:</b> variable_size.h:76</div></div>
+<div class="ttc" id="classfplutil_1_1_variable_size_builder_html_a48dad1b43435bd8841ce74a35e1ef8f9"><div class="ttname"><a href="classfplutil_1_1_variable_size_builder.html#a48dad1b43435bd8841ce74a35e1ef8f9">fplutil::VariableSizeBuilder::Raw</a></div><div class="ttdeci">void * Raw(size_t alloc_size, size_t alignment)</div><div class="ttdef"><b>Definition:</b> variable_size.h:93</div></div>
+<div class="ttc" id="classfplutil_1_1_variable_size_builder_html_a13ce389265358b8040cd66c1432fdd66"><div class="ttname"><a href="classfplutil_1_1_variable_size_builder.html#a13ce389265358b8040cd66c1432fdd66">fplutil::VariableSizeBuilder::Array</a></div><div class="ttdeci">T * Array(size_t count)</div><div class="ttdef"><b>Definition:</b> variable_size.h:105</div></div>
+</div><!-- fragment --></div><!-- contents -->
+</div><!-- doc-content -->
+<!-- Google Analytics -->
+<script>
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+ga('create', 'UA-49880327-7', 'google.github.io');
+ga('send', 'pageview');
+</script>
+</body>
+</html>
