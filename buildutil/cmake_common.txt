@@ -79,8 +79,6 @@ function(set_common_build_variables)
       CACHE PATH "Directory containing the fplutil library.")
   set(dependencies_libfplutil_dir "${fpl_root}/fplutil/libfplutil"
       CACHE PATH "Directory containing the libfplutil library.")
-  set(dependencies_gtest_dir "${fpl_root}/googletest"
-      CACHE PATH "Directory containing the GoogleTest library.")
   set(dependencies_mathfu_dir "${fpl_root}/mathfu"
       CACHE PATH "Directory containing the MathFu library.")
   set(dependencies_motive_dir "${fpl_root}/motive"
@@ -89,6 +87,16 @@ function(set_common_build_variables)
       "Directory containing the pindrop library.")
   set(dependencies_scene_lab_dir "${fpl_root}/scene_lab"
       CACHE PATH "Directory containing the Scene Lab library.")
+
+  # Depending on googletest version, the gtest directory may be nested under
+  # googletest/googletest
+  if(EXISTS "${fpl_root}/googletest/googletest")
+    set(dependencies_gtest_dir "${fpl_root}/googletest/googletest"
+    CACHE PATH "Directory containing the GoogleTest library.")
+  else()
+    set(dependencies_gtest_dir "${fpl_root}/googletest"
+    CACHE PATH "Directory containing the GoogleTest library.")
+  endif()
 
   # third party module directory variables
   set(dependencies_vectorial_dir "${third_party_root}/vectorial"
