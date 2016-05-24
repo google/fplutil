@@ -16,7 +16,7 @@
 LOCAL_PATH := $(call my-dir)/..
 
 PROJECT_ROOT := $(LOCAL_PATH)/../../..
-DEPENDENCIES_ROOT := $(wildcard $(PROJECT_ROOT)/dependencies)
+DEPENDENCIES_ROOT ?= $(wildcard $(PROJECT_ROOT)/dependencies)
 
 # If the dependency library exists, asssume this is the root directory for
 # dependencies for this project.
@@ -26,28 +26,32 @@ else
   GOOGLETEST_PATH ?= $(abspath $(PROJECT_ROOT)/../../../../external/googletest)
 endif
 
-libgtest_target_includes := $(GOOGLETEST_PATH)/googletest \
-    $(GOOGLETEST_PATH)/googletest/include \
-    $(GOOGLETEST_PATH)/googlemock \
-    $(GOOGLETEST_PATH)/googlemock/include
+# NDK support of other archs (ie. x86 and mips) are only available after
+# android-9
+libgtest_sdk_version:=$(if $(subst,arm,,$(TARGET_ARCH)),9,8)
 
 include $(CLEAR_VARS)
-ifeq ($(TARGET_ARCH), arm)
-  LOCAL_SDK_VERSION := 8
-else
-# NDK support of other archs (ie. x86 and mips) are only available after android-9
-  LOCAL_SDK_VERSION := 9
-endif
-
-LOCAL_NDK_STL_VARIANT := stlport_static
-LOCAL_CPP_EXTENSION := .cc
-LOCAL_C_INCLUDES := $(libgtest_target_includes)
-LOCAL_SRC_FILES := \
-  $(GOOGLETEST_PATH)/googletest/src/gtest-all.cc \
-  $(GOOGLETEST_PATH)/googlemock/src/gmock-all.cc
-LOCAL_EXPORT_C_INCLUDES := \
-  $(GOOGLETEST_PATH)/googletest/include \
-  $(GOOGLETEST_PATH)/googlemock/include
-LOCAL_EXPORT_LDLIBS:= -llog
 LOCAL_MODULE := libgtest
+LOCAL_EXPORT_LDLIBS := -llog
+LOCAL_SRC_FILES := $(GOOGLETEST_PATH)/googletest/src/gtest-all.cc
+LOCAL_CPP_EXTENSION := .cc
+LOCAL_C_INCLUDES := \
+  $(GOOGLETEST_PATH)/googletest \
+  $(GOOGLETEST_PATH)/googletest/include
+LOCAL_EXPORT_C_INCLUDES := \
+  $(GOOGLETEST_PATH)/googletest/include
+LOCAL_SDK_VERSION := $(libgtest_sdk_version)
+include $(BUILD_STATIC_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := libgmock
+LOCAL_EXPORT_LDLIBS := -llog
+LOCAL_SRC_FILES := $(GOOGLETEST_PATH)/googletest/src/gmock-all.cc
+LOCAL_CPP_EXTENSION := .cc
+LOCAL_C_INCLUDES := \
+  $(GOOGLETEST_PATH)/googlemock \
+  $(GOOGLETEST_PATH)/googlemock/include
+LOCAL_EXPORT_C_INCLUDES := \
+  $(GOOGLETEST_PATH)/googlemock/include
+LOCAL_SDK_VERSION := $(libgtest_sdk_version)
 include $(BUILD_STATIC_LIBRARY)
