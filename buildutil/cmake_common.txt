@@ -99,24 +99,26 @@ function(set_common_build_variables)
   endif()
 
   # third party module directory variables
-  set(dependencies_vectorial_dir "${third_party_root}/vectorial"
-      CACHE PATH "Directory containing the Vectorial library.")
   set(dependencies_bulletphysics_distr_dir "${third_party_root}/bulletphysics"
       CACHE PATH "Directory containing the Bullet Physics distribution.")
-  set(dependencies_sdl_dir "${third_party_root}/sdl"
-      CACHE PATH "Directory containing the SDL library.")
-  set(dependencies_libogg_distr_dir "${third_party_root}/libogg"
-      CACHE PATH "Directory containing the libogg library.")
-  set(dependencies_libvorbis_distr_dir "${third_party_root}/libvorbis"
-      CACHE PATH "Directory containing the libvorbis library.")
-  set(dependencies_sdl_mixer_distr_dir "${third_party_root}/sdl_mixer"
-      CACHE PATH "Directory containing the SDL Mixer library.")
-  set(dependencies_harfbuzz_distr_dir "${third_party_root}/harfbuzz"
-      CACHE PATH "Directory containing the harfbuzz library.")
   set(dependencies_freetype_distr_dir "${third_party_root}/freetype"
       CACHE PATH "Directory containing the freetype library.")
+  set(dependencies_harfbuzz_distr_dir "${third_party_root}/harfbuzz"
+      CACHE PATH "Directory containing the harfbuzz library.")
+  set(dependencies_libogg_distr_dir "${third_party_root}/libogg"
+      CACHE PATH "Directory containing the libogg library.")
   set(dependencies_libunibreak_distr_dir "${third_party_root}/libunibreak"
       CACHE PATH "Directory containing the libunibreak library.")
+  set(dependencies_libvorbis_distr_dir "${third_party_root}/libvorbis"
+      CACHE PATH "Directory containing the libvorbis library.")
+  set(dependencies_sdl_dir "${third_party_root}/sdl"
+      CACHE PATH "Directory containing the SDL library.")
+  set(dependencies_sdl_mixer_distr_dir "${third_party_root}/sdl_mixer"
+      CACHE PATH "Directory containing the SDL Mixer library.")
+  set(dependencies_stb_dir "${third_party_root}/stb"
+      CACHE PATH "Directory containing the STB library.")
+  set(dependencies_vectorial_dir "${third_party_root}/vectorial"
+      CACHE PATH "Directory containing the Vectorial library.")
   set(dependencies_webp_distr_dir "${third_party_root}/webp"
       CACHE PATH "Directory containing the Webp distribution.")
 
