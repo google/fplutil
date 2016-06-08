@@ -46,11 +46,12 @@ include $(BUILD_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_MODULE := libgmock
 LOCAL_EXPORT_LDLIBS := -llog
-LOCAL_SRC_FILES := $(GOOGLETEST_PATH)/googletest/src/gmock-all.cc
+LOCAL_SRC_FILES := $(GOOGLETEST_PATH)/googlemock/src/gmock-all.cc
 LOCAL_CPP_EXTENSION := .cc
 LOCAL_C_INCLUDES := \
   $(GOOGLETEST_PATH)/googlemock \
-  $(GOOGLETEST_PATH)/googlemock/include
+  $(GOOGLETEST_PATH)/googlemock/include \
+  $(GOOGLETEST_PATH)/googletest/include
 LOCAL_EXPORT_C_INCLUDES := \
   $(GOOGLETEST_PATH)/googlemock/include
 LOCAL_SDK_VERSION := $(libgtest_sdk_version)
