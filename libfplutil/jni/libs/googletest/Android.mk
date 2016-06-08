@@ -32,7 +32,7 @@ libgtest_sdk_version:=$(if $(subst,arm,,$(TARGET_ARCH)),9,8)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := libgtest
-LOCAL_EXPORT_LDLIBS := -llog
+LOCAL_EXPORT_LDLIBS := -llog -latomic
 LOCAL_SRC_FILES := $(GOOGLETEST_PATH)/googletest/src/gtest-all.cc
 LOCAL_CPP_EXTENSION := .cc
 LOCAL_C_INCLUDES := \
@@ -45,7 +45,7 @@ include $(BUILD_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := libgmock
-LOCAL_EXPORT_LDLIBS := -llog
+LOCAL_EXPORT_LDLIBS := -llog -latomic
 LOCAL_SRC_FILES := $(GOOGLETEST_PATH)/googlemock/src/gmock-all.cc
 LOCAL_CPP_EXTENSION := .cc
 LOCAL_C_INCLUDES := \
