@@ -33,7 +33,7 @@ LOCAL_EXPORT_CFLAGS:= -fno-builtin-printf -fno-builtin-fprintf \
 	-fno-builtin-putc -fno-builtin-putchar -fno-builtin-fputc \
 	-fno-builtin-fputs -fno-builtin-puts -fno-builtin-fwrite \
 	-fno-builtin-write -fno-builtin-writev
-LOCAL_EXPORT_LDLIBS:=-llog -landroid
+LOCAL_EXPORT_LDLIBS:=-llog -landroid -latomic
 LOCAL_CFLAGS:=-fPIC -Wall -Wextra -W
 LOCAL_CXXFLAGS:=-fPIC -std=c++98 -Wall -Wextra -W
 LOCAL_ARM_MODE:=arm
@@ -46,7 +46,7 @@ LOCAL_C_INCLUDES:=\
 	$(LOCAL_PATH)/include \
 	$(NDK_ROOT)/sources/android/native_app_glue
 LOCAL_EXPORT_C_INCLUDES:=$(LOCAL_PATH)/include
-LOCAL_EXPORT_LDLIBS:=-llog -landroid
+LOCAL_EXPORT_LDLIBS:=-llog -landroid -latomic
 LOCAL_CFLAGS:=-fPIC -std=c99 -Wall -Wextra -W
 LOCAL_ARM_MODE:=arm
 LOCAL_STATIC_LIBRARIES:=android_native_app_glue

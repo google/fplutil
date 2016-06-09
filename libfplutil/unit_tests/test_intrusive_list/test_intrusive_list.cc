@@ -17,8 +17,8 @@
 #include "gtest/gtest.h"
 #include "fplutil/intrusive_list.h"
 
-// EXPECT_DEATH tests don't work on Android.
-#ifdef __ANDROID__
+// EXPECT_DEATH tests don't work on Android or Windows.
+#if defined(__ANDROID__) || defined(_MSC_VER)
 #define NO_DEATH_TESTS
 #endif  // __ANDROID__
 
