@@ -8,6 +8,11 @@ examples/libfplutil_example/local.properties
 examples/libfplutil_example/obj/
 examples/libfplutil_example/proguard-project.txt
 examples/libfplutil_example/project.properties
+fbx_common/cmake_install.cmake
+fbx_common/CMakeCache.txt
+fbx_common/CMakeFiles/
+fbx_common/Makefile
+fbx_common/obj/
 libfplutil/CMakeCache.txt
 libfplutil/CMakeFiles/
 libfplutil/CMakeScripts/
