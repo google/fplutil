@@ -137,6 +137,16 @@ void ConvertFbxAxes(AxisSystem axis_system, FbxScene* scene, Logger* log) {
            kAxisSystemNames[FbxAxisSystemToAxisSystem(import_axes)],
            kAxisSystemNames[FbxAxisSystemToAxisSystem(export_axes)]);
   export_axes.ConvertScene(scene);
+
+  // The FBX SDK has a bug. After an axis conversion, the prerotation is not
+  // propagated to the PreRotation property. We propagate the values manually.
+  // Note that we only propagate to the children of the root, since those are
+  // the only nodes affected by axis conversion.
+  FbxNode* root = scene->GetRootNode();
+  for (int i = 0; i < root->GetChildCount(); i++) {
+    FbxNode* node = root->GetChild(i);
+    node->PreRotation.Set(node->GetPreRotation(FbxNode::eSourcePivot));
+  }
 }
 
 AxisSystem FbxAxisSystemToAxisSystem(const FbxAxisSystem& axis) {
@@ -194,7 +204,8 @@ static void LogFbxNodeRecursively(FbxNode* node, const FbxTime& time,
   log->Log(level, "Node: %s\n", node->GetName());
 
   // Log local transform. It's an affine transform so is 4x3.
-  const FbxAMatrix& local = node->EvaluateLocalTransform(time);
+  const FbxAMatrix& local = node->EvaluateLocalTransform(
+      time, FbxNode::eSourcePivot, true, true);
   for (int i = 0; i < 3; ++i) {
     const FbxVector4 r = local.GetColumn(i);
     log->Log(level, "  (%6.2f %6.2f %6.2f %6.2f)\n", r[0], r[1], r[2], r[3]);
