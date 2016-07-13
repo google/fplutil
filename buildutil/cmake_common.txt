@@ -25,6 +25,10 @@ macro(append_flags cur_flags  new_flags)
   endif()
 endmacro(append_flags)
 
+# Must be outside of the function, otherwise the current list dir will be
+# directory of the calling file.
+set(dir_of_this_file ${CMAKE_CURRENT_LIST_DIR})
+
 # set_common_build_variables()  set up variables of
 #    third_party_root
 #    dependencies_root
@@ -44,7 +48,7 @@ function(set_common_build_variables)
   # Directory which contains the source for 3rd party libraries.
   if(NOT DEFINED third_party_root)
     get_filename_component(third_party_root
-        "${CMAKE_CURRENT_LIST_DIR}/../../../../external" REALPATH)
+        "${dir_of_this_file}/../../../../../external" REALPATH)
   endif()
 
   # If the dependencies directory exists, assume this is the root directory for
