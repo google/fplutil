@@ -98,6 +98,7 @@ class Mutex {
     assert(ret == 0);
     ret = pthread_mutexattr_destroy(&attr);
     assert(ret == 0);
+    (void)ret;
 #else
     mode_ = mode;
     if (mode & kModeRecursive) {
