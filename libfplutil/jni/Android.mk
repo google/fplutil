@@ -52,4 +52,17 @@ LOCAL_ARM_MODE:=arm
 LOCAL_STATIC_LIBRARIES:=android_native_app_glue
 include $(BUILD_STATIC_LIBRARY)
 
+include $(CLEAR_VARS)
+LOCAL_MODULE:=libfplutil
+LOCAL_SRC_FILES:=\
+	src/android_utils.cpp \
+	src/string_utils.cpp
+LOCAL_C_INCLUDES:=\
+	$(LOCAL_PATH)/include
+LOCAL_EXPORT_C_INCLUDES:=$(LOCAL_PATH)/include
+LOCAL_EXPORT_LDLIBS:=-llog -landroid -latomic
+LOCAL_CFLAGS:=-fPIC -std=c99 -Wall -Wextra -W
+LOCAL_ARM_MODE:=arm
+include $(BUILD_STATIC_LIBRARY)
+
 $(call import-module,android/native_app_glue)
