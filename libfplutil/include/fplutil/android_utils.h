@@ -46,6 +46,7 @@ class JniObject {
   /// @param[in] signature A JNI style method signature.
   void CallVoidMethod(const char* method, const char* signature, ...);
   int32_t CallIntMethod(const char* method, const char* signature, ...);
+  jobject CallObjectMethod(const char* method, const char* signature, ...);
   std::string CallStringMethod(const char* method, const char* signature, ...);
 
   /// @brief Set JNIEnv variable to the class. The function needs to be invoked

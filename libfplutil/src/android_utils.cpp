@@ -67,6 +67,16 @@ int32_t JniObject::CallIntMethod(const char* method, const char* signature,
   return ret;
 }
 
+jobject JniObject::CallObjectMethod(const char* method, const char* signature,
+                                    ...) {
+  va_list args;
+  va_start(args, signature);
+  auto mid = GetMethodId(method, signature);
+  auto ret = env_->CallObjectMethodV(static_cast<jobject>(obj_), mid, args);
+  va_end(args);
+  return ret;
+}
+
 std::string JniObject::CallStringMethod(const char* method,
                                         const char* signature, ...) {
   va_list args;
