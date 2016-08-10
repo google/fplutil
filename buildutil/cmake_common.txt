@@ -25,6 +25,10 @@ macro(append_flags cur_flags  new_flags)
   endif()
 endmacro(append_flags)
 
+# Must be outside of the function, otherwise the current list dir will be
+# directory of the calling file.
+set(dir_of_this_file ${CMAKE_CURRENT_LIST_DIR})
+
 # set_common_build_variables()  set up variables of
 #    third_party_root
 #    dependencies_root
@@ -44,7 +48,7 @@ function(set_common_build_variables)
   # Directory which contains the source for 3rd party libraries.
   if(NOT DEFINED third_party_root)
     get_filename_component(third_party_root
-        "${CMAKE_CURRENT_LIST_DIR}/../../../../external" REALPATH)
+        "${dir_of_this_file}/../../../../../external" REALPATH)
   endif()
 
   # If the dependencies directory exists, assume this is the root directory for
@@ -133,9 +137,11 @@ function(set_common_build_variables)
 
   set(C_FLAGS_WARNINGS "")
   if(MSVC)
+    #    C4065: switch statement contains 'default' but no 'case' labels
     #    C4127: conditional expression is constant
+    #    C4355: 'this' used in base member initializer list
     #    C4577: 'noexcept' used with no exception handling mode specified.
-    set(C_FLAGS_WARNINGS "/W4 /WX /wd4127 /wd4577 /wd4065 /wd4355")
+    set(C_FLAGS_WARNINGS "/W4 /WX /wd4065 /wd4127 /wd4355 /wd4577")
     if((${ARGC} GREATER 0) AND (NOT "${ARGV0}" STREQUAL ""))
       set(C_FLAGS_WARNINGS "${C_FLAGS_WARNINGS} ${ARGV0}")
     endif()
