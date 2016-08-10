@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['lib_5fname',['lib_name',['../classfplutil_1_1buildutil_1_1android_1_1_android_manifest.html#acb3574cdab21d1f43ae4bbc99dd67a94',1,'fplutil::buildutil::android::AndroidManifest']]]
+  ['lib_5fname',['lib_name',['../classmathfu_1_1buildutil_1_1android_1_1_android_manifest.html#a2df89c6ac3d0dcab34514f477eb32e2f',1,'mathfu::buildutil::android::AndroidManifest']]]
 ];

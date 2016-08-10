@@ -1,13 +1,10 @@
 var searchData=
 [
-  ['sdk_5fhome',['sdk_home',['../classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a594607c114584d58fc06eeca700828d4',1,'fplutil::buildutil::android::BuildEnvironment']]],
-  ['serial',['serial',['../classfplutil_1_1buildutil_1_1android_1_1_adb_device.html#a0be728196c5cdcf0e878eef31165687a',1,'fplutil::buildutil::android::AdbDevice']]],
-  ['setandroidlogwrapperbuffersize',['SetAndroidLogWrapperBufferSize',['../print_8h.html#a00d24d2e230c5cbd2e2a0da7d79d082e',1,'print.c']]],
-  ['setandroidlogwrapperpriority',['SetAndroidLogWrapperPriority',['../print_8h.html#a48bcb4cf5ef6ee9f01763abcfc595bda',1,'print.c']]],
-  ['setandroidlogwrappertag',['SetAndroidLogWrapperTag',['../print_8h.html#adda7aff401767be3d848652a1bbd0114',1,'print.c']]],
-  ['setandroidstdiooutputfunction',['SetAndroidStdioOutputFunction',['../print_8h.html#abb85d2a7b709f3e4457cd67541b0266f',1,'print.c']]],
-  ['sign_5fapk',['sign_apk',['../classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a95d766af2a76d2680b4801826a34df47',1,'fplutil::buildutil::android::BuildEnvironment']]],
-  ['size',['size',['../classfplutil_1_1_variable_size_calculator.html#a28d06700f5edf31e5fd28080cceed2e4',1,'fplutil::VariableSizeCalculator::size()'],['../classfplutil_1_1_variable_size_builder.html#ac71ebfcd4e1466e1cd8ee5e6c99ae84f',1,'fplutil::VariableSizeBuilder::size()']]],
-  ['stop_5fprocess',['stop_process',['../classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a5b856355eaa1a001c9c94cab4dc67b38',1,'fplutil::buildutil::android::BuildEnvironment']]],
-  ['subcommanderror',['SubCommandError',['../classfplutil_1_1buildutil_1_1common_1_1_sub_command_error.html',1,'fplutil::buildutil::common']]]
+  ['raw',['Raw',['../classfplutil_1_1_variable_size_calculator.html#ac8b4065c968931fe1a4d2efe844495f0',1,'fplutil::VariableSizeCalculator::Raw()'],['../classfplutil_1_1_variable_size_builder.html#a48dad1b43435bd8841ce74a35e1ef8f9',1,'fplutil::VariableSizeBuilder::Raw()']]],
+  ['release',['Release',['../classfplutil_1_1_mutex.html#a03e1cf8adad7870e2ae80273b45ce789',1,'fplutil::Mutex']]],
+  ['run_5fall',['run_all',['../classmathfu_1_1buildutil_1_1android_1_1_build_environment.html#afd6143d66cab1ef11a4d017c93e6b57a',1,'mathfu::buildutil::android::BuildEnvironment']]],
+  ['run_5fandroid_5fapk',['run_android_apk',['../classmathfu_1_1buildutil_1_1android_1_1_build_environment.html#ad0b8e1de0b84fd7036a5eff73e5622ca',1,'mathfu::buildutil::android::BuildEnvironment']]],
+  ['run_5fcmake',['run_cmake',['../classmathfu_1_1buildutil_1_1linux_1_1_build_environment.html#a48ab054ca6bd2a8c124ef8add082d0c1',1,'mathfu::buildutil::linux::BuildEnvironment']]],
+  ['run_5fmake',['run_make',['../classmathfu_1_1buildutil_1_1common_1_1_build_environment.html#a81f5985898ae7346771c9bfed1422c63',1,'mathfu::buildutil::common::BuildEnvironment']]],
+  ['run_5fsubprocess',['run_subprocess',['../classmathfu_1_1buildutil_1_1common_1_1_build_environment.html#ab6631159a542423a0ae85e23543f1622',1,'mathfu::buildutil::common::BuildEnvironment']]]
 ];

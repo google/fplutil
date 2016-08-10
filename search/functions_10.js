@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['write_5fndk_5flocation',['write_ndk_location',['../classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#ac5df56a751132247ddfe3896f28f2e93',1,'fplutil::buildutil::android::BuildEnvironment']]]
+  ['validindex',['ValidIndex',['../classfplutil_1_1_index_allocator.html#a8ef505f49c171279706ef498e98c0e7a',1,'fplutil::IndexAllocator']]],
+  ['verifyinternalstate',['VerifyInternalState',['../classfplutil_1_1_index_allocator.html#a3a974c7e9a6630fc907cbdfd5cf1158d',1,'fplutil::IndexAllocator']]]
 ];

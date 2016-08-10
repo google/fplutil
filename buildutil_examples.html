@@ -178,7 +178,7 @@ $(document).ready(function(){initNavTree('buildutil_examples.html','');});
      onmouseover="return searchBox.OnSearchSelectShow()"
      onmouseout="return searchBox.OnSearchSelectHide()"
      onkeydown="return searchBox.OnSearchSelectKey(event)">
-<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Classes</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Namespaces</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(5)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(6)"><span class="SelectionMark">&#160;</span>Typedefs</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(7)"><span class="SelectionMark">&#160;</span>Pages</a></div>
+<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Classes</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Namespaces</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(5)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(6)"><span class="SelectionMark">&#160;</span>Typedefs</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(7)"><span class="SelectionMark">&#160;</span>Enumerations</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(8)"><span class="SelectionMark">&#160;</span>Pages</a></div>
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
@@ -196,7 +196,7 @@ $(document).ready(function(){initNavTree('buildutil_examples.html','');});
 Android</h1>
 <p>The <a class="el" href="android_8py.html">android</a> module contains functions that make it easy to build, deploy and run Android applications.</p>
 <p>For reference the complete source is in <a class="el" href="buildutil_examples_android_code.html">examples/buildutil/android.py</a>.</p>
-<p>The following code parses arguments to the script and creates an <a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html">android.BuildEnvironment</a> instance which is used to perform Android specific build operations...</p>
+<p>The following code parses arguments to the script and creates an android.BuildEnvironment instance which is used to perform Android specific build operations...</p>
 <div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;parser = argparse.ArgumentParser()</div>
 <div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;buildutil.android.BuildEnvironment.add_arguments(parser)</div>
 <div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;args = parser.parse_args()</div>
@@ -215,7 +215,7 @@ Android</h1>
 Linux</h1>
 <p>The <a class="el" href="linux_8py.html">linux</a> module contains functions that make it easy to build applications that use <a href="http://www.cmake.org">cmake</a> in conjunction with the <a href="http://www.gnu.org/software/make">make</a> generator for Unix-like operating systems (e.g <a href="http://en.m.wikipedia.org/wiki/Linux">Linux</a> and <a href="http://www.apple.com/osx">OSX</a>).</p>
 <p>For reference the complete source is in <a class="el" href="buildutil_examples_linux_code.html">examples/buildutil/linux.py</a>.</p>
-<p>The following code, parses arguments to the script and creates an <a class="el" href="classfplutil_1_1buildutil_1_1linux_1_1_build_environment.html">linux.BuildEnvironment</a> instance which is used to perform Linux specific build operations...</p>
+<p>The following code, parses arguments to the script and creates an linux.BuildEnvironment instance which is used to perform Linux specific build operations...</p>
 <div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;parser = argparse.ArgumentParser()</div>
 <div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;buildutil.linux.BuildEnvironment.add_arguments(parser)</div>
 <div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;args = parser.parse_args()</div>
