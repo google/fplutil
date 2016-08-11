@@ -1,0 +1,1725 @@
+<!-- HTML header for doxygen 1.8.6-->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=9"/>
+<meta name="generator" content="Doxygen 1.8.6"/>
+<title>fplutil: fplutil.buildutil.android.BuildEnvironment Class Reference</title>
+<link href="tabs.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="dynsections.js"></script>
+<link href="navtree.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="resize.js"></script>
+<script type="text/javascript" src="navtree.js"></script>
+<script type="text/javascript">
+  $(document).ready(initResizable);
+  $(window).load(resizeHeight);
+</script>
+<link href="search/search.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="search/search.js"></script>
+<script type="text/javascript">
+  $(document).ready(function() { searchBox.OnSelectItem(0); });
+</script>
+<link href="doxygen.css" rel="stylesheet" type="text/css" />
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,400,400italic,500,500italic,700,700italic|Roboto+Mono:400,700" rel="stylesheet">
+<link href="style.css" rel="stylesheet" type="text/css"/>
+<script>
+  /**
+   * Check if the browser rendering this page is being run on an Android device.
+   * It checks if the string 'android' is found in the browser's `userAgent`.
+   * @return {boolean} This returns `true` if the browser's `userAgent` contains
+   * the string 'android' (indicating that the browser is on an Android device).
+   * Otherwise, it returns `false`.
+   */
+  function isAndroidDevice() {
+    if (navigator && navigator.userAgent) {
+      return navigator.userAgent.toLowerCase().indexOf('android') != -1;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Check if an HTML `class` attribute is in the browser-specific format.
+   * @param {string} An HTML `class` attribute in the format 'browser-{device}'.
+   * @return {boolean} Returns `true` if `browserClass` was in the valid format,
+   * prefixed with 'browser-'. Otherwise, it returns false.
+   */
+  function isBrowserSpecificClassName(browserClass) {
+    if (browserClass && browserClass.substring(0, 8) == 'browser-' &&
+        browserClass.length > 8) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  /**
+   * Get all the HTML Elements with browser-specific `class` attributes.
+   * @return {array} Returns an array of all the HTML Elements with a `class`
+   * attribute that is prefixed with `browser-`.
+   */
+  function getAllBrowserSpecificElements() {
+    if (document) {
+      var htmlElements = document.getElementsByTagName("*");
+      var browserSpecificElements = [];
+      for (var i = 0; i < htmlElements.length; i++) {
+        if (isBrowserSpecificClassName(htmlElements[i].className)) {
+          browserSpecificElements.push(htmlElements[i]);
+        }
+      }
+      return browserSpecificElements;
+    } else {
+      return null;
+    }
+  }
+  /**
+   * Given a browser-specific HTML `class` attribute, extract the device name.
+   * @param {string} browserClass The string name of an HTML `class` attribute,
+   * in the format `browser-{device}`.
+   * @return {string} Returns a string containing only the device portion of
+   * the class name. If the input was invalid, then it returns `null`.
+   */
+  function extractDeviceFromBrowserClass(browserClass) {
+    if (isBrowserSpecificClassName(browserClass)) {
+      return browserClass.substring(8);
+    }
+    else {
+      return null;
+    }
+  }
+  /**
+   * Hide device specific elements that do not apply to the current device.
+   */
+  function handleDeviceSpecificLoading() {
+    var browserSpecificElements = getAllBrowserSpecificElements();
+    for (var i = 0; i < browserSpecificElements.length; i++) {
+      var device = extractDeviceFromBrowserClass(browserSpecificElements[i].className);
+      if (device && !isAndroidDevice() && device == 'android') {
+        browserSpecificElements[i].innerHTML = '';
+      } else if(device && isAndroidDevice() && device == 'desktop') {
+        browserSpecificElements[i].innerHTML = '';
+      }
+    }
+  }
+  $(document).ready(handleDeviceSpecificLoading);
+</script>
+</head>
+<body>
+<div id="top"><!-- do not remove this div, it is closed by doxygen! -->
+<div id="titlearea">
+<table cellspacing="0" cellpadding="0">
+ <tbody>
+ <tr style="height: 56px;">
+  <td id="commonprojectlogo">
+    <img alt="Logo" src="fpl_logo_small.png"/>
+  </td>
+  <td style="padding-left: 0.5em;">
+   <div id="projectname">fplutil
+   </div>
+   <div style="font-size:12px;">
+	 An open source project by
+     <a href="https://developers.google.com/games/#Tools">FPL</a>.
+  </div>
+  </td>
+ </tr>
+ </tbody>
+</table>
+</div>
+<!-- end header part -->
+<!-- Generated by Doxygen 1.8.6 -->
+<script type="text/javascript">
+var searchBox = new SearchBox("searchBox", "search",false,'Search');
+</script>
+  <div id="navrow1" class="tabs">
+    <ul class="tablist">
+      <li class="current"><a href="fplutil_prerequisites.html"><span>Prerequisites</span></a></li>
+      <li><a href="libfplutil_overview.html"><span>libfplutil</span></a></li>
+      <li><a href="android_ndk_perf.html"><span>android_ndk_perf.py</span></a></li>
+      <li><a href="build_all_android.html"><span>build_all_android.py</span></a></li>
+      <li><a href="buildutil_overview.html"><span>buildutil</span></a></li>
+      <li><a href="md_readme.html#fplutil_readme"><span>readme</span></a></li>
+      <li><a href="contributing.html"><span>contributing</span></a></li>
+      <li><a href="index.html"><span>Main&#160;Page</span></a></li>
+      <li>
+        <div id="MSearchBox" class="MSearchBoxInactive">
+        <span class="left">
+          <img id="MSearchSelect" src="search/mag_sel.png"
+               onmouseover="return searchBox.OnSearchSelectShow()"
+               onmouseout="return searchBox.OnSearchSelectHide()"
+               alt=""/>
+          <input type="text" id="MSearchField" value="Search" accesskey="S"
+               onfocus="searchBox.OnSearchFieldFocus(true)" 
+               onblur="searchBox.OnSearchFieldFocus(false)" 
+               onkeyup="searchBox.OnSearchFieldChange(event)"/>
+          </span><span class="right">
+            <a id="MSearchClose" href="javascript:searchBox.CloseResultsWindow()"><img id="MSearchCloseImg" border="0" src="search/close.png" alt=""/></a>
+          </span>
+        </div>
+      </li>
+    </ul>
+  </div>
+</div><!-- top -->
+<div id="side-nav" class="ui-resizable side-nav-resizable">
+  <div id="nav-tree">
+    <div id="nav-tree-contents">
+      <div id="nav-sync" class="sync"></div>
+    </div>
+  </div>
+  <div id="splitbar" style="-moz-user-select:none;" 
+       class="ui-resizable-handle">
+  </div>
+</div>
+<script type="text/javascript">
+$(document).ready(function(){initNavTree('classfplutil_1_1buildutil_1_1android_1_1_build_environment.html','');});
+</script>
+<div id="doc-content">
+<!-- window showing the filter options -->
+<div id="MSearchSelectWindow"
+     onmouseover="return searchBox.OnSearchSelectShow()"
+     onmouseout="return searchBox.OnSearchSelectHide()"
+     onkeydown="return searchBox.OnSearchSelectKey(event)">
+<a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(0)"><span class="SelectionMark">&#160;</span>All</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(1)"><span class="SelectionMark">&#160;</span>Classes</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(2)"><span class="SelectionMark">&#160;</span>Namespaces</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(3)"><span class="SelectionMark">&#160;</span>Files</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(4)"><span class="SelectionMark">&#160;</span>Functions</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(5)"><span class="SelectionMark">&#160;</span>Variables</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(6)"><span class="SelectionMark">&#160;</span>Typedefs</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(7)"><span class="SelectionMark">&#160;</span>Enumerations</a><a class="SelectItem" href="javascript:void(0)" onclick="searchBox.OnSelectItem(8)"><span class="SelectionMark">&#160;</span>Pages</a></div>
+
+<!-- iframe showing the search results (closed by default) -->
+<div id="MSearchResultsWindow">
+<iframe src="javascript:void(0)" frameborder="0" 
+        name="MSearchResults" id="MSearchResults">
+</iframe>
+</div>
+
+<div class="header">
+  <div class="summary">
+<a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-static-methods">Static Public Member Functions</a> &#124;
+<a href="#pub-attribs">Public Attributes</a> &#124;
+<a href="#pub-static-attribs">Static Public Attributes</a> &#124;
+<a href="classfplutil_1_1buildutil_1_1android_1_1_build_environment-members.html">List of all members</a>  </div>
+  <div class="headertitle">
+<div class="title">fplutil.buildutil.android.BuildEnvironment Class Reference</div>  </div>
+</div><!--header-->
+<div class="contents">
+
+<p>Class representing an Android build environment.  
+ <a href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#details">More...</a></p>
+<div class="dynheader">
+Inheritance diagram for fplutil.buildutil.android.BuildEnvironment:</div>
+<div class="dyncontent">
+ <div class="center">
+  <img src="classfplutil_1_1buildutil_1_1android_1_1_build_environment.png" usemap="#fplutil.buildutil.android.BuildEnvironment_map" alt=""/>
+  <map id="fplutil.buildutil.android.BuildEnvironment_map" name="fplutil.buildutil.android.BuildEnvironment_map">
+<area href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html" title="Class representing the build environment we will be building in. " alt="fplutil.buildutil.common.BuildEnvironment" shape="rect" coords="0,56,241,80"/>
+</map>
+ </div></div>
+<table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
+Public Member Functions</h2></td></tr>
+<tr class="memitem:af4bcb54d284ca862141dd86bca5c0e56"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#af4bcb54d284ca862141dd86bca5c0e56">build_android_libraries</a></td></tr>
+<tr class="memdesc:af4bcb54d284ca862141dd86bca5c0e56"><td class="mdescLeft">&#160;</td><td class="mdescRight">Build list of Android library projects.  <a href="#af4bcb54d284ca862141dd86bca5c0e56">More...</a><br/></td></tr>
+<tr class="separator:af4bcb54d284ca862141dd86bca5c0e56"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a23994db488ce0b9173740e58ba879b46"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a23994db488ce0b9173740e58ba879b46">get_manifest_path</a></td></tr>
+<tr class="memdesc:a23994db488ce0b9173740e58ba879b46"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the path of the manifest file.  <a href="#a23994db488ce0b9173740e58ba879b46">More...</a><br/></td></tr>
+<tr class="separator:a23994db488ce0b9173740e58ba879b46"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad3c0e855e42e7a7f12de0fe5a6735a38"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#ad3c0e855e42e7a7f12de0fe5a6735a38">parse_manifest</a></td></tr>
+<tr class="memdesc:ad3c0e855e42e7a7f12de0fe5a6735a38"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parse the project's manifest.  <a href="#ad3c0e855e42e7a7f12de0fe5a6735a38">More...</a><br/></td></tr>
+<tr class="separator:ad3c0e855e42e7a7f12de0fe5a6735a38"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a679c31f51835aff6e0f76e8c06564584"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a679c31f51835aff6e0f76e8c06564584">create_update_build_xml</a></td></tr>
+<tr class="memdesc:a679c31f51835aff6e0f76e8c06564584"><td class="mdescLeft">&#160;</td><td class="mdescRight">Create or update ant build.xml for an Android project.  <a href="#a679c31f51835aff6e0f76e8c06564584">More...</a><br/></td></tr>
+<tr class="separator:a679c31f51835aff6e0f76e8c06564584"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6732d3dd1df241d1d768861276dfddb0"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a6732d3dd1df241d1d768861276dfddb0">get_apk_filenames</a></td></tr>
+<tr class="memdesc:a6732d3dd1df241d1d768861276dfddb0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the set of output APK names for the project.  <a href="#a6732d3dd1df241d1d768861276dfddb0">More...</a><br/></td></tr>
+<tr class="separator:a6732d3dd1df241d1d768861276dfddb0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2777eb15208f14a45a2ef964ea65258d"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a2777eb15208f14a45a2ef964ea65258d">build_android_apk</a></td></tr>
+<tr class="memdesc:a2777eb15208f14a45a2ef964ea65258d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Build an Android APK.  <a href="#a2777eb15208f14a45a2ef964ea65258d">More...</a><br/></td></tr>
+<tr class="separator:a2777eb15208f14a45a2ef964ea65258d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad6e6db88620a9f9bee1bd22ff1d276a8"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#ad6e6db88620a9f9bee1bd22ff1d276a8">find_projects</a></td></tr>
+<tr class="memdesc:ad6e6db88620a9f9bee1bd22ff1d276a8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Find all Android projects under the specified path.  <a href="#ad6e6db88620a9f9bee1bd22ff1d276a8">More...</a><br/></td></tr>
+<tr class="separator:ad6e6db88620a9f9bee1bd22ff1d276a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4cfc11b1a905840e53535f6fb8cf88f6"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a4cfc11b1a905840e53535f6fb8cf88f6">build_all</a></td></tr>
+<tr class="memdesc:a4cfc11b1a905840e53535f6fb8cf88f6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Locate and build all Android sub-projects as appropriate.  <a href="#a4cfc11b1a905840e53535f6fb8cf88f6">More...</a><br/></td></tr>
+<tr class="separator:a4cfc11b1a905840e53535f6fb8cf88f6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa60626a1e1ae23384b996f804e310cb9"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#aa60626a1e1ae23384b996f804e310cb9">get_adb_devices</a></td></tr>
+<tr class="memdesc:aa60626a1e1ae23384b996f804e310cb9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the set of attached devices.  <a href="#aa60626a1e1ae23384b996f804e310cb9">More...</a><br/></td></tr>
+<tr class="separator:aa60626a1e1ae23384b996f804e310cb9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a19a5cb717b378eb14749e629ac6ccbb6"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a19a5cb717b378eb14749e629ac6ccbb6">check_adb_devices</a></td></tr>
+<tr class="memdesc:a19a5cb717b378eb14749e629ac6ccbb6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Gets the only attached device, or the attached device matching a serial.  <a href="#a19a5cb717b378eb14749e629ac6ccbb6">More...</a><br/></td></tr>
+<tr class="separator:a19a5cb717b378eb14749e629ac6ccbb6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aff60068355ae2118c8126d1310b65b47"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#aff60068355ae2118c8126d1310b65b47">get_adb_device_argument</a></td></tr>
+<tr class="memdesc:aff60068355ae2118c8126d1310b65b47"><td class="mdescLeft">&#160;</td><td class="mdescRight">Construct the argument for ADB to select the specified device.  <a href="#aff60068355ae2118c8126d1310b65b47">More...</a><br/></td></tr>
+<tr class="separator:aff60068355ae2118c8126d1310b65b47"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afd5e8c37f1df795dd28995732b968776"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#afd5e8c37f1df795dd28995732b968776">list_installed_packages</a></td></tr>
+<tr class="memdesc:afd5e8c37f1df795dd28995732b968776"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the list of packages installed on an Android device.  <a href="#afd5e8c37f1df795dd28995732b968776">More...</a><br/></td></tr>
+<tr class="separator:afd5e8c37f1df795dd28995732b968776"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae322ea24bd41740cf651572903821f94"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#ae322ea24bd41740cf651572903821f94">get_adb_device_name</a></td></tr>
+<tr class="memdesc:ae322ea24bd41740cf651572903821f94"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the string which describes an <a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_adb_device.html" title="Stores information about an Android device. ">AdbDevice</a> based upon the verbose mode.  <a href="#ae322ea24bd41740cf651572903821f94">More...</a><br/></td></tr>
+<tr class="separator:ae322ea24bd41740cf651572903821f94"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad5f93fea9380917e50bf0c36963d41aa"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#ad5f93fea9380917e50bf0c36963d41aa">install_android_apk</a></td></tr>
+<tr class="memdesc:ad5f93fea9380917e50bf0c36963d41aa"><td class="mdescLeft">&#160;</td><td class="mdescRight">Install an android apk on the given device.  <a href="#ad5f93fea9380917e50bf0c36963d41aa">More...</a><br/></td></tr>
+<tr class="separator:ad5f93fea9380917e50bf0c36963d41aa"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac6b5c757d5b1a48af6c60e46d631ad2a"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#ac6b5c757d5b1a48af6c60e46d631ad2a">install_all</a></td></tr>
+<tr class="memdesc:ac6b5c757d5b1a48af6c60e46d631ad2a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Locate and install all Android APKs.  <a href="#ac6b5c757d5b1a48af6c60e46d631ad2a">More...</a><br/></td></tr>
+<tr class="separator:ac6b5c757d5b1a48af6c60e46d631ad2a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5b856355eaa1a001c9c94cab4dc67b38"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a5b856355eaa1a001c9c94cab4dc67b38">stop_process</a></td></tr>
+<tr class="memdesc:a5b856355eaa1a001c9c94cab4dc67b38"><td class="mdescLeft">&#160;</td><td class="mdescRight">Attempts to stop a process running under the given package name.  <a href="#a5b856355eaa1a001c9c94cab4dc67b38">More...</a><br/></td></tr>
+<tr class="separator:a5b856355eaa1a001c9c94cab4dc67b38"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad3f69b9dbc4180be405563d5c62fcb1f"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#ad3f69b9dbc4180be405563d5c62fcb1f">get_device_dpi</a></td></tr>
+<tr class="memdesc:ad3f69b9dbc4180be405563d5c62fcb1f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the dpi of a device connected to adb.  <a href="#ad3f69b9dbc4180be405563d5c62fcb1f">More...</a><br/></td></tr>
+<tr class="separator:ad3f69b9dbc4180be405563d5c62fcb1f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a98a3afebfd4468fa62834364642f4812"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a98a3afebfd4468fa62834364642f4812">take_screencap</a></td></tr>
+<tr class="memdesc:a98a3afebfd4468fa62834364642f4812"><td class="mdescLeft">&#160;</td><td class="mdescRight">Takes a screencap on the device and saves it to destination.  <a href="#a98a3afebfd4468fa62834364642f4812">More...</a><br/></td></tr>
+<tr class="separator:a98a3afebfd4468fa62834364642f4812"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6c9b99d0a58ffc4c070fd40fa31eb2cc"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a6c9b99d0a58ffc4c070fd40fa31eb2cc">run_android_apk</a></td></tr>
+<tr class="memdesc:a6c9b99d0a58ffc4c070fd40fa31eb2cc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Run an android apk on the given device.  <a href="#a6c9b99d0a58ffc4c070fd40fa31eb2cc">More...</a><br/></td></tr>
+<tr class="separator:a6c9b99d0a58ffc4c070fd40fa31eb2cc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa6df2ec547116f24ae782069603ea542"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#aa6df2ec547116f24ae782069603ea542">run_all</a></td></tr>
+<tr class="memdesc:aa6df2ec547116f24ae782069603ea542"><td class="mdescLeft">&#160;</td><td class="mdescRight">Locate and run all Android APKs.  <a href="#aa6df2ec547116f24ae782069603ea542">More...</a><br/></td></tr>
+<tr class="separator:aa6df2ec547116f24ae782069603ea542"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header pub_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html">fplutil.buildutil.common.BuildEnvironment</a></td></tr>
+<tr class="memitem:a0d5f8cdb1cff55c90743422796abb958 inherit pub_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html#a0d5f8cdb1cff55c90743422796abb958">run_subprocess</a></td></tr>
+<tr class="memdesc:a0d5f8cdb1cff55c90743422796abb958 inherit pub_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="mdescLeft">&#160;</td><td class="mdescRight">Run a subprocess as specified by the given argument list.  <a href="#a0d5f8cdb1cff55c90743422796abb958">More...</a><br/></td></tr>
+<tr class="separator:a0d5f8cdb1cff55c90743422796abb958 inherit pub_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a497840dc65497e0144d6b3540f9ac21f inherit pub_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html#a497840dc65497e0144d6b3540f9ac21f">run_make</a></td></tr>
+<tr class="memdesc:a497840dc65497e0144d6b3540f9ac21f inherit pub_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="mdescLeft">&#160;</td><td class="mdescRight">Run make based on the specified build environment.  <a href="#a497840dc65497e0144d6b3540f9ac21f">More...</a><br/></td></tr>
+<tr class="separator:a497840dc65497e0144d6b3540f9ac21f inherit pub_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a79d4a4e25aa97c1798145568d4666d84 inherit pub_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html#a79d4a4e25aa97c1798145568d4666d84">make_archive</a></td></tr>
+<tr class="memdesc:a79d4a4e25aa97c1798145568d4666d84 inherit pub_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="mdescLeft">&#160;</td><td class="mdescRight">Archive build artifacts at the specified directory paths.  <a href="#a79d4a4e25aa97c1798145568d4666d84">More...</a><br/></td></tr>
+<tr class="separator:a79d4a4e25aa97c1798145568d4666d84 inherit pub_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ada6fee3d9a5aedf9d5de703a40899e18 inherit pub_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html#ada6fee3d9a5aedf9d5de703a40899e18">git_clean</a></td></tr>
+<tr class="memdesc:ada6fee3d9a5aedf9d5de703a40899e18 inherit pub_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cleans build directory back to last git commit.  <a href="#ada6fee3d9a5aedf9d5de703a40899e18">More...</a><br/></td></tr>
+<tr class="separator:ada6fee3d9a5aedf9d5de703a40899e18 inherit pub_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa969ead0f340dca4de13ab164fef2e08 inherit pub_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html#aa969ead0f340dca4de13ab164fef2e08">get_project_directory</a></td></tr>
+<tr class="memdesc:aa969ead0f340dca4de13ab164fef2e08 inherit pub_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve an absolute path relative to the project_directory.  <a href="#aa969ead0f340dca4de13ab164fef2e08">More...</a><br/></td></tr>
+<tr class="separator:aa969ead0f340dca4de13ab164fef2e08 inherit pub_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
+Static Public Member Functions</h2></td></tr>
+<tr class="memitem:a0ab73397d8e69aec6ad54ed10d21b65b"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a0ab73397d8e69aec6ad54ed10d21b65b">build_defaults</a></td></tr>
+<tr class="memdesc:a0ab73397d8e69aec6ad54ed10d21b65b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Helper function to set build defaults.  <a href="#a0ab73397d8e69aec6ad54ed10d21b65b">More...</a><br/></td></tr>
+<tr class="separator:a0ab73397d8e69aec6ad54ed10d21b65b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae055505378358ffd4123c2a71603fa47"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#ae055505378358ffd4123c2a71603fa47">add_arguments</a></td></tr>
+<tr class="memdesc:ae055505378358ffd4123c2a71603fa47"><td class="mdescLeft">&#160;</td><td class="mdescRight">Add module-specific command line arguments to an argparse parser.  <a href="#ae055505378358ffd4123c2a71603fa47">More...</a><br/></td></tr>
+<tr class="separator:ae055505378358ffd4123c2a71603fa47"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a667729bc0dba559e1459d4f3b2c8ff06"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a667729bc0dba559e1459d4f3b2c8ff06">ndk_location_changed</a></td></tr>
+<tr class="memdesc:a667729bc0dba559e1459d4f3b2c8ff06"><td class="mdescLeft">&#160;</td><td class="mdescRight">Determine whether the NDK install location changed.  <a href="#a667729bc0dba559e1459d4f3b2c8ff06">More...</a><br/></td></tr>
+<tr class="separator:a667729bc0dba559e1459d4f3b2c8ff06"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac5df56a751132247ddfe3896f28f2e93"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#ac5df56a751132247ddfe3896f28f2e93">write_ndk_location</a></td></tr>
+<tr class="memdesc:ac5df56a751132247ddfe3896f28f2e93"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stores the current NDK path to a file.  <a href="#ac5df56a751132247ddfe3896f28f2e93">More...</a><br/></td></tr>
+<tr class="separator:ac5df56a751132247ddfe3896f28f2e93"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ace784791f7bddff882641f83a7bad4a6"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#ace784791f7bddff882641f83a7bad4a6">parse_delete_local_properties</a></td></tr>
+<tr class="memdesc:ace784791f7bddff882641f83a7bad4a6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parse local properties and if the sdk location changed delete it.  <a href="#ace784791f7bddff882641f83a7bad4a6">More...</a><br/></td></tr>
+<tr class="separator:ace784791f7bddff882641f83a7bad4a6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad3caead487c029dc835d14967f8b8e9b"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#ad3caead487c029dc835d14967f8b8e9b">generate_password</a></td></tr>
+<tr class="memdesc:ad3caead487c029dc835d14967f8b8e9b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generate a psuedo random password.  <a href="#ad3caead487c029dc835d14967f8b8e9b">More...</a><br/></td></tr>
+<tr class="separator:ad3caead487c029dc835d14967f8b8e9b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header pub_static_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td colspan="2" onclick="javascript:toggleInherit('pub_static_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment')"><img src="closed.png" alt="-"/>&#160;Static Public Member Functions inherited from <a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html">fplutil.buildutil.common.BuildEnvironment</a></td></tr>
+<tr class="memitem:af3bc7a5d547c33472fcf5acbe87fb7a8 inherit pub_static_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html#af3bc7a5d547c33472fcf5acbe87fb7a8">build_defaults</a></td></tr>
+<tr class="memdesc:af3bc7a5d547c33472fcf5acbe87fb7a8 inherit pub_static_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="mdescLeft">&#160;</td><td class="mdescRight">Helper function to set build defaults.  <a href="#af3bc7a5d547c33472fcf5acbe87fb7a8">More...</a><br/></td></tr>
+<tr class="separator:af3bc7a5d547c33472fcf5acbe87fb7a8 inherit pub_static_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af60a79f377c12225b3adda6e576c0447 inherit pub_static_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html#af60a79f377c12225b3adda6e576c0447">add_arguments</a></td></tr>
+<tr class="memdesc:af60a79f377c12225b3adda6e576c0447 inherit pub_static_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="mdescLeft">&#160;</td><td class="mdescRight">Add module-specific command line arguments to an argparse parser.  <a href="#af60a79f377c12225b3adda6e576c0447">More...</a><br/></td></tr>
+<tr class="separator:af60a79f377c12225b3adda6e576c0447 inherit pub_static_methods_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
+Public Attributes</h2></td></tr>
+<tr class="memitem:ad9f48c4a525175c4840d9990bde81b67"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#ad9f48c4a525175c4840d9990bde81b67">ndk_home</a></td></tr>
+<tr class="memdesc:ad9f48c4a525175c4840d9990bde81b67"><td class="mdescLeft">&#160;</td><td class="mdescRight">Path to the Android NDK, if found.  <a href="#ad9f48c4a525175c4840d9990bde81b67">More...</a><br/></td></tr>
+<tr class="separator:ad9f48c4a525175c4840d9990bde81b67"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a594607c114584d58fc06eeca700828d4"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a594607c114584d58fc06eeca700828d4">sdk_home</a></td></tr>
+<tr class="memdesc:a594607c114584d58fc06eeca700828d4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Path to the Android SDK, if found.  <a href="#a594607c114584d58fc06eeca700828d4">More...</a><br/></td></tr>
+<tr class="separator:a594607c114584d58fc06eeca700828d4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa231c7f08874abf18f03ca729de598ed"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#aa231c7f08874abf18f03ca729de598ed">ant_path</a></td></tr>
+<tr class="memdesc:aa231c7f08874abf18f03ca729de598ed"><td class="mdescLeft">&#160;</td><td class="mdescRight">Path to the ant binary, if found.  <a href="#aa231c7f08874abf18f03ca729de598ed">More...</a><br/></td></tr>
+<tr class="separator:aa231c7f08874abf18f03ca729de598ed"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a009ab0cdf9a0c17d75dd23da39ec0a29"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a009ab0cdf9a0c17d75dd23da39ec0a29">ant_flags</a></td></tr>
+<tr class="memdesc:a009ab0cdf9a0c17d75dd23da39ec0a29"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flags to pass to the ant binary, if used.  <a href="#a009ab0cdf9a0c17d75dd23da39ec0a29">More...</a><br/></td></tr>
+<tr class="separator:a009ab0cdf9a0c17d75dd23da39ec0a29"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2709850f970457466a37a283e5373730"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a2709850f970457466a37a283e5373730">ant_target</a></td></tr>
+<tr class="memdesc:a2709850f970457466a37a283e5373730"><td class="mdescLeft">&#160;</td><td class="mdescRight">Ant build target name.  <a href="#a2709850f970457466a37a283e5373730">More...</a><br/></td></tr>
+<tr class="separator:a2709850f970457466a37a283e5373730"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a95d766af2a76d2680b4801826a34df47"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a95d766af2a76d2680b4801826a34df47">sign_apk</a></td></tr>
+<tr class="memdesc:a95d766af2a76d2680b4801826a34df47"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enable signing of Android APKs.  <a href="#a95d766af2a76d2680b4801826a34df47">More...</a><br/></td></tr>
+<tr class="separator:a95d766af2a76d2680b4801826a34df47"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4066f485ab2ef871401c5c7bd738d7d1"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a4066f485ab2ef871401c5c7bd738d7d1">apk_keystore</a></td></tr>
+<tr class="memdesc:a4066f485ab2ef871401c5c7bd738d7d1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Keystore file path to use when signing an APK.  <a href="#a4066f485ab2ef871401c5c7bd738d7d1">More...</a><br/></td></tr>
+<tr class="separator:a4066f485ab2ef871401c5c7bd738d7d1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a51dec3e3ed49e8b8b0cc12dcbb52a203"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a51dec3e3ed49e8b8b0cc12dcbb52a203">apk_keyalias</a></td></tr>
+<tr class="memdesc:a51dec3e3ed49e8b8b0cc12dcbb52a203"><td class="mdescLeft">&#160;</td><td class="mdescRight">Alias of key to use when signing an APK.  <a href="#a51dec3e3ed49e8b8b0cc12dcbb52a203">More...</a><br/></td></tr>
+<tr class="separator:a51dec3e3ed49e8b8b0cc12dcbb52a203"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a25c6a92841ce4cc4495efe2a52454a5d"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a25c6a92841ce4cc4495efe2a52454a5d"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a25c6a92841ce4cc4495efe2a52454a5d">apk_passfile</a></td></tr>
+<tr class="memdesc:a25c6a92841ce4cc4495efe2a52454a5d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Path to file containing a password to use when signing an. <br/></td></tr>
+<tr class="separator:a25c6a92841ce4cc4495efe2a52454a5d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a20fa8b8e27cb55a8340cbe7fc99f42a2"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a20fa8b8e27cb55a8340cbe7fc99f42a2"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a20fa8b8e27cb55a8340cbe7fc99f42a2">apk_keycertpair</a></td></tr>
+<tr class="memdesc:a20fa8b8e27cb55a8340cbe7fc99f42a2"><td class="mdescLeft">&#160;</td><td class="mdescRight">(key, cert) tuple where Key is a .pk8 key file and <br/></td></tr>
+<tr class="separator:a20fa8b8e27cb55a8340cbe7fc99f42a2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa5f9a8871308f71b5b078189399a10d7"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#aa5f9a8871308f71b5b078189399a10d7">always_make</a></td></tr>
+<tr class="memdesc:aa5f9a8871308f71b5b078189399a10d7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether to build when the project is already up to date.  <a href="#aa5f9a8871308f71b5b078189399a10d7">More...</a><br/></td></tr>
+<tr class="separator:aa5f9a8871308f71b5b078189399a10d7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a10de9b7e8fa2ec1e07308c720e7cb250"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a10de9b7e8fa2ec1e07308c720e7cb250"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a10de9b7e8fa2ec1e07308c720e7cb250">adb_logcat_args</a></td></tr>
+<tr class="memdesc:a10de9b7e8fa2ec1e07308c720e7cb250"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of additional arguments passed to logcat when. <br/></td></tr>
+<tr class="separator:a10de9b7e8fa2ec1e07308c720e7cb250"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a079b9493915fcc53c87a5adeec96c7b8"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a079b9493915fcc53c87a5adeec96c7b8"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#a079b9493915fcc53c87a5adeec96c7b8">adb_logcat_monitor</a></td></tr>
+<tr class="memdesc:a079b9493915fcc53c87a5adeec96c7b8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether to continue to monitor the application's. <br/></td></tr>
+<tr class="separator:a079b9493915fcc53c87a5adeec96c7b8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abdd9e08d89e1f7807cf37f0d97de1876"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="abdd9e08d89e1f7807cf37f0d97de1876"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>ignore_sdk_version_missing</b></td></tr>
+<tr class="separator:abdd9e08d89e1f7807cf37f0d97de1876"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td colspan="2" onclick="javascript:toggleInherit('pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment')"><img src="closed.png" alt="-"/>&#160;Public Attributes inherited from <a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html">fplutil.buildutil.common.BuildEnvironment</a></td></tr>
+<tr class="memitem:a65e78dbdbfd19d1903488f2d66cbed8e inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html#a65e78dbdbfd19d1903488f2d66cbed8e">project_directory</a></td></tr>
+<tr class="memdesc:a65e78dbdbfd19d1903488f2d66cbed8e inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="mdescLeft">&#160;</td><td class="mdescRight">The top-level project directory to build.  <a href="#a65e78dbdbfd19d1903488f2d66cbed8e">More...</a><br/></td></tr>
+<tr class="separator:a65e78dbdbfd19d1903488f2d66cbed8e inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aeb14c4278dd5824931bbd4986ccff3d4 inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html#aeb14c4278dd5824931bbd4986ccff3d4">output_directory</a></td></tr>
+<tr class="memdesc:aeb14c4278dd5824931bbd4986ccff3d4 inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="mdescLeft">&#160;</td><td class="mdescRight">The top level directory to copy the build archive to.  <a href="#aeb14c4278dd5824931bbd4986ccff3d4">More...</a><br/></td></tr>
+<tr class="separator:aeb14c4278dd5824931bbd4986ccff3d4 inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8e46107311afe5a2950fd2284b7b9c6c inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html#a8e46107311afe5a2950fd2284b7b9c6c">enable_git_clean</a></td></tr>
+<tr class="memdesc:a8e46107311afe5a2950fd2284b7b9c6c inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="mdescLeft">&#160;</td><td class="mdescRight">Boolean value to enable cleaning for git-based projects.  <a href="#a8e46107311afe5a2950fd2284b7b9c6c">More...</a><br/></td></tr>
+<tr class="separator:a8e46107311afe5a2950fd2284b7b9c6c inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aac66e9f4f92d9e6003b227d5d87e1b88 inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html#aac66e9f4f92d9e6003b227d5d87e1b88">make_path</a></td></tr>
+<tr class="memdesc:aac66e9f4f92d9e6003b227d5d87e1b88 inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="mdescLeft">&#160;</td><td class="mdescRight">Path to the make binary, for make-based projects.  <a href="#aac66e9f4f92d9e6003b227d5d87e1b88">More...</a><br/></td></tr>
+<tr class="separator:aac66e9f4f92d9e6003b227d5d87e1b88 inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7eee8be1b637aad2dc4099c75b8e5d01 inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html#a7eee8be1b637aad2dc4099c75b8e5d01">git_path</a></td></tr>
+<tr class="memdesc:a7eee8be1b637aad2dc4099c75b8e5d01 inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="mdescLeft">&#160;</td><td class="mdescRight">Path to the git binary, for projects based on git.  <a href="#a7eee8be1b637aad2dc4099c75b8e5d01">More...</a><br/></td></tr>
+<tr class="separator:a7eee8be1b637aad2dc4099c75b8e5d01 inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1607466fcdb10e40ee01e021db41d9fc inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html#a1607466fcdb10e40ee01e021db41d9fc">make_flags</a></td></tr>
+<tr class="memdesc:a1607466fcdb10e40ee01e021db41d9fc inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flags to pass to make, for make-based projects.  <a href="#a1607466fcdb10e40ee01e021db41d9fc">More...</a><br/></td></tr>
+<tr class="separator:a1607466fcdb10e40ee01e021db41d9fc inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a95ed54ee7aaa5cecc79e96034de05ec0 inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html#a95ed54ee7aaa5cecc79e96034de05ec0">cpu_count</a></td></tr>
+<tr class="memdesc:a95ed54ee7aaa5cecc79e96034de05ec0 inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of CPU cores to use while building.  <a href="#a95ed54ee7aaa5cecc79e96034de05ec0">More...</a><br/></td></tr>
+<tr class="separator:a95ed54ee7aaa5cecc79e96034de05ec0 inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aefad438a82f1a50edb606fb10b57f43c inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html#aefad438a82f1a50edb606fb10b57f43c">verbose</a></td></tr>
+<tr class="memdesc:aefad438a82f1a50edb606fb10b57f43c inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="mdescLeft">&#160;</td><td class="mdescRight">Boolean to enable verbose message output.  <a href="#aefad438a82f1a50edb606fb10b57f43c">More...</a><br/></td></tr>
+<tr class="separator:aefad438a82f1a50edb606fb10b57f43c inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a80f658b88775b03c768d811f182d9a27 inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html#a80f658b88775b03c768d811f182d9a27">clean</a></td></tr>
+<tr class="memdesc:a80f658b88775b03c768d811f182d9a27 inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="mdescLeft">&#160;</td><td class="mdescRight">Boolean value which specifies whether to clean the project.  <a href="#a80f658b88775b03c768d811f182d9a27">More...</a><br/></td></tr>
+<tr class="separator:a80f658b88775b03c768d811f182d9a27 inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae6d678f8dd086d0cc92fe8e5d4f62efb inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html#ae6d678f8dd086d0cc92fe8e5d4f62efb">host_os_name</a></td></tr>
+<tr class="memdesc:ae6d678f8dd086d0cc92fe8e5d4f62efb inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="mdescLeft">&#160;</td><td class="mdescRight">Lowercased name of host operating system.  <a href="#ae6d678f8dd086d0cc92fe8e5d4f62efb">More...</a><br/></td></tr>
+<tr class="separator:ae6d678f8dd086d0cc92fe8e5d4f62efb inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a25be158ad017e4060e198c1ee49c7466 inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html#a25be158ad017e4060e198c1ee49c7466">host_architecture</a></td></tr>
+<tr class="memdesc:a25be158ad017e4060e198c1ee49c7466 inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="mdescLeft">&#160;</td><td class="mdescRight">Lowercased name of host machine architecture.  <a href="#a25be158ad017e4060e198c1ee49c7466">More...</a><br/></td></tr>
+<tr class="separator:a25be158ad017e4060e198c1ee49c7466 inherit pub_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-attribs"></a>
+Static Public Attributes</h2></td></tr>
+<tr class="memitem:a0e54b59bbbc4c22adddde90927659a3c"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a0e54b59bbbc4c22adddde90927659a3c"></a>
+string&#160;</td><td class="memItemRight" valign="bottom"><b>ADB</b> = 'adb'</td></tr>
+<tr class="separator:a0e54b59bbbc4c22adddde90927659a3c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a12d1bfd5c197e8cb79066315f4365654"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a12d1bfd5c197e8cb79066315f4365654"></a>
+string&#160;</td><td class="memItemRight" valign="bottom"><b>ANDROID</b> = 'android'</td></tr>
+<tr class="separator:a12d1bfd5c197e8cb79066315f4365654"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7e5f3e339492c1f1225a476d3cc61c63"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a7e5f3e339492c1f1225a476d3cc61c63"></a>
+string&#160;</td><td class="memItemRight" valign="bottom"><b>ANT</b> = 'ant'</td></tr>
+<tr class="separator:a7e5f3e339492c1f1225a476d3cc61c63"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af7ec167624d6dd6aaa9a3afd7e53690e"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="af7ec167624d6dd6aaa9a3afd7e53690e"></a>
+string&#160;</td><td class="memItemRight" valign="bottom"><b>JARSIGNER</b> = 'jarsigner'</td></tr>
+<tr class="separator:af7ec167624d6dd6aaa9a3afd7e53690e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1aba821115f5c282c8008facf57214bb"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a1aba821115f5c282c8008facf57214bb"></a>
+string&#160;</td><td class="memItemRight" valign="bottom"><b>KEYTOOL</b> = 'keytool'</td></tr>
+<tr class="separator:a1aba821115f5c282c8008facf57214bb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac573ce1dae7f26443a916b505c2fff16"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ac573ce1dae7f26443a916b505c2fff16"></a>
+string&#160;</td><td class="memItemRight" valign="bottom"><b>NDK_BUILD</b> = 'ndk-build'</td></tr>
+<tr class="separator:ac573ce1dae7f26443a916b505c2fff16"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7de0b919d50b0a238723737d49fe400a"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a7de0b919d50b0a238723737d49fe400a"></a>
+string&#160;</td><td class="memItemRight" valign="bottom"><b>ZIPALIGN</b> = 'zipalign'</td></tr>
+<tr class="separator:a7de0b919d50b0a238723737d49fe400a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="inherit_header pub_static_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td colspan="2" onclick="javascript:toggleInherit('pub_static_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment')"><img src="closed.png" alt="-"/>&#160;Static Public Attributes inherited from <a class="el" href="classfplutil_1_1buildutil_1_1common_1_1_build_environment.html">fplutil.buildutil.common.BuildEnvironment</a></td></tr>
+<tr class="memitem:a78864995e618143dbe4610f81805b1b6 inherit pub_static_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a78864995e618143dbe4610f81805b1b6"></a>
+string&#160;</td><td class="memItemRight" valign="bottom"><b>GIT</b> = 'git'</td></tr>
+<tr class="separator:a78864995e618143dbe4610f81805b1b6 inherit pub_static_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae09d16670ec153c21425d7dc349618e8 inherit pub_static_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ae09d16670ec153c21425d7dc349618e8"></a>
+string&#160;</td><td class="memItemRight" valign="bottom"><b>MAKE</b> = 'make'</td></tr>
+<tr class="separator:ae09d16670ec153c21425d7dc349618e8 inherit pub_static_attribs_classfplutil_1_1buildutil_1_1common_1_1_build_environment"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Class representing an Android build environment. </p>
+<p>This class adds Android-specific functionality to the common <a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html" title="Class representing an Android build environment. ">BuildEnvironment</a>. </p>
+</div><h2 class="groupheader">Member Function Documentation</h2>
+<a class="anchor" id="ae055505378358ffd4123c2a71603fa47"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.add_arguments </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>parser</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Add module-specific command line arguments to an argparse parser. </p>
+<p>This will take an argument parser and add arguments appropriate for this module. It will also set appropriate default values.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">parser</td><td>The argparse.ArgumentParser instance to use. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a class="anchor" id="a4cfc11b1a905840e53535f6fb8cf88f6"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.build_all </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>path</em> = <code>'.'</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>apk_output</em> = <code>'apks'</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>lib_output</em> = <code>'libs'</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>exclude_dirs</em> = <code>None</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Locate and build all Android sub-projects as appropriate. </p>
+<p>This function will recursively scan a directory tree for Android library and application projects and build them with the current build defaults. This will not work for projects which only wish for subsets to be built or have complicated external manipulation of makefiles and manifests, but it should handle the majority of projects as a reasonable default build.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">path</td><td>Optional path to start the search in, defaults to '.'. </td></tr>
+    <tr><td class="paramname">apk_output</td><td>Optional path to apk output directory, default is 'apks'. </td></tr>
+    <tr><td class="paramname">lib_output</td><td>Optional path to library output directory, default is 'libs'. </td></tr>
+    <tr><td class="paramname">exclude_dirs</td><td>Optional list of directory names to exclude from project detection in addition to <div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;[apk_output, lib_output, <span class="stringliteral">&#39;bin&#39;</span>, <span class="stringliteral">&#39;obj&#39;</span>, <span class="stringliteral">&#39;res&#39;</span>],</div>
+</div><!-- fragment --> which are always excluded. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>(retval, errmsg) tuple of an integer return value suitable for returning to the invoking shell, and an error string (if any) or None (on success). </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="a2777eb15208f14a45a2ef964ea65258d"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.build_android_apk </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>path</em> = <code>'.'</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>output</em> = <code>None</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>manifest</em> = <code>None</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Build an Android APK. </p>
+<p>This function builds an APK by using ndk-build and ant, at an optionally specified relative path from the current project directory, and output to an optionally specified output directory, also relative to the current project directory. Flags are passed to ndk-build and ant as specified in the build environment. This function does not install the resulting APK.</p>
+<p>If no build.xml is found, one is generated via the 'android' command, if possible.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">path</td><td>Optional relative path from project directory to project to build. </td></tr>
+    <tr><td class="paramname">output</td><td>Optional relative path from project directory to output </td></tr>
+    <tr><td class="paramname">directory.</td><td></td></tr>
+    <tr><td class="paramname">manifest</td><td>Parsed <a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_android_manifest.html" title="Class that extracts build information from an AndroidManifest.xml. ">AndroidManifest</a> instance.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="exception"><dt>Exceptions</dt><dd>
+  <table class="exception">
+    <tr><td class="paramname">SubCommandError</td><td>NDK toolchain invocation failed or returned an error. </td></tr>
+    <tr><td class="paramname">ToolPathError</td><td>Android NDK or SDK location not found in configured build environment or $PATH, or ant not found. </td></tr>
+    <tr><td class="paramname">ConfigurationError</td><td>Required build configuration file missing or broken in an unrecoverable way. </td></tr>
+    <tr><td class="paramname">IOError</td><td>An error occurred writing or copying the APK. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a class="anchor" id="af4bcb54d284ca862141dd86bca5c0e56"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.build_android_libraries </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>subprojects</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>output</em> = <code>None</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>check_ndk_install_path</em> = <code>True</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Build list of Android library projects. </p>
+<p>This function iteratively runs ndk-build over a list of paths relative to the current project directory.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">subprojects</td><td>A list pf paths relative to the project directory to build. </td></tr>
+    <tr><td class="paramname">output</td><td>An optional directory relative to the project directory to receive the build output. </td></tr>
+    <tr><td class="paramname">check_ndk_install_path</td><td>Whether to track the NDK install location and rebuild if it changes.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="exception"><dt>Exceptions</dt><dd>
+  <table class="exception">
+    <tr><td class="paramname">SubCommandError</td><td>ndk-build invocation failed or returned an error. </td></tr>
+    <tr><td class="paramname">ToolPathError</td><td>Android NDK location not found in configured build environment or $PATH. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a class="anchor" id="a0ab73397d8e69aec6ad54ed10d21b65b"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.build_defaults </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Helper function to set build defaults. </p>
+<dl class="section return"><dt>Returns</dt><dd>A dict containing appropriate defaults for a build. </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="a19a5cb717b378eb14749e629ac6ccbb6"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.check_adb_devices </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>adb_device</em> = <code>None</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Gets the only attached device, or the attached device matching a serial. </p>
+<p>When using adb to connect to a device, adb's behavior changes depending on how many devices are connected. If there is only one device connected, then no device needs to be specified (as the only device will be used). If more than one device is connected and no device is specified, adb will error out as it does not know which device to connect to.</p>
+<p>This method ensures that for either case enough valid information is specified, and returns an instance of <a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_adb_device.html" title="Stores information about an Android device. ">AdbDevice</a> representing the valid device.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">adb_device</td><td>The serial to match a device on.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>The only <a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_adb_device.html" title="Stores information about an Android device. ">AdbDevice</a> connected to adb, or <a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_adb_device.html" title="Stores information about an Android device. ">AdbDevice</a> matching the serial.</dd></dl>
+<dl class="exception"><dt>Exceptions</dt><dd>
+  <table class="exception">
+    <tr><td class="paramname">AdbError</td><td>More than one attached device and no serial specified, or device with matching serial specified cannot be found. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a class="anchor" id="a679c31f51835aff6e0f76e8c06564584"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.create_update_build_xml </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>manifest</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>path</em> = <code>'.'</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Create or update ant build.xml for an Android project. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">manifest</td><td>Parsed <a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_android_manifest.html" title="Class that extracts build information from an AndroidManifest.xml. ">AndroidManifest</a> instance. </td></tr>
+    <tr><td class="paramname">path</td><td>Optional relative path from project directory to project to build.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_xml.html" title="Class that extracts build information from an ant build.xml. ">BuildXml</a> instance which references the created / updated ant project. </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="ad6e6db88620a9f9bee1bd22ff1d276a8"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.find_projects </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>path</em> = <code>'.'</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>exclude_dirs</em> = <code>None</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Find all Android projects under the specified path. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">path</td><td>Path to start the search in, defaults to '.'. </td></tr>
+    <tr><td class="paramname">exclude_dirs</td><td>List of directory names to exclude from project detection in addition to ['bin', 'obj', 'res'], which are always </td></tr>
+    <tr><td class="paramname">excluded.</td><td></td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>(apk_dirs, lib_dirs) where apk_dirs is the list of directories which contain Android projects that build an APK and lib_dirs is alist of Android project directories that only build native libraries. </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="ad3caead487c029dc835d14967f8b8e9b"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.generate_password </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Generate a psuedo random password. </p>
+<dl class="section return"><dt>Returns</dt><dd>8 character hexadecimal string. </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="aff60068355ae2118c8126d1310b65b47"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.get_adb_device_argument </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>adb_device</em> = <code>None</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Construct the argument for ADB to select the specified device. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">adb_device</td><td>Serial of the device to use with ADB.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>A string which contains the second argument passed to ADB to select a target device. </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="ae322ea24bd41740cf651572903821f94"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.get_adb_device_name </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>device</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Get the string which describes an <a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_adb_device.html" title="Stores information about an Android device. ">AdbDevice</a> based upon the verbose mode. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">device</td><td><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_adb_device.html" title="Stores information about an Android device. ">AdbDevice</a> instance.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>String which describes the device. </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="aa60626a1e1ae23384b996f804e310cb9"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.get_adb_devices </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Get the set of attached devices. </p>
+<dl class="section return"><dt>Returns</dt><dd>(device_list, command_output) where device_list is a list of <a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_adb_device.html" title="Stores information about an Android device. ">AdbDevice</a> instances, one for each attached device and command_output is the raw output of the ADB command. </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="a6732d3dd1df241d1d768861276dfddb0"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.get_apk_filenames </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>app_name</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>path</em> = <code>'.'</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Get the set of output APK names for the project. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">app_name</td><td>Basename of the APK parsed from build.xml. </td></tr>
+    <tr><td class="paramname">path</td><td>Relative path from project directory to project to build.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>(signed_apkpath, unsigned_apkpath) where signed_apkpath and unsigned_apkpath are paths to the signed and unsigned APKs respectively. Signing is optional so the signed APK may not be present when the project has been built successfully. </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="ad3f69b9dbc4180be405563d5c62fcb1f"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.get_device_dpi </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>adb_device</em> = <code>None</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Returns the dpi of a device connected to adb. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">adb_device</td><td>Serial of the device to get the dpi from. If none specified, the only device connected will be used.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>int of the device's pixel density. </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="a23994db488ce0b9173740e58ba879b46"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.get_manifest_path </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>path</em> = <code>'.'</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Get the path of the manifest file. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">path</td><td>Optional relative path from project directory to project to build.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Path of the manifest file. </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="ac6b5c757d5b1a48af6c60e46d631ad2a"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.install_all </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>path</em> = <code>'.'</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>adb_device</em> = <code>None</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>exclude_dirs</em> = <code>None</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Locate and install all Android APKs. </p>
+<p>This function recursively scans a directory tree for Android application projects and installs them on the specified device.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">path</td><td>Path to search the search in, defaults to '.' </td></tr>
+    <tr><td class="paramname">adb_device</td><td>The serial of the device to install the APK to. If None the only device connected will be used. </td></tr>
+    <tr><td class="paramname">exclude_dirs</td><td>List of directory names to exclude from project detection (see <a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#ad6e6db88620a9f9bee1bd22ff1d276a8" title="Find all Android projects under the specified path. ">find_projects()</a> for more information).</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>(retval, errmsg) tuple of an integer return value suitable for returning to the invoking shell, and an error string (if any) or None (on success). </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="ad5f93fea9380917e50bf0c36963d41aa"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.install_android_apk </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>path</em> = <code>'.'</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>adb_device</em> = <code>None</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>force_install</em> = <code>True</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Install an android apk on the given device. </p>
+<p>This function will attempt to install an unsigned APK if a signed APK is not available which will <em>only</em> work on rooted devices.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">path</td><td>Relative path from project directory to project to run. </td></tr>
+    <tr><td class="paramname">adb_device</td><td>The serial of the device to run the apk on. If None it will the only device connected will be used. </td></tr>
+    <tr><td class="paramname">force_install</td><td>Whether to install the package if it's older than the package on the target device.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="exception"><dt>Exceptions</dt><dd>
+  <table class="exception">
+    <tr><td class="paramname">ConfigurationError</td><td>If no APKs are found. </td></tr>
+    <tr><td class="paramname">AdbError</td><td>If it's not possible to install the APK. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a class="anchor" id="afd5e8c37f1df795dd28995732b968776"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.list_installed_packages </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>adb_device</em> = <code>None</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Get the list of packages installed on an Android device. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">adb_device</td><td>The serial of the device to query.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>List of package strings.</dd></dl>
+<dl class="exception"><dt>Exceptions</dt><dd>
+  <table class="exception">
+    <tr><td class="paramname">AdbError</td><td>If it's not possible to query the device. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a class="anchor" id="a667729bc0dba559e1459d4f3b2c8ff06"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.ndk_location_changed </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>project</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>ndk_build_path</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Determine whether the NDK install location changed. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">project</td><td>Path to the project directory being built with the NDK. </td></tr>
+    <tr><td class="paramname">ndk_build_path</td><td>Path to the NDK.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>True if the NDK was previously used to build the project and the NDK install location changed. </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="ace784791f7bddff882641f83a7bad4a6"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.parse_delete_local_properties </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>project_path</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>build_xml_path</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>sdk_location</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Parse local properties and if the sdk location changed delete it. </p>
+<p>This also deletes build.xml so the entire project is refreshed if the tools path changes.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">project_path</td><td>Path containing local.properties file. </td></tr>
+    <tr><td class="paramname">sdk_location</td><td>Install location of the sdk. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a class="anchor" id="ad3c0e855e42e7a7f12de0fe5a6735a38"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.parse_manifest </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>path</em> = <code>'.'</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Parse the project's manifest. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">path</td><td>Optional relative path from project directory to project to build.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd><a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_android_manifest.html" title="Class that extracts build information from an AndroidManifest.xml. ">AndroidManifest</a> instance parsed from the project manifest.</dd></dl>
+<dl class="exception"><dt>Exceptions</dt><dd>
+  <table class="exception">
+    <tr><td class="paramname">ConfigurationError</td><td>Required elements were missing or incorrect. </td></tr>
+    <tr><td class="paramname">MissingActivityError</td><td>If a main activity element isn't present. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a class="anchor" id="aa6df2ec547116f24ae782069603ea542"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.run_all </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>path</em> = <code>'.'</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>adb_device</em> = <code>None</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>exclude_dirs</em> = <code>None</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>wait</em> = <code>True</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>continue_on_failure</em> = <code>False</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>gtest</em> = <code>False</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Locate and run all Android APKs. </p>
+<p>This function recursively scans a directory tree for Android application projects and runs them on the specified device.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">path</td><td>Path to search the search in, defaults to '.' </td></tr>
+    <tr><td class="paramname">adb_device</td><td>The device to run the APK on. If none it will use the only device connected. </td></tr>
+    <tr><td class="paramname">exclude_dirs</td><td>List of directory names to exclude from project detection (see <a class="el" href="classfplutil_1_1buildutil_1_1android_1_1_build_environment.html#ad6e6db88620a9f9bee1bd22ff1d276a8" title="Find all Android projects under the specified path. ">find_projects()</a> for more information). </td></tr>
+    <tr><td class="paramname">wait</td><td>Whether to wait for the application to start. </td></tr>
+    <tr><td class="paramname">continue_on_failure</td><td>Whether to continue trying to execute all projects if a failure occurs. </td></tr>
+    <tr><td class="paramname">gtest</td><td>Whether the target is a googletest and the output should be scraped for test failures.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>(retval, errmsg, failures) tuple of an integer return value suitable for returning to the invoking shell, an error string (if any) and a list of packages that failed to launch or None (on success). </dd></dl>
+
+</div>
+</div>
+<a class="anchor" id="a6c9b99d0a58ffc4c070fd40fa31eb2cc"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.run_android_apk </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>path</em> = <code>'.'</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>adb_device</em> = <code>None</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>wait</em> = <code>True</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>end_match</em> = <code>None</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>echo_log</em> = <code>True</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>apk_missing_allowed</em> = <code>True</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Run an android apk on the given device. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">path</td><td>Relative path from project directory to project to run. </td></tr>
+    <tr><td class="paramname">adb_device</td><td>The serial of the device to run the apk on. If None the only device connected will be used. </td></tr>
+    <tr><td class="paramname">wait</td><td>Optional argument to tell the function to wait until the process completes and dump the output. </td></tr>
+    <tr><td class="paramname">end_match</td><td>Optional compiled regex applied to logs. When a match is found, the process is considered finished (sets wait to False). </td></tr>
+    <tr><td class="paramname">echo_log</td><td>If set, prints the output from logcat. </td></tr>
+    <tr><td class="paramname">apk_missing_allowed</td><td>If set to False, raise an AdbError if the activity couldn't be started.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>String containing adb logcat output for the run. None if there is a manifest configuration problem.</dd></dl>
+<dl class="exception"><dt>Exceptions</dt><dd>
+  <table class="exception">
+    <tr><td class="paramname">AdbError</td><td>If the activity wasn't started. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a class="anchor" id="a5b856355eaa1a001c9c94cab4dc67b38"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.stop_process </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>package_name</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>adb_device</em> = <code>None</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Attempts to stop a process running under the given package name. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">package_name</td><td>Name of the package to stop. </td></tr>
+    <tr><td class="paramname">adb_device</td><td>Serial of the device to stop the app on. If none specified, the only device connected will be used. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a class="anchor" id="a98a3afebfd4468fa62834364642f4812"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.take_screencap </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>self</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>destination</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>adb_device</em> = <code>None</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Takes a screencap on the device and saves it to destination. </p>
+<p>Saves the screencap to a random filename on the device's sdcard, transfers the screencap to destination path, then deletes the screencap on the device.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">destination</td><td>The file path where the screencap will be saved. </td></tr>
+    <tr><td class="paramname">adb_device</td><td>Serial of the device to take the screencap with. If none specified, the only device connected will be used. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a class="anchor" id="ac5df56a751132247ddfe3896f28f2e93"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">def fplutil.buildutil.android.BuildEnvironment.write_ndk_location </td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>project</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>ndk_build_path</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Stores the current NDK path to a file. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">project</td><td>Path to the project directory being built with the NDK. </td></tr>
+    <tr><td class="paramname">ndk_build_path</td><td>Path to the NDK. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<h2 class="groupheader">Member Data Documentation</h2>
+<a class="anchor" id="aa5f9a8871308f71b5b078189399a10d7"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">fplutil.buildutil.android.BuildEnvironment.always_make</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Whether to build when the project is already up to date. </p>
+
+</div>
+</div>
+<a class="anchor" id="a009ab0cdf9a0c17d75dd23da39ec0a29"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">fplutil.buildutil.android.BuildEnvironment.ant_flags</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Flags to pass to the ant binary, if used. </p>
+
+</div>
+</div>
+<a class="anchor" id="aa231c7f08874abf18f03ca729de598ed"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">fplutil.buildutil.android.BuildEnvironment.ant_path</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Path to the ant binary, if found. </p>
+
+</div>
+</div>
+<a class="anchor" id="a2709850f970457466a37a283e5373730"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">fplutil.buildutil.android.BuildEnvironment.ant_target</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Ant build target name. </p>
+
+</div>
+</div>
+<a class="anchor" id="a51dec3e3ed49e8b8b0cc12dcbb52a203"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">fplutil.buildutil.android.BuildEnvironment.apk_keyalias</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Alias of key to use when signing an APK. </p>
+
+</div>
+</div>
+<a class="anchor" id="a4066f485ab2ef871401c5c7bd738d7d1"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">fplutil.buildutil.android.BuildEnvironment.apk_keystore</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Keystore file path to use when signing an APK. </p>
+
+</div>
+</div>
+<a class="anchor" id="ad9f48c4a525175c4840d9990bde81b67"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">fplutil.buildutil.android.BuildEnvironment.ndk_home</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Path to the Android NDK, if found. </p>
+
+</div>
+</div>
+<a class="anchor" id="a594607c114584d58fc06eeca700828d4"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">fplutil.buildutil.android.BuildEnvironment.sdk_home</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Path to the Android SDK, if found. </p>
+
+</div>
+</div>
+<a class="anchor" id="a95d766af2a76d2680b4801826a34df47"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">fplutil.buildutil.android.BuildEnvironment.sign_apk</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Enable signing of Android APKs. </p>
+
+</div>
+</div>
+<hr/>The documentation for this class was generated from the following file:<ul>
+<li><a class="el" href="android_8py.html">android.py</a></li>
+</ul>
+</div><!-- contents -->
+</div><!-- doc-content -->
+<!-- Google Analytics -->
+<script>
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+ga('create', 'UA-49880327-7', 'google.github.io');
+ga('send', 'pageview');
+</script>
+</body>
+</html>
