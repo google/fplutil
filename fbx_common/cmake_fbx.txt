@@ -71,42 +71,71 @@ function(fbx_configure_target target)
   # Autodesk's FBX SDK must be installed to build the pipeline.
   set(fbx_sdk_dir $ENV{FBX_SDK})
   if("${fbx_sdk_dir}" STREQUAL "")
-    message(FATAL_ERROR ${fbx_sdk_msg})
+    message(FATAL_ERROR "The FBX SDK must be installed and the FBX_SDK environment variable must be set to the SDK directory.")
   endif()
 
-  # Search for the FBX library.
-  # Visual Studio 64 bit option can be specified with
-  # `cmake -G "Visual Studio 11 Win64"`
-  if(CMAKE_CL_64)
-    set(fbx_sdk_subdir "x64")
+  # Get the directory with the FBX SDK library.
+  if(${CMAKE_CXX_COMPILER_ID} STREQUAL Clang)
+    set(fbx_sdk_lib_dir "${fbx_sdk_dir}/lib/clang")
+
+  elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
+    set(fbx_sdk_lib_dir "${fbx_sdk_dir}/lib/gcc4/x64")
+
+  elseif(MSVC)
+    # Each version of Visual Studio has a different FBX SDK library.
+    if(MSVC_VERSION LESS 1600)
+      set(fbx_sdk_msvc_dir "vs2008")
+    elseif(MSVC_VERSION LESS 1700)
+      set(fbx_sdk_msvc_dir "vs2010")
+    elseif(MSVC_VERSION LESS 1800)
+      set(fbx_sdk_msvc_dir "vs2012")
+    elseif(MSVC_VERSION LESS 1900)
+      set(fbx_sdk_msvc_dir "vs2013")
+    elseif(MSVC_VERSION LESS 2000)
+      set(fbx_sdk_msvc_dir "vs2015")
+    else()
+      message(FATAL_ERROR "The FBX SDK library directory is unknown for this version of Visual Studio.")
+    endif()
+
+    # Search for the FBX library.
+    # Visual Studio 64 bit option can be specified with
+    # `cmake -G "Visual Studio 11 Win64"`
+    if(CMAKE_CL_64)
+      set(fbx_sdk_msvc_arch "x64")
+    else()
+      set(fbx_sdk_msvc_arch "x86")
+    endif()
+
+    set(fbx_sdk_lib_dir
+        "${fbx_sdk_dir}\\lib\\${fbx_sdk_msvc_dir}\\${fbx_sdk_msvc_arch}")
+
   else()
-    set(fbx_sdk_subdir "x86")
+    message(FATAL_ERROR "The FBX SDK library subdirectory is unknown for your compiler.")
   endif()
 
   # Prefer the static library '.a' over the sharedlibrary '.so'.
   find_library(fbx_sdk_lib_release
     NAMES libfbxsdk.a fbxsdk libfbxsdk-md.lib
-    PATHS ${fbx_sdk_dir}/lib/gcc4/x64/release
-          ${fbx_sdk_dir}/lib/clang/release
-          ${fbx_sdk_dir}/lib/vs2008/${fbx_sdk_subdir}/release
-          ${fbx_sdk_dir}/lib/vs2010/${fbx_sdk_subdir}/release
-          ${fbx_sdk_dir}/lib/vs2012/${fbx_sdk_subdir}/release
-          ${fbx_sdk_dir}/lib/vs2013/${fbx_sdk_subdir}/release)
+    PATHS ${fbx_sdk_lib_dir}/release)
 
   find_library(fbx_sdk_lib_debug
     NAMES libfbxsdk.a fbxsdk libfbxsdk-md.lib
-    PATHS ${fbx_sdk_dir}/lib/gcc4/x64/debug
-          ${fbx_sdk_dir}/lib/clang/debug
-          ${fbx_sdk_dir}/lib/vs2008/${fbx_sdk_subdir}/debug
-          ${fbx_sdk_dir}/lib/vs2010/${fbx_sdk_subdir}/debug
-          ${fbx_sdk_dir}/lib/vs2012/${fbx_sdk_subdir}/debug
-          ${fbx_sdk_dir}/lib/vs2013/${fbx_sdk_subdir}/debug)
+    PATHS ${fbx_sdk_lib_dir}/debug)
 
   set(fbx_sdk_lib debug ${fbx_sdk_lib_debug} optimized ${fbx_sdk_lib_release})
+
+  if(NOT fbx_sdk_lib)
+    message(FATAL_ERROR "Cannot find the FBX SDK library. For your compiler, it should be in ${fbx_sdk_lib_dir}.")
+  endif()
 
   # Linux and Mac require these libs too.
   if(NOT MSVC)
     set(fbx_sdk_extra_libs pthread dl)
+  endif()
+
+  # Don't link fbx_common to itself.
+  if(NOT ${target} STREQUAL "fbx_common")
+    set(fbx_common_library "fbx_common")
   endif()
 
   # Add the location of #include <fbxsdk.h>.
@@ -119,6 +148,6 @@ function(fbx_configure_target target)
   target_link_libraries(${target}
                         ${fbx_sdk_lib}
                         ${fbx_sdk_extra_libs}
-                        fbx_common)
+                        ${fbx_common_library})
 endfunction()
 
