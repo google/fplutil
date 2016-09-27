@@ -109,6 +109,8 @@ function(set_common_build_variables)
       CACHE PATH "Directory containing the Bullet Physics distribution.")
   set(dependencies_freetype_distr_dir "${third_party_root}/freetype"
       CACHE PATH "Directory containing the freetype library.")
+  set(dependencies_gumbo_distr_dir "${third_party_root}/gumbo-parser"
+      CACHE PATH "Directory containing the gumbo library.")
   set(dependencies_harfbuzz_distr_dir "${third_party_root}/harfbuzz"
       CACHE PATH "Directory containing the harfbuzz library.")
   set(dependencies_libogg_distr_dir "${third_party_root}/libogg"
