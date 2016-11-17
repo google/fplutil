@@ -29,9 +29,22 @@ endmacro(append_flags)
 # directory of the calling file.
 set(dir_of_this_file ${CMAKE_CURRENT_LIST_DIR})
 
+# Sets and caches `var` to the first path in 'paths' that exists.
+# If none of the paths are found, sets `var` to an error value of
+# "path_not_found".
+function(set_to_first_path_that_exists var paths description)
+  foreach(path ${paths})
+    if(EXISTS "${path}")
+      set(${var} "${path}" CACHE PATH description)
+      return()
+    endif()
+  endforeach(path)
+  set(${var} "path_not_found_to_${var}" CACHE PATH description)
+endfunction(set_to_first_path_that_exists)
+
 # set_common_build_variables()  set up variables of
 #    third_party_root
-#    dependencies_root
+#    fpl_root
 #    fpl and third party dependency module path
 #    CMAKE_C_FLAGS
 #    CMAKE_CXX_FLAGS
@@ -45,21 +58,38 @@ set(dir_of_this_file ${CMAKE_CURRENT_LIST_DIR})
 #       if using others, -Wno-used-parameters is added to
 #                        CMAKE_C/CXX_FLAGS
 function(set_common_build_variables)
-  # Directory which contains the source for 3rd party libraries.
-  if(NOT DEFINED third_party_root)
-    get_filename_component(third_party_root
-        "${dir_of_this_file}/../../../../../external" REALPATH)
+  # If we clone from GitHub, the dependencies will be cloned (via submodules)
+  # into a "dependencies" directory.
+  get_filename_component(github_dir
+                         "${CMAKE_CURRENT_SOURCE_DIR}/dependencies" REALPATH)
+
+  # Internally, there are a couple places where we might store our dependencies.
+  # For convenience, we hard-code them here so that we don't have to type,
+  #    -Ddependencies_root=my_directory_name
+  # on the cmake command-line every time.
+  get_filename_component(fplutil_parent_dir
+                         "${dir_of_this_file}/../../" REALPATH)
+  get_filename_component(libs_dir
+                         "${fplutil_parent_dir}/../libs" REALPATH)
+  get_filename_component(piper_dir
+                         "${fplutil_parent_dir}/../third_party" REALPATH)
+  get_filename_component(external_dir
+                         "${dir_of_this_file}/../../../../../external" REALPATH)
+
+  # Set and cache fpl_root.
+  # This is the directory where the FPL projects are kept.
+  if(NOT DEFINED fpl_root)
+    set_to_first_path_that_exists(fpl_root
+        "${github_dir};${libs_dir};${piper_dir};${fplutil_parent_dir}"
+        "Directory containing FPL projects.")
   endif()
 
-  # If the dependencies directory exists, assume this is the root directory for
-  # all libraries required by this project.
-  if(NOT DEFINED dependencies_root)
-    set(dependencies_root "${CMAKE_CURRENT_SOURCE_DIR}/dependencies" CACHE PATH
-        "Directory holding the dependencies pulled from github.")
-    if(EXISTS "${dependencies_root}")
-      set(third_party_root "${dependencies_root}" CACHE PATH
-          "Directory holding third party libraries.")
-    endif()
+  # Set and cache third_party_root.
+  # This is the directory where non-FPL projects are kept.
+  if(NOT DEFINED third_party_root)
+    set_to_first_path_that_exists(third_party_root
+        "${dependencies_root};${github_dir};${piper_dir};${external_dir};${fpl_root}"
+        "Directory containing non-FPL projects.")
   endif()
 
   # fpl common module directory variables
@@ -94,23 +124,9 @@ function(set_common_build_variables)
   set(dependencies_scene_lab_dir "${fpl_root}/scene_lab"
       CACHE PATH "Directory containing the Scene Lab library.")
 
-  # Depending on googletest version, the gtest directory may be nested under
-  # googletest/googletest
-  if(EXISTS "${fpl_root}/googletest/googletest")
-    set(dependencies_gtest_dir "${fpl_root}/googletest/googletest"
-    CACHE PATH "Directory containing the GoogleTest library.")
-  else()
-    set(dependencies_gtest_dir "${fpl_root}/googletest"
-    CACHE PATH "Directory containing the GoogleTest library.")
-  endif()
-
   # third party module directory variables
   set(dependencies_bulletphysics_distr_dir "${third_party_root}/bulletphysics"
       CACHE PATH "Directory containing the Bullet Physics distribution.")
-  set(dependencies_freetype_distr_dir "${third_party_root}/freetype"
-      CACHE PATH "Directory containing the freetype library.")
-  set(dependencies_gumbo_distr_dir "${third_party_root}/gumbo-parser"
-      CACHE PATH "Directory containing the gumbo library.")
   set(dependencies_harfbuzz_distr_dir "${third_party_root}/harfbuzz"
       CACHE PATH "Directory containing the harfbuzz library.")
   set(dependencies_libogg_distr_dir "${third_party_root}/libogg"
@@ -119,16 +135,42 @@ function(set_common_build_variables)
       CACHE PATH "Directory containing the libunibreak library.")
   set(dependencies_libvorbis_distr_dir "${third_party_root}/libvorbis"
       CACHE PATH "Directory containing the libvorbis library.")
-  set(dependencies_sdl_dir "${third_party_root}/sdl"
-      CACHE PATH "Directory containing the SDL library.")
   set(dependencies_sdl_mixer_distr_dir "${third_party_root}/sdl_mixer"
       CACHE PATH "Directory containing the SDL Mixer library.")
-  set(dependencies_stb_dir "${third_party_root}/stb"
-      CACHE PATH "Directory containing the STB library.")
   set(dependencies_vectorial_dir "${third_party_root}/vectorial"
       CACHE PATH "Directory containing the Vectorial library.")
-  set(dependencies_webp_distr_dir "${third_party_root}/webp"
-      CACHE PATH "Directory containing the Webp distribution.")
+
+  # Depending on googletest version, the gtest directory may be nested under
+  # googletest/googletest.
+  set_to_first_path_that_exists(dependencies_gtest_dir
+      "${fpl_root}/googletest/googletest;${fpl_root}/googletest;${third_party_root}/gtest"
+      "Directory containing the GoogleTest library.")
+
+  set_to_first_path_that_exists(dependencies_gmock_dir
+      "${fpl_root}/googletest/googlemock;${third_party_root}/gmock"
+      "Directory containing the GoogleTest library.")
+
+  # Likewise, other projects may have slightly different names depending
+  # on where they're sourced from.
+  set_to_first_path_that_exists(dependencies_freetype_distr_dir
+      "${third_party_root}/freetype2/freetype-2.6.1;${third_party_root}/freetype"
+      "Directory containing the freetype library.")
+
+  set_to_first_path_that_exists(dependencies_gumbo_distr_dir
+      "${third_party_root}/gumbo-parser;${third_party_root}/gumbo"
+      "Directory containing the gumbo library.")
+
+  set_to_first_path_that_exists(dependencies_sdl_dir
+      "${third_party_root}/sdl;${third_party_root}/SDL2"
+      "Directory containing the SDL library.")
+
+  set_to_first_path_that_exists(dependencies_stb_dir
+      "${third_party_root}/stb;${third_party_root}/stblib"
+      "Directory containing the STB library.")
+
+  set_to_first_path_that_exists(dependencies_webp_distr_dir
+      "${third_party_root}/webp;${third_party_root}/libwebp/v0_2/"
+      "Directory containing the Webp distribution.")
 
   # Set up compiler flags
   # Detect clang
