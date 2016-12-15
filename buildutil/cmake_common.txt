@@ -80,7 +80,7 @@ function(set_common_build_variables)
   # This is the directory where the FPL projects are kept.
   if(NOT DEFINED fpl_root)
     set_to_first_path_that_exists(fpl_root
-        "${github_dir};${libs_dir};${piper_dir};${fplutil_parent_dir}"
+        "${dependencies_root};${github_dir};${libs_dir};${piper_dir};${fplutil_parent_dir}"
         "Directory containing FPL projects.")
   endif()
 
@@ -161,7 +161,7 @@ function(set_common_build_variables)
       "Directory containing the gumbo library.")
 
   set_to_first_path_that_exists(dependencies_sdl_dir
-      "${third_party_root}/sdl;${third_party_root}/SDL2"
+      "${third_party_root}/SDL2;${third_party_root}/sdl"
       "Directory containing the SDL library.")
 
   set_to_first_path_that_exists(dependencies_stb_dir
