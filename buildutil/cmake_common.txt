@@ -185,7 +185,8 @@ function(set_common_build_variables)
     #    C4127: conditional expression is constant
     #    C4355: 'this' used in base member initializer list
     #    C4577: 'noexcept' used with no exception handling mode specified.
-    set(C_FLAGS_WARNINGS "/W4 /WX /wd4065 /wd4127 /wd4355 /wd4577")
+    #    C4201: nonstandard extension used: nameless struct/union
+    set(C_FLAGS_WARNINGS "/W4 /WX /wd4065 /wd4127 /wd4355 /wd4577 /wd4201")
     if((${ARGC} GREATER 0) AND (NOT "${ARGV0}" STREQUAL ""))
       set(C_FLAGS_WARNINGS "${C_FLAGS_WARNINGS} ${ARGV0}")
     endif()
