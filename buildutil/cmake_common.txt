@@ -129,6 +129,8 @@ function(set_common_build_variables)
       CACHE PATH "Directory containing the Bullet Physics distribution.")
   set(dependencies_harfbuzz_distr_dir "${third_party_root}/harfbuzz"
       CACHE PATH "Directory containing the harfbuzz library.")
+  set(dependencies_hyb_distr_dir "${third_party_root}/hyphenation-patterns"
+      CACHE PATH "Directory containing the hyphenation patterns.")
   set(dependencies_libogg_distr_dir "${third_party_root}/libogg"
       CACHE PATH "Directory containing the libogg library.")
   set(dependencies_libunibreak_distr_dir "${third_party_root}/libunibreak"
