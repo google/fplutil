@@ -111,6 +111,10 @@ $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_HARFBUZZ_DIR,\
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_LIBUNIBREAK_DIR,\
     $(THIRD_PARTY_ROOT)/libunibreak)
 
+# Location of the hyphenation_pattern files.
+$(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_HYPHENATION_PATTERN_DIR,\
+    $(THIRD_PARTY_ROOT)/hyphenation_patterns)
+
 # Location of the Cardboard java library (required for fplbase)
 # TODO(jsanmiya): Temporarily put the cardboard libs in fplutil/libs in case
 # we don't have the ability to grab the Cardboard SDK.
