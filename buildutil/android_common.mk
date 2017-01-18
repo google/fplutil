@@ -137,6 +137,10 @@ $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_WEBP_DIR,\
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_VECTORIAL_DIR,\
     $(THIRD_PARTY_ROOT)/vectorial)
 
+# Location of the GVR Android SDK.
+$(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_GVR_ANDROID_SDK_DIR,\
+    $(THIRD_PARTY_ROOT)/gvr-android-sdk)
+
 # Location of the googletest JNI files.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_GTEST_JNI_DIR,\
     $(FPL_ROOT)/fplutil/libfplutil/jni/libs/googletest)
