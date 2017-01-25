@@ -29,6 +29,16 @@ endmacro(append_flags)
 # directory of the calling file.
 set(dir_of_this_file ${CMAKE_CURRENT_LIST_DIR})
 
+# Some internal libraries have their #include paths relative to the root
+# of the internal directory tree. This makes compilation via cmake difficult.
+# We compensate by adding the root of the internal directory tree to the
+# include path, in this situation.
+function(fpl_absolute_include_dir dir)
+  if(EXISTS "${dir}/../../third_party")
+    include_directories("${dir}/../..")
+  endif()
+endfunction(fpl_absolute_include_dir)
+
 # Sets and caches `var` to the first path in 'paths' that exists.
 # If none of the paths are found, sets `var` to an error value of
 # "path_not_found".
@@ -125,18 +135,10 @@ function(set_common_build_variables)
       CACHE PATH "Directory containing the Scene Lab library.")
 
   # third party module directory variables
-  set(dependencies_bulletphysics_distr_dir "${third_party_root}/bulletphysics"
-      CACHE PATH "Directory containing the Bullet Physics distribution.")
   set(dependencies_harfbuzz_distr_dir "${third_party_root}/harfbuzz"
       CACHE PATH "Directory containing the harfbuzz library.")
-  set(dependencies_libogg_distr_dir "${third_party_root}/libogg"
-      CACHE PATH "Directory containing the libogg library.")
   set(dependencies_libunibreak_distr_dir "${third_party_root}/libunibreak"
       CACHE PATH "Directory containing the libunibreak library.")
-  set(dependencies_libvorbis_distr_dir "${third_party_root}/libvorbis"
-      CACHE PATH "Directory containing the libvorbis library.")
-  set(dependencies_sdl_mixer_distr_dir "${third_party_root}/sdl_mixer"
-      CACHE PATH "Directory containing the SDL Mixer library.")
   set(dependencies_vectorial_dir "${third_party_root}/vectorial"
       CACHE PATH "Directory containing the Vectorial library.")
 
@@ -152,6 +154,10 @@ function(set_common_build_variables)
 
   # Likewise, other projects may have slightly different names depending
   # on where they're sourced from.
+  set_to_first_path_that_exists(dependencies_bulletphysics_distr_dir
+      "${third_party_root}/bulletphysics;${third_party_root}/bullet"
+      "Directory containing the Bullet Physics distribution.")
+
   set_to_first_path_that_exists(dependencies_freetype_distr_dir
       "${third_party_root}/freetype2/freetype-2.6.1;${third_party_root}/freetype"
       "Directory containing the freetype library.")
@@ -167,6 +173,18 @@ function(set_common_build_variables)
   set_to_first_path_that_exists(dependencies_sdl_dir
       "${third_party_root}/SDL2;${third_party_root}/sdl"
       "Directory containing the SDL library.")
+
+  set_to_first_path_that_exists(dependencies_sdl_mixer_distr_dir
+      "${third_party_root}/sdl_mixer;${third_party_root}/SDL_mixer"
+      "Directory containing the SDL Mixer library.")
+
+  set_to_first_path_that_exists(dependencies_libogg_distr_dir
+      "${third_party_root}/libogg;${dependencies_sdl_mixer_distr_dir}/external/libogg-1.3.1"
+      "Directory containing the libogg library.")
+
+  set_to_first_path_that_exists(dependencies_libvorbis_distr_dir
+      "${third_party_root}/libvorbis;${dependencies_sdl_mixer_distr_dir}/external/libvorbisidec-1.2.1"
+      "Directory containing the libvorbis library.")
 
   set_to_first_path_that_exists(dependencies_stb_dir
       "${third_party_root}/stb;${third_party_root}/stblib"
