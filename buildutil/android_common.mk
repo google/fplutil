@@ -21,12 +21,42 @@ realpath-portable = $(join $(filter %:,$(subst :,: ,$1)),\
 # Converts the list of paths in $(1) into a list of paths that exist.
 fplutil_existing_paths = $(foreach path,$(1),$(wildcard $(path)))
 
+# Culls all relative paths in $(2) paths that don't exist relative to $(1)
+fplutil_existing_relative_paths_ret_abs = \
+  $(foreach rel_path,$(2),$(wildcard $(1)/$(rel_path)))
+
+# Removes path prefex in $(1) from all absolute paths in $(2).
+fplutil_make_relative_path = \
+  $(foreach abs_path,$(2),$(subst $(1)/,,$(abs_path)))
+
+# Culls all relative paths in $(2) paths that don't exist relative to $(1)
+fplutil_existing_relative_paths = \
+  $(call fplutil_make_relative_path,$(1),\
+    $(call fplutil_existing_relative_paths_ret_abs,$(1),$(2)))
+
 # Sets $(1) to be the first path in $(2) that exists, or to an error value
 # otherwise.
 fplutil_set_to_first_path_that_exists = \
   $(foreach path,$(call fplutil_existing_paths,$(2))\
                  CANNOT_FIND_DIRECTORY_FOR_$1,\
     $(eval $(1)?=$(path)))
+
+# Sets $(1) to be the first path in $(3) that exists relative to $(2),
+# or to an error value otherwise.
+fplutil_set_to_first_relative_path_that_exists = \
+  $(foreach path,$(call fplutil_existing_relative_paths,$(2),$(3))\
+                 CANNOT_FIND_DIRECTORY_FOR_$1,\
+    $(eval $(1)?=$(path)))
+
+# Retuns space-separated list of files in $(1)/$(2) that have extension $(3).
+# Files are returned relative to $(1).
+#   $(1) holds the root path; all returned files are relative to this path
+#   $(2) holds the subdirectory name
+#   $(3) extension of files
+fplutil_all_files_relative_to_path_in_subdirectory = \
+  $(call fplutil_make_relative_path,$(1),\
+    $(wildcard $(1)/$(2)/**/*.$(3)))
+
 
 # Flags to set in all compilations.
 FPL_CFLAGS := -DGUNIT_NO_GOOGLE3
@@ -59,9 +89,29 @@ $(call fplutil_set_to_first_path_that_exists,PREBUILTS_ROOT,\
     $(FPLUTIL_PARENT_DIR)/../../../prebuilts \
     $(FPL_ROOT))
 
+# Location of the Breadboard library.
+$(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_BREADBOARD_DIR,\
+    $(FPL_ROOT)/breadboard)
+
+# Location of the CORGI library.
+$(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_CORGI_DIR,\
+    $(FPL_ROOT)/corgi)
+
+# Location of the CORGI component library.
+$(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_CORGI_COMPONENT_LIBRARY_DIR,\
+    $(DEPENDENCIES_CORGI_DIR)/component_library)
+
 # Location of the Flatbuffers library.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_FLATBUFFERS_DIR,\
     $(FPL_ROOT)/flatbuffers)
+
+# Location of the flatui library.
+$(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_FLATUI_DIR,\
+    $(FPL_ROOT)/flatui)
+
+# Location of the fplbase library.
+$(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_FPLBASE_DIR,\
+    $(FPL_ROOT)/fplbase)
 
 # Location of the fplutil library.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_FPLUTIL_DIR,\
@@ -75,18 +125,49 @@ $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_MATHFU_DIR,\
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_MOTIVE_DIR,\
     $(FPL_ROOT)/motive)
 
-# Location of the fplbase library.
-$(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_FPLBASE_DIR,\
-    $(FPL_ROOT)/fplbase)
+# Location of the Pindrop library.
+$(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_PINDROP_DIR,\
+    $(FPL_ROOT)/pindrop)
 
-# Location of the flatui library.
-$(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_FLATUI_DIR,\
-    $(FPL_ROOT)/flatui)
+# Location of the Scene Lab library.
+$(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_SCENE_LAB_DIR,\
+    $(FPL_ROOT)/scene_lab)
 
 # Location of the SDL library.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_SDL_DIR,\
     $(THIRD_PARTY_ROOT)/SDL2 \
     $(THIRD_PARTY_ROOT)/sdl)
+
+# Location of the SDL Mixer library.
+$(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_SDL_MIXER_DIR,\
+    $(THIRD_PARTY_ROOT)/SDL_mixer \
+    $(THIRD_PARTY_ROOT)/sdl_mixer)
+
+# Location of the Ogg library relative to the SDL Mixer library.
+# Must come after SDL Mixer.
+$(call fplutil_set_to_first_relative_path_that_exists,\
+    DEPENDENCIES_LIBOGG_REL_SDL_MIXER,$(DEPENDENCIES_SDL_MIXER_DIR),\
+    ../libogg \
+    external/libogg-1.3.1)
+
+# Location of the Tremor library relative to the SDL Mixer library.
+# Must come after SDL Mixer.
+$(call fplutil_set_to_first_relative_path_that_exists,\
+    DEPENDENCIES_TREMOR_REL_SDL_MIXER,$(DEPENDENCIES_SDL_MIXER_DIR),\
+    ../tremor \
+    external/libvorbisidec-1.2.1)
+
+# Location of the Vorbis library relative to the SDL Mixer library.
+# Must come after SDL Mixer.
+$(call fplutil_set_to_first_relative_path_that_exists,\
+    DEPENDENCIES_LIBVORBIS_REL_SDL_MIXER,$(DEPENDENCIES_SDL_MIXER_DIR),\
+    ../libvorbis \
+    external/libvorbis-1.3.3)
+
+# Location of the Bullet physics library.
+$(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_BULLETPHYSICS_DIR,\
+    $(THIRD_PARTY_ROOT)/bulletphysics \
+    $(THIRD_PARTY_ROOT)/bullet)
 
 # Location of the Freetype library.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_FREETYPE_DIR,\
@@ -154,6 +235,14 @@ $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_GTEST_DIR,\
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_GMOCK_DIR,\
     ${THIRD_PARTY_ROOT}/googletest/googlemock \
     ${THIRD_PARTY_ROOT}/gmock)
+
+# Some internal libraries have their #include paths relative to the root
+# of the internal directory tree.
+# We compensate by adding the root of the internal directory tree to the
+# include path, in this situation.
+ifneq ("$(wildcard ${THIRD_PARTY_ROOT}/../third_party)","")
+    FPL_ABSOLUTE_INCLUDE_DIR := ${THIRD_PARTY_ROOT}/..
+endif
 
 ifeq (,$(DETERMINED_DEPENDENCY_DIRS))
 DETERMINED_DEPENDENCY_DIRS:=1
