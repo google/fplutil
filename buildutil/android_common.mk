@@ -55,7 +55,7 @@ fplutil_set_to_first_relative_path_that_exists = \
 #   $(3) extension of files
 fplutil_all_files_relative_to_path_in_subdirectory = \
   $(call fplutil_make_relative_path,$(1),\
-    $(wildcard $(1)/$(2)/**/*.$(3)))
+    $(wildcard $(1)/$(2)/*.$(3)) $(wildcard $(1)/$(2)/**/*.$(3)))
 
 
 # Flags to set in all compilations.
@@ -93,12 +93,18 @@ $(call fplutil_set_to_first_path_that_exists,PREBUILTS_ROOT,\
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_BREADBOARD_DIR,\
     $(FPL_ROOT)/breadboard)
 
+# Location of the breadboard module library's module collection.
+$(call fplutil_set_to_first_path_that_exists,\
+    DEPENDENCIES_BREADBOARD_MODULE_LIBRARY_DIR,\
+    $(DEPENDENCIES_BREADBOARD_DIR)/module_library)
+
 # Location of the CORGI library.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_CORGI_DIR,\
     $(FPL_ROOT)/corgi)
 
 # Location of the CORGI component library.
-$(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_CORGI_COMPONENT_LIBRARY_DIR,\
+$(call fplutil_set_to_first_path_that_exists,\
+    DEPENDENCIES_CORGI_COMPONENT_LIBRARY_DIR,\
     $(DEPENDENCIES_CORGI_DIR)/component_library)
 
 # Location of the Flatbuffers library.
@@ -173,6 +179,17 @@ $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_BULLETPHYSICS_DIR,\
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_FREETYPE_DIR,\
     $(THIRD_PARTY_ROOT)/freetype2/freetype-2.6.1 \
     $(THIRD_PARTY_ROOT)/freetype)
+
+# Location of the Firebase C++ library.
+# You can specify FIREBASE_SDK in the environment.
+$(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_FIREBASE_DIR,\
+    $(FIREBASE_SDK) \
+    $(PREBUILTS_ROOT)/cpp-firebase/firebase_cpp_sdk)
+
+# Location of the Google Play Games library.
+$(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_GPG_DIR,\
+    $(GPG_SDK) \
+    $(PREBUILTS_ROOT)/gpg-cpp-sdk/android)
 
 # Location of the Gumbo library.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_GUMBO_DIR,\

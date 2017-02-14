@@ -85,6 +85,8 @@ function(set_common_build_variables)
                          "${fplutil_parent_dir}/../third_party" REALPATH)
   get_filename_component(external_dir
                          "${dir_of_this_file}/../../../../../external" REALPATH)
+  get_filename_component(prebuilts_dir
+                         "${dir_of_this_file}/../../../../../prebuilts" REALPATH)
 
   # Set and cache fpl_root.
   # This is the directory where the FPL projects are kept.
@@ -100,6 +102,14 @@ function(set_common_build_variables)
     set_to_first_path_that_exists(third_party_root
         "${dependencies_root};${github_dir};${piper_dir};${external_dir};${fpl_root}"
         "Directory containing non-FPL projects.")
+  endif()
+
+  # Set and cache firebase_sdk_dir.
+  # You can specify the SDK location with the environment variable FIREBASE_SDK.
+  if(NOT DEFINED firebase_sdk_dir)
+    set_to_first_path_that_exists(firebase_sdk_dir
+        "$ENV{FIREBASE_SDK};${prebuilts_dir}/cpp-firebase/firebase_cpp_sdk;"
+        "Directory containing Firebase C++ SDK projects.")
   endif()
 
   # fpl common module directory variables
@@ -193,6 +203,40 @@ function(set_common_build_variables)
   set_to_first_path_that_exists(dependencies_webp_distr_dir
       "${third_party_root}/webp;${third_party_root}/libwebp/v0_2/"
       "Directory containing the Webp distribution.")
+
+  if (EXISTS ${firebase_sdk_dir} AND NOT TARGET firebase_app)
+    add_library(firebase_app STATIC IMPORTED)
+    add_library(firebase_admob STATIC IMPORTED)
+    add_library(firebase_analytics STATIC IMPORTED)
+    add_library(firebase_invites STATIC IMPORTED)
+    add_library(firebase_messaging STATIC IMPORTED)
+    add_library(firebase_config STATIC IMPORTED)
+
+    # Get directory of Firebase SDK libraries.
+    if (WIN32)
+      set(firebase_platform_type "windows")
+    elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+      set(firebase_platform_type "darwin")
+    elseif (UNIX)
+      set(firebase_platform_type "linux")
+    else()
+      set(firebase_platform_type "ERROR__UNSUPPORTED_FIREBASE_PLATFORM")
+    endif()
+    set(firebase_lib_dir "${firebase_sdk_dir}/libs/${firebase_platform_type}")
+
+    set_target_properties(firebase_app PROPERTIES
+        IMPORTED_LOCATION ${firebase_lib_dir}/libapp.a)
+    set_target_properties(firebase_admob PROPERTIES
+        IMPORTED_LOCATION ${firebase_lib_dir}/libadmob.a)
+    set_target_properties(firebase_analytics PROPERTIES
+        IMPORTED_LOCATION ${firebase_lib_dir}/libanalytics.a)
+    set_target_properties(firebase_invites PROPERTIES
+        IMPORTED_LOCATION ${firebase_lib_dir}/libinvites.a)
+    set_target_properties(firebase_messaging PROPERTIES
+        IMPORTED_LOCATION ${firebase_lib_dir}/libmessaging.a)
+    set_target_properties(firebase_config PROPERTIES
+        IMPORTED_LOCATION ${firebase_lib_dir}/libremote_config.a)
+  endif()
 
   # Set up compiler flags
   # Detect clang
