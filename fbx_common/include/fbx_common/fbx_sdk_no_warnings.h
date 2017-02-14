@@ -16,22 +16,32 @@
 #define FPLUTIL_FBX_SDK_NO_WARNINGS
 
 // Suppress warnings in external header.
-#ifdef _MSC_VER
-#pragma warning(push)            // for Visual Studio
-#pragma warning(disable : 4068)  // "unknown pragma" -- for Visual Studio
-#endif                           // _MSC_VER
+#if defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wignored-qualifiers"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wpedantic"
 #pragma GCC diagnostic ignored "-Wunused-value"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#endif  // defined(__GNUC__)
+
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wignored-qualifiers"
+#pragma clang diagnostic ignored "-Wunused-parameter"
+#pragma clang diagnostic ignored "-Wpedantic"
+#pragma clang diagnostic ignored "-Wunused-value"
+#pragma clang diagnostic ignored "-Wmissing-field-initializers"
+#endif  // defined(__clang__)
 
 #include <fbxsdk.h>
 
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif  // defined(__clang__)
+
+#if defined(__GNUC__)
 #pragma GCC diagnostic pop
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif  // _MSC_VER
+#endif  // defined(__GNUC__)
 
 #endif  // FPLUTIL_FBX_SDK_NO_WARNINGS
