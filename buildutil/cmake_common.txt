@@ -52,6 +52,18 @@ function(set_to_first_path_that_exists var paths description)
   set(${var} "path_not_found_to_${var}" CACHE PATH description)
 endfunction(set_to_first_path_that_exists)
 
+# Define them centrally, since they're used in multiple places.
+# Note that the Firebase C++ SDK currently only ships with libraries built
+# against the statically-linked release C-runtime (i.e. option /MT), in MSVC.
+# So we force all the code to be built with /MT for now (see b/35359191).
+# We also only build release in Zooshi in Visual Studio, but disable
+# optimizations to compromise. We should change /Od back to /O2 for release
+# builds once debug libraries are available.
+set(MSVC_FLAGS "/MP")
+set(MSVC_FLAGS_DEBUG "/D_DEBUG /Zi /Ob0 /Od /RTC1 /MTd")
+set(MSVC_FLAGS_RELEASE "/D NDEBUG /Zi /Ob0 /Od /RTC1 /MT") #"/Od /Zi /Ob0 /D NDEBUG /MT")
+set(MSVC_DEFINES "-DNOMINMAX -D_HAS_EXCEPTIONS=0 -D_CRT_SECURE_NO_WARNINGS")
+
 # set_common_build_variables()  set up variables of
 #    third_party_root
 #    fpl_root
@@ -250,14 +262,21 @@ function(set_common_build_variables)
     #    C4065: switch statement contains 'default' but no 'case' labels
     #    C4127: conditional expression is constant
     #    C4355: 'this' used in base member initializer list
-    #    C4577: 'noexcept' used with no exception handling mode specified.
+    #    C4577: 'noexcept' used with no exception handling mode specified
     #    C4201: nonstandard extension used: nameless struct/union
-    set(C_FLAGS_WARNINGS "/W4 /WX /wd4065 /wd4127 /wd4355 /wd4577 /wd4201")
+    #    C4275: non dll-interface class used as base for dll-interface class
+    #    C4481: nonstandard extension used: override specifier 'override'
+    set(C_FLAGS_WARNINGS "/W4 /WX /wd4065 /wd4127 /wd4355 /wd4577 /wd4201 /wd4275 /wd4481")
     if((${ARGC} GREATER 0) AND (NOT "${ARGV0}" STREQUAL ""))
       set(C_FLAGS_WARNINGS "${C_FLAGS_WARNINGS} ${ARGV0}")
     endif()
-    set(CMAKE_CXX_FLAGS "/MP")
-    add_definitions(-DNOMINMAX -D_HAS_EXCEPTIONS=0 -D_CRT_SECURE_NO_WARNINGS)
+    set(CMAKE_C_FLAGS "${MSVC_FLAGS}")
+    set(CMAKE_C_FLAGS_DEBUG "${MSVC_FLAGS_DEBUG}")
+    set(CMAKE_C_FLAGS_RELEASE "${MSVC_FLAGS_RELEASE}")
+    set(CMAKE_CXX_FLAGS "${MSVC_FLAGS}")
+    set(CMAKE_CXX_FLAGS_DEBUG "${MSVC_FLAGS_DEBUG}")
+    set(CMAKE_CXX_FLAGS_RELEASE "${MSVC_FLAGS_RELEASE}")
+    add_definitions("${MSVC_DEFINES}")
   elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR using_clangxx)
     add_definitions(-g)
     append_flags(CMAKE_CXX_FLAGS
@@ -270,10 +289,13 @@ function(set_common_build_variables)
   append_flags(CMAKE_C_FLAGS "${C_FLAGS_WARNINGS}")
   append_flags(CMAKE_CXX_FLAGS "${C_FLAGS_WARNINGS}")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
-
-  set(CMAKE_CXX_FLAGS_DEFAULT "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+  set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}" PARENT_SCOPE)
+  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}" PARENT_SCOPE)
   set(CMAKE_C_FLAGS_DEFAULT "${CMAKE_C_FLAGS}" PARENT_SCOPE)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}" PARENT_SCOPE)
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}" PARENT_SCOPE)
+  set(CMAKE_CXX_FLAGS_DEFAULT "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
 endfunction(set_common_build_variables)
 
 # External code should be compiled with these compiler options.
@@ -283,7 +305,11 @@ function(set_compiler_flags_for_external_libraries)
   # Save current compiler flags so that we can restore them in
   # restore_compiler_flags()
   set(SAVED_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+  set(SAVED_CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}" PARENT_SCOPE)
+  set(SAVED_CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}" PARENT_SCOPE)
   set(SAVED_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
+  set(SAVED_CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}" PARENT_SCOPE)
+  set(SAVED_CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}" PARENT_SCOPE)
 
   # Detect clang
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL Clang)
@@ -296,9 +322,13 @@ function(set_compiler_flags_for_external_libraries)
     set(CMAKE_CXX_FLAGS "-std=c++0x -w -Wno-deprecated-declarations" PARENT_SCOPE)
     set(CMAKE_C_FLAGS "-w" PARENT_SCOPE)
   elseif(MSVC)
-    set(CMAKE_CXX_FLAGS "/W0 /MP" PARENT_SCOPE)
-   set(CMAKE_C_FLAGS "/W0 /MP" PARENT_SCOPE)
-    add_definitions(-DNOMINMAX -D_HAS_EXCEPTIONS=0 -D_CRT_SECURE_NO_WARNINGS)
+    set(CMAKE_C_FLAGS "${MSVC_FLAGS}" PARENT_SCOPE)
+    set(CMAKE_C_FLAGS_DEBUG "${MSVC_FLAGS_DEBUG}" PARENT_SCOPE)
+    set(CMAKE_C_FLAGS_RELEASE "${MSVC_FLAGS_RELEASE}" PARENT_SCOPE)
+    set(CMAKE_CXX_FLAGS "${MSVC_FLAGS}" PARENT_SCOPE)
+    set(CMAKE_CXX_FLAGS_DEBUG "${MSVC_FLAGS_DEBUG}" PARENT_SCOPE)
+    set(CMAKE_CXX_FLAGS_RELEASE "${MSVC_FLAGS_RELEASE}" PARENT_SCOPE)
+    add_definitions("${MSVC_DEFINES}")
   endif()
 endfunction(set_compiler_flags_for_external_libraries)
 
@@ -306,6 +336,10 @@ endfunction(set_compiler_flags_for_external_libraries)
 # set_compiler_flags_for_external_libraries() was called.
 function(restore_compiler_flags)
   set(CMAKE_CXX_FLAGS "${SAVED_CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+  set(CMAKE_CXX_FLAGS_DEBUG "${SAVED_CMAKE_CXX_FLAGS_DEBUG}" PARENT_SCOPE)
+  set(CMAKE_CXX_FLAGS_RELEASE "${SAVED_CMAKE_CXX_FLAGS_RELEASE}" PARENT_SCOPE)
   set(CMAKE_C_FLAGS "${SAVED_CMAKE_C_FLAGS}" PARENT_SCOPE)
+  set(CMAKE_C_FLAGS_DEBUG "${SAVED_CMAKE_C_FLAGS_DEBUG}" PARENT_SCOPE)
+  set(CMAKE_C_FLAGS_RELEASE "${SAVED_CMAKE_C_FLAGS_RELEASE}" PARENT_SCOPE)
 endfunction()
 
