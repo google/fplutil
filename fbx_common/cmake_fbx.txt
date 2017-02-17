@@ -54,8 +54,14 @@ function(fbx_compile_options)
 
   # Set the compile and link flags in the calling scope.
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
+  set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}" PARENT_SCOPE)
+  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}" PARENT_SCOPE)
+  set(CMAKE_C_FLAGS_DEFAULT "${CMAKE_C_FLAGS}" PARENT_SCOPE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}" PARENT_SCOPE)
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}" PARENT_SCOPE)
   set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS}" PARENT_SCOPE)
+  set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE}" PARENT_SCOPE)
 endfunction()
 
 
@@ -115,11 +121,11 @@ function(fbx_configure_target target)
 
   # Prefer the static library '.a' over the sharedlibrary '.so'.
   find_library(fbx_sdk_lib_release
-    NAMES libfbxsdk.a fbxsdk libfbxsdk-md.lib
+    NAMES libfbxsdk.a fbxsdk libfbxsdk-mt.lib
     PATHS ${fbx_sdk_lib_dir}/release)
 
   find_library(fbx_sdk_lib_debug
-    NAMES libfbxsdk.a fbxsdk libfbxsdk-md.lib
+    NAMES libfbxsdk.a fbxsdk libfbxsdk-mt.lib
     PATHS ${fbx_sdk_lib_dir}/debug)
 
   set(fbx_sdk_lib debug ${fbx_sdk_lib_debug} optimized ${fbx_sdk_lib_release})
