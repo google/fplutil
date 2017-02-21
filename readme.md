@@ -1,4 +1,4 @@
-fplutil Version 1.0.1
+fplutil Version 1.1.0
 =====================
 
 # fplutil    {#fplutil_readme}
