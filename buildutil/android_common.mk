@@ -184,6 +184,7 @@ $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_FREETYPE_DIR,\
 # You can specify FIREBASE_SDK in the environment.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_FIREBASE_DIR,\
     $(FIREBASE_SDK) \
+    $(PREBUILTS_ROOT)/firebase_cpp_sdk)
     $(PREBUILTS_ROOT)/cpp-firebase/firebase_cpp_sdk)
 
 # Location of the Google Play Games library.
