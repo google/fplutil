@@ -283,7 +283,7 @@ function(set_common_build_variables)
   elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR using_clangxx)
     add_definitions(-g)
     append_flags(CMAKE_CXX_FLAGS
-            "-std=c++0x -Wall -pedantic -Werror -Wextra -Wno-unused-function")
+            "-std=c++0x -Wall -pedantic -Werror -Wextra -Wno-unused-function -Wno-deprecated-declarations")
     if(${ARGC} GREATER 1)
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARGV1}")
     endif()
