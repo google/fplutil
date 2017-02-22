@@ -94,7 +94,7 @@ function(set_common_build_variables)
                          "${dir_of_this_file}/../../" REALPATH)
   get_filename_component(libs_dir
                          "${fplutil_parent_dir}/../libs" REALPATH)
-  get_filename_component(piper_dir
+  get_filename_component(internal_dir
                          "${fplutil_parent_dir}/../third_party" REALPATH)
   get_filename_component(external_dir
                          "${dir_of_this_file}/../../../../../external" REALPATH)
@@ -105,7 +105,7 @@ function(set_common_build_variables)
   # This is the directory where the FPL projects are kept.
   if(NOT DEFINED fpl_root)
     set_to_first_path_that_exists(fpl_root
-        "${dependencies_root};${github_dir};${libs_dir};${piper_dir};${fplutil_parent_dir}"
+        "${dependencies_root};${github_dir};${libs_dir};${internal_dir};${fplutil_parent_dir}"
         "Directory containing FPL projects.")
   endif()
 
@@ -113,7 +113,7 @@ function(set_common_build_variables)
   # This is the directory where non-FPL projects are kept.
   if(NOT DEFINED third_party_root)
     set_to_first_path_that_exists(third_party_root
-        "${dependencies_root};${github_dir};${piper_dir};${external_dir};${fpl_root}"
+        "${dependencies_root};${github_dir};${internal_dir};${external_dir};${fpl_root}"
         "Directory containing non-FPL projects.")
   endif()
 
