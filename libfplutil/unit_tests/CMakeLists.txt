@@ -20,11 +20,16 @@ option(
 
 # Import gtest if it's not already present.
 if(NOT TARGET gtest)
+  set_compiler_flags_for_external_libraries()
   add_subdirectory(${dependencies_gtest_dir} googletest)
+  restore_compiler_flags()
 endif()
 
 # Set some variables describing file locations.
 set(GUNIT_INCDIR "${dependencies_gtest_dir}/include")
+if(EXISTS "${dependencies_gtest_dir}/../../third_party")
+  set(GUNIT_HACK_INCDIR "${dependencies_gtest_dir}/../..")
+endif()
 set(GTEST_LIBDIR "${dependencies_gtest_dir}")
 
 # Include helper functions and macros used by Google Test.
@@ -38,6 +43,7 @@ string(REPLACE "-Wextra" "" cxx_default "${cxx_default}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 
 include_directories(${GUNIT_INCDIR}
+                    ${GUNIT_HACK_INCDIR}
                     ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Common libraries for tests.

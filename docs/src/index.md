@@ -46,9 +46,9 @@ Before getting started, make sure all
   [android_ndk_perf]: @ref android_ndk_perf
   [build_all_android]: @ref build_all_android
   [buildutil]: @ref buildutil_overview
-  [fplutil Google Group]: http://group.google.com/group/fplutil
+  [fplutil Google Group]: http://groups.google.com/group/fplutil
   [fplutil Issues Tracker]: http://github.com/google/fplutil/issues
   [fplutil]: index.html
   [libfplutil]: @ref libfplutil_overview
-  [stackoverflow.com]: http://www.stackoverflow.com
+  [stackoverflow.com]: http://stackoverflow.com/search?q=fplutil
   [Hello World]: http://en.wikipedia.org/wiki/%22Hello,_world!%22_program

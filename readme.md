@@ -1,4 +1,4 @@
-fplutil Version 1.0.1
+fplutil Version 1.1.0
 =====================
 
 # fplutil    {#fplutil_readme}
@@ -46,9 +46,9 @@ the version string but we would appreciate if you would leave it in.
   [Android]: http://www.android.com
   [Linux]: http://en.m.wikipedia.org/wiki/Linux
   [Python]: http://www.python.org
-  [fplutil Google Group]: http://group.google.com/group/fplutil
+  [fplutil Google Group]: https://groups.google.com/forum/#!forum/fplutil
   [fplutil Issues Tracker]: http://github.com/google/fplutil/issues
-  [stackoverflow.com]: http://www.stackoverflow.com
+  [stackoverflow.com]: http://stackoverflow.com/search?q=fplutil
   [landing page]: http://google.github.io/fplutil
   [Hello World]: http://en.wikipedia.org/wiki/%22Hello,_world!%22_program
   [CONTRIBUTING]: http://github.com/google/fplutil/blob/master/CONTRIBUTING

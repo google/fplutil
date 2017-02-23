@@ -15,15 +15,6 @@ cmake_minimum_required(VERSION 2.8.12)
 
 project(fbx_common)
 
-# Configure fpl_root
-if(NOT DEFINED fpl_root)
-  get_filename_component(fpl_root "${CMAKE_CURRENT_LIST_DIR}/../../../libs"
-       REALPATH)
-  if(NOT EXISTS "${fpl_root}")
-    set(fpl_root "${CMAKE_CURRENT_SOURCE_DIR}/../dependencies")
-  endif ()
-endif()
-
 # Include common setup for FBX projects.
 include("cmake_fbx.txt")
 

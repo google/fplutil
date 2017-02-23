@@ -218,6 +218,26 @@ class Package(object):
       output_lines.append('  %s: %s' % (variable, getattr(self, variable)))
     return os.linesep.join(output_lines)
 
+  @property
+  def working_copy(self):
+    """Get the working copy directory of this package.
+
+    Returns:
+      Working copy directory.
+    """
+    return self._working_copy
+
+  @working_copy.setter
+  def working_copy(self, value):
+    """Set the working copy directory for this package.
+
+    Args:
+      value: Directory to use as the working copy.
+    """
+    self._working_copy = value
+    for dependency in self.dependencies:
+      dependency.working_copy = value
+
   def allow_dryrun(self, dryrun):
     """Whether to enable dryruns for this project.
 
@@ -916,6 +936,59 @@ def display_package(package, logging_callable):
     logging_callable(str(dep))
 
 
+def push_package(package, working_copy, remote_name, master_branch,
+                 local_branch, docs_branch, push_docs, dryrun,
+                 leave_working_copy, push_dependencies):
+  """Push specified package to a remote git repository.
+
+  Args:
+    package: Package to push to a remote.
+    working_copy: Local directory to store git repositories.
+    local_branch: Name of the local branch to synchronize.
+    master_branch: Branch to push to on the remote.
+    docs_branch: Documentation branch on the remote.
+    push_docs: Whether to push documentation.
+    dryrun: Whether dry run mode is enabled.
+    leave_working_copy: Whether to leave the working copy for inspection.
+    push_dependencies: Push all dependencies of this package which have their
+      "push" attribute set to 1.
+  """
+  if push_dependencies:
+    for dependency in package.dependencies:
+      # Dependencies in this package that reference a different branch in the
+      # same repo are pushed by package.push_git_project_and_dependencies()
+      # This ensures the master / develop branch setup only applies to
+      # repositories that differ from this package.
+      if dependency.push and dependency.url != package.url:
+        push_package(dependency, working_copy, remote_name, master_branch,
+                     local_branch, docs_branch, push_docs, dryrun,
+                     leave_working_copy, push_dependencies)
+
+  # Create a separate working directory for each project.
+  working_copy = os.path.join(working_copy, package.name)
+  os.mkdir(working_copy)
+  package.subprocess_runner.check_call(['git', 'init'], cwd=working_copy)
+  package.working_copy = working_copy
+
+  # Download git repos and update.
+  try:
+    logging.info('***** Updating %s *****', package.name)
+    logging.info('===== Adding Remotes ====')
+    package.add_all_git_remotes(remote_name)
+    display_package(package, logging.debug)
+    logging.info('===== Fetching Remotes ====')
+    package.fetch_all_remotes()
+    logging.info('===== Pushing Dependencies ====')
+    package.push_git_project_and_dependencies(local_branch, dryrun)
+    logging.info('===== Updating Master ====')
+    package.update_master(local_branch, master_branch, dryrun)
+    logging.info('===== Updating Docs ====')
+    package.update_docs(local_branch, docs_branch, dryrun or not push_docs)
+  finally:
+    if not leave_working_copy:
+      package.delete_temporary_git_objects()
+
+
 def parse_arguments(project_dir=None, config_json=None):
   """Parse arguments for this script.
 
@@ -963,11 +1036,18 @@ def parse_arguments(project_dir=None, config_json=None):
                       help=('Create a mirror in the specified directory for '
                             'testing.  NOTE: This disables all git publishing '
                             'operations.'))
+  parser.add_argument('-D', '--push-dep-repos',
+                      help=('Push all depedencies of the selected package. '
+                            'Only dependencies with the push flag are '
+                            'updated.  All flags applied to this package '
+                            'e.g --push-docs etc. apply to the dependencies '
+                            'when they\'re pushed.'),
+                      action='store_true')
   return parser.parse_args()
 
 
 def main(args=None):
-  """Push this package and its' dependencies to a remote git repositories.
+  """Push this package and its' dependencies to remote git repositories.
 
   Gather the git repository of this package and its' dependencies, specified
   by a JSON configuration file, and push the result to a remote git repository.
@@ -1005,7 +1085,6 @@ def main(args=None):
   elif args.verbose or args.leave_working_copy:
     logging.info('git staging area in: %s', working_copy)
   try:
-    subprocess_runner.check_call(['git', 'init'], cwd=working_copy)
     try:
       config_path = os.path.relpath(args.config_json, args.package_dir)
       package = Package.parse_json(read_config(args.config_json),
@@ -1020,22 +1099,9 @@ def main(args=None):
       package.create_mirror(args.create_mirror)
       return 0
 
-    try:
-      logging.info('===== Adding Remotes ====')
-      package.add_all_git_remotes(args.remote_name)
-      display_package(package, logging.debug)
-      logging.info('===== Fetching Remotes ====')
-      package.fetch_all_remotes()
-      logging.info('===== Pushing Dependencies ====')
-      package.push_git_project_and_dependencies(args.local_branch, args.dryrun)
-      logging.info('===== Updating Master ====')
-      package.update_master(args.local_branch, args.master_branch, args.dryrun)
-      logging.info('===== Updating Docs ====')
-      package.update_docs(args.local_branch, args.docs_branch,
-                          args.dryrun or not args.push_docs)
-    finally:
-      if not args.leave_working_copy:
-        package.delete_temporary_git_objects()
+    push_package(package, working_copy, args.remote_name, args.master_branch,
+                 args.local_branch, args.docs_branch, args.push_docs,
+                 args.dryrun, args.leave_working_copy, args.push_dep_repos)
   finally:
     if not args.leave_working_copy and not args.staging_area:
       shutil.rmtree(working_copy)

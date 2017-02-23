@@ -29,9 +29,45 @@ endmacro(append_flags)
 # directory of the calling file.
 set(dir_of_this_file ${CMAKE_CURRENT_LIST_DIR})
 
+# Some internal libraries have their #include paths relative to the root
+# of the internal directory tree. This makes compilation via cmake difficult.
+# We compensate by adding the root of the internal directory tree to the
+# include path, in this situation.
+function(fpl_absolute_include_dir dir)
+  if(EXISTS "${dir}/../../third_party")
+    include_directories("${dir}/../..")
+  endif()
+endfunction(fpl_absolute_include_dir)
+
+# Sets and caches `var` to the first path in 'paths' that exists.
+# If none of the paths are found, sets `var` to an error value of
+# "path_not_found".
+function(set_to_first_path_that_exists var paths description)
+  foreach(path ${paths})
+    if(EXISTS "${path}")
+      set(${var} "${path}" CACHE PATH description)
+      return()
+    endif()
+  endforeach(path)
+  set(${var} "path_not_found_to_${var}" CACHE PATH description)
+endfunction(set_to_first_path_that_exists)
+
+# Define them centrally, since they're used in multiple places.
+# Note that the Firebase C++ SDK currently only ships with libraries built
+# against the statically-linked release C-runtime (i.e. option /MT), in MSVC.
+# So we force all the code to be built with /MT for now (see b/35359191).
+# We also only build release in Zooshi in Visual Studio, but disable
+# optimizations to compromise. We should change /Od back to /O2 for release
+# builds once debug libraries are available.
+set(MSVC_FLAGS "/MP")
+set(MSVC_FLAGS_DEBUG "/D_DEBUG /Zi /Ob0 /Od /RTC1 /MTd")
+set(MSVC_FLAGS_RELEASE "/Zi /Ob0 /Od /RTC1 /MT")
+set(MSVC_LINKER_FLAGS_RELEASE "/debug /incremental")
+set(MSVC_DEFINES "-DNOMINMAX -D_HAS_EXCEPTIONS=0 -D_CRT_SECURE_NO_WARNINGS")
+
 # set_common_build_variables()  set up variables of
 #    third_party_root
-#    dependencies_root
+#    fpl_root
 #    fpl and third party dependency module path
 #    CMAKE_C_FLAGS
 #    CMAKE_CXX_FLAGS
@@ -45,21 +81,48 @@ set(dir_of_this_file ${CMAKE_CURRENT_LIST_DIR})
 #       if using others, -Wno-used-parameters is added to
 #                        CMAKE_C/CXX_FLAGS
 function(set_common_build_variables)
-  # Directory which contains the source for 3rd party libraries.
-  if(NOT DEFINED third_party_root)
-    get_filename_component(third_party_root
-        "${dir_of_this_file}/../../../../../external" REALPATH)
+  # If we clone from GitHub, the dependencies will be cloned (via submodules)
+  # into a "dependencies" directory.
+  get_filename_component(github_dir
+                         "${CMAKE_CURRENT_SOURCE_DIR}/dependencies" REALPATH)
+
+  # Internally, there are a couple places where we might store our dependencies.
+  # For convenience, we hard-code them here so that we don't have to type,
+  #    -Ddependencies_root=my_directory_name
+  # on the cmake command-line every time.
+  get_filename_component(fplutil_parent_dir
+                         "${dir_of_this_file}/../../" REALPATH)
+  get_filename_component(libs_dir
+                         "${fplutil_parent_dir}/../libs" REALPATH)
+  get_filename_component(internal_dir
+                         "${fplutil_parent_dir}/../third_party" REALPATH)
+  get_filename_component(external_dir
+                         "${dir_of_this_file}/../../../../../external" REALPATH)
+  get_filename_component(prebuilts_dir
+                         "${dir_of_this_file}/../../../../../prebuilts" REALPATH)
+
+  # Set and cache fpl_root.
+  # This is the directory where the FPL projects are kept.
+  if(NOT DEFINED fpl_root)
+    set_to_first_path_that_exists(fpl_root
+        "${dependencies_root};${github_dir};${libs_dir};${internal_dir};${fplutil_parent_dir}"
+        "Directory containing FPL projects.")
   endif()
 
-  # If the dependencies directory exists, assume this is the root directory for
-  # all libraries required by this project.
-  if(NOT DEFINED dependencies_root)
-    set(dependencies_root "${CMAKE_CURRENT_SOURCE_DIR}/dependencies" CACHE PATH
-        "Directory holding the dependencies pulled from github.")
-    if(EXISTS "${dependencies_root}")
-      set(third_party_root "${dependencies_root}" CACHE PATH
-          "Directory holding third party libraries.")
-    endif()
+  # Set and cache third_party_root.
+  # This is the directory where non-FPL projects are kept.
+  if(NOT DEFINED third_party_root)
+    set_to_first_path_that_exists(third_party_root
+        "${dependencies_root};${github_dir};${internal_dir};${external_dir};${fpl_root}"
+        "Directory containing non-FPL projects.")
+  endif()
+
+  # Set and cache firebase_sdk_dir.
+  # You can specify the SDK location with the environment variable FIREBASE_SDK.
+  if(NOT DEFINED firebase_sdk_dir)
+    set_to_first_path_that_exists(firebase_sdk_dir
+        "$ENV{FIREBASE_SDK};${prebuilts_dir}/cpp-firebase/firebase_cpp_sdk;"
+        "Directory containing Firebase C++ SDK projects.")
   endif()
 
   # fpl common module directory variables
@@ -94,39 +157,99 @@ function(set_common_build_variables)
   set(dependencies_scene_lab_dir "${fpl_root}/scene_lab"
       CACHE PATH "Directory containing the Scene Lab library.")
 
-  # Depending on googletest version, the gtest directory may be nested under
-  # googletest/googletest
-  if(EXISTS "${fpl_root}/googletest/googletest")
-    set(dependencies_gtest_dir "${fpl_root}/googletest/googletest"
-    CACHE PATH "Directory containing the GoogleTest library.")
-  else()
-    set(dependencies_gtest_dir "${fpl_root}/googletest"
-    CACHE PATH "Directory containing the GoogleTest library.")
-  endif()
-
   # third party module directory variables
-  set(dependencies_bulletphysics_distr_dir "${third_party_root}/bulletphysics"
-      CACHE PATH "Directory containing the Bullet Physics distribution.")
-  set(dependencies_freetype_distr_dir "${third_party_root}/freetype"
-      CACHE PATH "Directory containing the freetype library.")
   set(dependencies_harfbuzz_distr_dir "${third_party_root}/harfbuzz"
       CACHE PATH "Directory containing the harfbuzz library.")
-  set(dependencies_libogg_distr_dir "${third_party_root}/libogg"
-      CACHE PATH "Directory containing the libogg library.")
   set(dependencies_libunibreak_distr_dir "${third_party_root}/libunibreak"
       CACHE PATH "Directory containing the libunibreak library.")
-  set(dependencies_libvorbis_distr_dir "${third_party_root}/libvorbis"
-      CACHE PATH "Directory containing the libvorbis library.")
-  set(dependencies_sdl_dir "${third_party_root}/sdl"
-      CACHE PATH "Directory containing the SDL library.")
-  set(dependencies_sdl_mixer_distr_dir "${third_party_root}/sdl_mixer"
-      CACHE PATH "Directory containing the SDL Mixer library.")
-  set(dependencies_stb_dir "${third_party_root}/stb"
-      CACHE PATH "Directory containing the STB library.")
   set(dependencies_vectorial_dir "${third_party_root}/vectorial"
       CACHE PATH "Directory containing the Vectorial library.")
-  set(dependencies_webp_distr_dir "${third_party_root}/webp"
-      CACHE PATH "Directory containing the Webp distribution.")
+
+  # Depending on googletest version, the gtest directory may be nested under
+  # googletest/googletest.
+  set_to_first_path_that_exists(dependencies_gtest_dir
+      "${third_party_root}/googletest/googletest;${fpl_root}/googletest/googletest;${fpl_root}/googletest;${third_party_root}/gtest"
+      "Directory containing the GoogleTest library.")
+
+  set_to_first_path_that_exists(dependencies_gmock_dir
+      "${third_party_root}/googletest/googlemock;${third_party_root}/gmock"
+      "Directory containing the GoogleTest library.")
+
+  # Likewise, other projects may have slightly different names depending
+  # on where they're sourced from.
+  set_to_first_path_that_exists(dependencies_bulletphysics_distr_dir
+      "${third_party_root}/bulletphysics;${third_party_root}/bullet"
+      "Directory containing the Bullet Physics distribution.")
+
+  set_to_first_path_that_exists(dependencies_freetype_distr_dir
+      "${third_party_root}/freetype2/freetype-2.6.1;${third_party_root}/freetype"
+      "Directory containing the freetype library.")
+
+  set_to_first_path_that_exists(dependencies_gumbo_distr_dir
+      "${third_party_root}/gumbo-parser;${third_party_root}/gumbo"
+      "Directory containing the gumbo library.")
+
+  set_to_first_path_that_exists(dependencies_hyb_distr_dir
+      "${third_party_root}/hyphenation_patterns;${third_party_root}/hyphenation-patterns"
+      "Directory containing the hyphenation patterns.")
+
+  set_to_first_path_that_exists(dependencies_sdl_dir
+      "${third_party_root}/SDL2;${third_party_root}/sdl"
+      "Directory containing the SDL library.")
+
+  set_to_first_path_that_exists(dependencies_sdl_mixer_distr_dir
+      "${third_party_root}/sdl_mixer;${third_party_root}/SDL_mixer"
+      "Directory containing the SDL Mixer library.")
+
+  set_to_first_path_that_exists(dependencies_libogg_distr_dir
+      "${third_party_root}/libogg;${dependencies_sdl_mixer_distr_dir}/external/libogg-1.3.1"
+      "Directory containing the libogg library.")
+
+  set_to_first_path_that_exists(dependencies_libvorbis_distr_dir
+      "${third_party_root}/libvorbis;${dependencies_sdl_mixer_distr_dir}/external/libvorbisidec-1.2.1"
+      "Directory containing the libvorbis library.")
+
+  set_to_first_path_that_exists(dependencies_stb_dir
+      "${third_party_root}/stb;${third_party_root}/stblib"
+      "Directory containing the STB library.")
+
+  set_to_first_path_that_exists(dependencies_webp_distr_dir
+      "${third_party_root}/webp;${third_party_root}/libwebp/v0_2/"
+      "Directory containing the Webp distribution.")
+
+  if (EXISTS ${firebase_sdk_dir} AND NOT TARGET firebase_app)
+    add_library(firebase_app STATIC IMPORTED)
+    add_library(firebase_admob STATIC IMPORTED)
+    add_library(firebase_analytics STATIC IMPORTED)
+    add_library(firebase_invites STATIC IMPORTED)
+    add_library(firebase_messaging STATIC IMPORTED)
+    add_library(firebase_config STATIC IMPORTED)
+
+    # Get directory of Firebase SDK libraries.
+    if (WIN32)
+      set(firebase_platform_type "windows")
+    elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+      set(firebase_platform_type "darwin")
+    elseif (UNIX)
+      set(firebase_platform_type "linux")
+    else()
+      set(firebase_platform_type "ERROR__UNSUPPORTED_FIREBASE_PLATFORM")
+    endif()
+    set(firebase_lib_dir "${firebase_sdk_dir}/libs/${firebase_platform_type}")
+
+    set_target_properties(firebase_app PROPERTIES
+        IMPORTED_LOCATION ${firebase_lib_dir}/libapp.a)
+    set_target_properties(firebase_admob PROPERTIES
+        IMPORTED_LOCATION ${firebase_lib_dir}/libadmob.a)
+    set_target_properties(firebase_analytics PROPERTIES
+        IMPORTED_LOCATION ${firebase_lib_dir}/libanalytics.a)
+    set_target_properties(firebase_invites PROPERTIES
+        IMPORTED_LOCATION ${firebase_lib_dir}/libinvites.a)
+    set_target_properties(firebase_messaging PROPERTIES
+        IMPORTED_LOCATION ${firebase_lib_dir}/libmessaging.a)
+    set_target_properties(firebase_config PROPERTIES
+        IMPORTED_LOCATION ${firebase_lib_dir}/libremote_config.a)
+  endif()
 
   # Set up compiler flags
   # Detect clang
@@ -140,17 +263,27 @@ function(set_common_build_variables)
     #    C4065: switch statement contains 'default' but no 'case' labels
     #    C4127: conditional expression is constant
     #    C4355: 'this' used in base member initializer list
-    #    C4577: 'noexcept' used with no exception handling mode specified.
-    set(C_FLAGS_WARNINGS "/W4 /WX /wd4065 /wd4127 /wd4355 /wd4577")
+    #    C4577: 'noexcept' used with no exception handling mode specified
+    #    C4201: nonstandard extension used: nameless struct/union
+    #    C4275: non dll-interface class used as base for dll-interface class
+    #    C4481: nonstandard extension used: override specifier 'override'
+    set(C_FLAGS_WARNINGS "/W4 /WX /wd4065 /wd4127 /wd4355 /wd4577 /wd4201 /wd4275 /wd4481")
     if((${ARGC} GREATER 0) AND (NOT "${ARGV0}" STREQUAL ""))
       set(C_FLAGS_WARNINGS "${C_FLAGS_WARNINGS} ${ARGV0}")
     endif()
-    set(CMAKE_CXX_FLAGS "/MP")
-    add_definitions(-DNOMINMAX -D_HAS_EXCEPTIONS=0 -D_CRT_SECURE_NO_WARNINGS)
+    set(CMAKE_C_FLAGS "${MSVC_FLAGS}")
+    set(CMAKE_C_FLAGS_DEBUG "${MSVC_FLAGS_DEBUG}")
+    set(CMAKE_C_FLAGS_RELEASE "${MSVC_FLAGS_RELEASE}")
+    set(CMAKE_CXX_FLAGS "${MSVC_FLAGS}")
+    set(CMAKE_CXX_FLAGS_DEBUG "${MSVC_FLAGS_DEBUG}")
+    set(CMAKE_CXX_FLAGS_RELEASE "${MSVC_FLAGS_RELEASE}")
+    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${MSVC_LINKER_FLAGS_RELEASE}")
+
+    add_definitions("${MSVC_DEFINES}")
   elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR using_clangxx)
     add_definitions(-g)
     append_flags(CMAKE_CXX_FLAGS
-            "-std=c++0x -Wall -pedantic -Werror -Wextra -Wno-unused-function")
+            "-std=c++0x -Wall -pedantic -Werror -Wextra -Wno-unused-function -Wno-deprecated-declarations")
     if(${ARGC} GREATER 1)
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARGV1}")
     endif()
@@ -159,10 +292,14 @@ function(set_common_build_variables)
   append_flags(CMAKE_C_FLAGS "${C_FLAGS_WARNINGS}")
   append_flags(CMAKE_CXX_FLAGS "${C_FLAGS_WARNINGS}")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
-
-  set(CMAKE_CXX_FLAGS_DEFAULT "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+  set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}" PARENT_SCOPE)
+  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}" PARENT_SCOPE)
   set(CMAKE_C_FLAGS_DEFAULT "${CMAKE_C_FLAGS}" PARENT_SCOPE)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}" PARENT_SCOPE)
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}" PARENT_SCOPE)
+  set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE}" PARENT_SCOPE)
+  set(CMAKE_CXX_FLAGS_DEFAULT "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
 endfunction(set_common_build_variables)
 
 # External code should be compiled with these compiler options.
@@ -172,7 +309,12 @@ function(set_compiler_flags_for_external_libraries)
   # Save current compiler flags so that we can restore them in
   # restore_compiler_flags()
   set(SAVED_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+  set(SAVED_CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}" PARENT_SCOPE)
+  set(SAVED_CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}" PARENT_SCOPE)
+  set(SAVED_CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE}" PARENT_SCOPE)
   set(SAVED_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
+  set(SAVED_CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}" PARENT_SCOPE)
+  set(SAVED_CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}" PARENT_SCOPE)
 
   # Detect clang
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL Clang)
@@ -185,9 +327,14 @@ function(set_compiler_flags_for_external_libraries)
     set(CMAKE_CXX_FLAGS "-std=c++0x -w -Wno-deprecated-declarations" PARENT_SCOPE)
     set(CMAKE_C_FLAGS "-w" PARENT_SCOPE)
   elseif(MSVC)
-    set(CMAKE_CXX_FLAGS "/W0 /MP" PARENT_SCOPE)
-   set(CMAKE_C_FLAGS "/W0 /MP" PARENT_SCOPE)
-    add_definitions(-DNOMINMAX -D_HAS_EXCEPTIONS=0 -D_CRT_SECURE_NO_WARNINGS)
+    set(CMAKE_C_FLAGS "${MSVC_FLAGS}" PARENT_SCOPE)
+    set(CMAKE_C_FLAGS_DEBUG "${MSVC_FLAGS_DEBUG}" PARENT_SCOPE)
+    set(CMAKE_C_FLAGS_RELEASE "${MSVC_FLAGS_RELEASE}" PARENT_SCOPE)
+    set(CMAKE_CXX_FLAGS "${MSVC_FLAGS}" PARENT_SCOPE)
+    set(CMAKE_CXX_FLAGS_DEBUG "${MSVC_FLAGS_DEBUG}" PARENT_SCOPE)
+    set(CMAKE_CXX_FLAGS_RELEASE "${MSVC_FLAGS_RELEASE}" PARENT_SCOPE)
+    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${MSVC_LINKER_FLAGS_RELEASE}" PARENT_SCOPE)
+    add_definitions("${MSVC_DEFINES}")
   endif()
 endfunction(set_compiler_flags_for_external_libraries)
 
@@ -195,6 +342,11 @@ endfunction(set_compiler_flags_for_external_libraries)
 # set_compiler_flags_for_external_libraries() was called.
 function(restore_compiler_flags)
   set(CMAKE_CXX_FLAGS "${SAVED_CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+  set(CMAKE_CXX_FLAGS_DEBUG "${SAVED_CMAKE_CXX_FLAGS_DEBUG}" PARENT_SCOPE)
+  set(CMAKE_CXX_FLAGS_RELEASE "${SAVED_CMAKE_CXX_FLAGS_RELEASE}" PARENT_SCOPE)
+  set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${SAVED_CMAKE_EXE_LINKER_FLAGS_RELEASE}" PARENT_SCOPE)
   set(CMAKE_C_FLAGS "${SAVED_CMAKE_C_FLAGS}" PARENT_SCOPE)
+  set(CMAKE_C_FLAGS_DEBUG "${SAVED_CMAKE_C_FLAGS_DEBUG}" PARENT_SCOPE)
+  set(CMAKE_C_FLAGS_RELEASE "${SAVED_CMAKE_C_FLAGS_RELEASE}" PARENT_SCOPE)
 endfunction()
 

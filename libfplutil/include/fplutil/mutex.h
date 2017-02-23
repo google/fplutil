@@ -69,6 +69,17 @@ class Mutex {
 #endif  // !defined(_WIN32)
   }
 
+  /// @brief Try to acquire the mutex's ownership.
+  bool TryLock() {
+#if !defined(_WIN32)
+    int ret = pthread_mutex_trylock(&mutex_);
+    return !ret;
+#else
+    auto ret = WaitForSingleObject(synchronization_object_, 0);
+    return ret == WAIT_OBJECT_0;
+#endif  // !defined(_WIN32)
+  }
+
   /// @brief Release the mutex's ownership.
   void Release() {
 #if !defined(_WIN32)
@@ -129,7 +140,7 @@ class Mutex {
 ///   \endcode
 class MutexLock {
  public:
-  /// @brief Acuires specified mutex's ownership for a life time of the object.
+  /// @brief Acquires specified mutex's ownership for a life time of the object.
   ///
   /// @param[in] mutex Mutex to aquire an ownership.
   explicit MutexLock(Mutex& mutex) : mutex_(&mutex) { mutex_->Acquire(); }
@@ -139,6 +150,44 @@ class MutexLock {
   // Copy is disallowed.
   MutexLock(const MutexLock& rhs);
   MutexLock& operator=(const MutexLock& rhs);
+
+  Mutex* mutex_;
+};
+
+/// @brief Acquires and hold a /ref Mutex, if not held by someone else.
+///
+/// Example usage:
+///   \code{.cpp}
+///   Mutex syncronization_mutex;
+///   bool MyFunctionThatRequiresSynchronization() {
+///     MutexTryLock lock;
+///     if (!lock.Try(syncronization_mutex)) return false;
+///     // ... logic ...
+///     return true;
+///   }
+///   \endcode
+class MutexTryLock {
+ public:
+  /// @brief Acquires specified mutex's ownership for a life time of the object.
+  ///
+  /// @param[in] mutex Mutex to aquire an ownership.
+  explicit MutexTryLock() : mutex_(nullptr) {}
+  ~MutexTryLock() { if (mutex_) mutex_->Release(); }
+
+  /// @brief Acuires specified mutex's ownership for a life time of the object.
+  bool Try(Mutex& mutex) {
+    assert(mutex_ == nullptr);
+    const bool locked = mutex.TryLock();
+    if (locked) {
+      mutex_ = &mutex;
+    }
+    return locked;
+  }
+
+ private:
+  // Copy is disallowed.
+  MutexTryLock(const MutexTryLock& rhs);
+  MutexTryLock& operator=(const MutexTryLock& rhs);
 
   Mutex* mutex_;
 };

@@ -21,16 +21,8 @@ option(fplutil_build_library "Build library with file utils, etc.." ON)
 # Output library files into `obj`.
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/obj)
 
-# Configure fpl_root
-if(NOT DEFINED fpl_root)
-  get_filename_component(fpl_root "${CMAKE_CURRENT_LIST_DIR}/../../../libs"
-       REALPATH)
-  if(NOT EXISTS "${fpl_root}")
-    set(fpl_root "${CMAKE_CURRENT_SOURCE_DIR}/../dependencies")
-  endif ()
-endif()
-
-include (${CMAKE_CURRENT_SOURCE_DIR}/../buildutil/cmake_common.txt)
+# Get locations of dependencies and set common build settings.
+include("${CMAKE_CURRENT_LIST_DIR}/../buildutil/cmake_common.txt")
 set_common_build_variables()
 
 # Includes for this project.
@@ -51,4 +43,3 @@ endif()
 if(fplutil_build_tests)
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/unit_tests)
 endif()
-
