@@ -5,7 +5,7 @@
 <meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.6"/>
-<title>fplutil: fplutil::MutexLock Class Reference</title>
+<title>fplutil: fplutil::MutexTryLock Class Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -170,7 +170,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
   </div>
 </div>
 <script type="text/javascript">
-$(document).ready(function(){initNavTree('classfplutil_1_1_mutex_lock.html','');});
+$(document).ready(function(){initNavTree('classfplutil_1_1_mutex_try_lock.html','');});
 </script>
 <div id="doc-content">
 <!-- window showing the filter options -->
@@ -190,33 +190,39 @@ $(document).ready(function(){initNavTree('classfplutil_1_1_mutex_lock.html','');
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
-<a href="classfplutil_1_1_mutex_lock-members.html">List of all members</a>  </div>
+<a href="classfplutil_1_1_mutex_try_lock-members.html">List of all members</a>  </div>
   <div class="headertitle">
-<div class="title">fplutil::MutexLock Class Reference</div>  </div>
+<div class="title">fplutil::MutexTryLock Class Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
 
-<p>Acquire and hold a /ref <a class="el" href="classfplutil_1_1_mutex.html" title="A simple synchronization lock. Only one thread at a time can Acquire. ">Mutex</a>, while in scope.  
- <a href="classfplutil_1_1_mutex_lock.html#details">More...</a></p>
+<p>Acquires and hold a /ref <a class="el" href="classfplutil_1_1_mutex.html" title="A simple synchronization lock. Only one thread at a time can Acquire. ">Mutex</a>, if not held by someone else.  
+ <a href="classfplutil_1_1_mutex_try_lock.html#details">More...</a></p>
 
 <p><code>#include &lt;<a class="el" href="mutex_8h_source.html">mutex.h</a>&gt;</code></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:aa39da17ce55ad8f25981e7793018eb1f"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1_mutex_lock.html#aa39da17ce55ad8f25981e7793018eb1f">MutexLock</a> (<a class="el" href="classfplutil_1_1_mutex.html">Mutex</a> &amp;mutex)</td></tr>
-<tr class="memdesc:aa39da17ce55ad8f25981e7793018eb1f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Acquires specified mutex's ownership for a life time of the object.  <a href="#aa39da17ce55ad8f25981e7793018eb1f">More...</a><br/></td></tr>
-<tr class="separator:aa39da17ce55ad8f25981e7793018eb1f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0626da3c8edf65d171b7dc03cafd07c2"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1_mutex_try_lock.html#a0626da3c8edf65d171b7dc03cafd07c2">MutexTryLock</a> ()</td></tr>
+<tr class="memdesc:a0626da3c8edf65d171b7dc03cafd07c2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Acquires specified mutex's ownership for a life time of the object.  <a href="#a0626da3c8edf65d171b7dc03cafd07c2">More...</a><br/></td></tr>
+<tr class="separator:a0626da3c8edf65d171b7dc03cafd07c2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad5b28249cf7c80ed25948f610c23050a"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ad5b28249cf7c80ed25948f610c23050a"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classfplutil_1_1_mutex_try_lock.html#ad5b28249cf7c80ed25948f610c23050a">Try</a> (<a class="el" href="classfplutil_1_1_mutex.html">Mutex</a> &amp;mutex)</td></tr>
+<tr class="memdesc:ad5b28249cf7c80ed25948f610c23050a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Acuires specified mutex's ownership for a life time of the object. <br/></td></tr>
+<tr class="separator:ad5b28249cf7c80ed25948f610c23050a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>Acquire and hold a /ref <a class="el" href="classfplutil_1_1_mutex.html" title="A simple synchronization lock. Only one thread at a time can Acquire. ">Mutex</a>, while in scope. </p>
+<div class="textblock"><p>Acquires and hold a /ref <a class="el" href="classfplutil_1_1_mutex.html" title="A simple synchronization lock. Only one thread at a time can Acquire. ">Mutex</a>, if not held by someone else. </p>
 <p>Example usage: </p>
 <div class="fragment"><div class="line">Mutex syncronization_mutex;</div>
-<div class="line"><span class="keywordtype">void</span> MyFunctionThatRequiresSynchronization() {</div>
-<div class="line">  <a class="code" href="classfplutil_1_1_mutex_lock.html#aa39da17ce55ad8f25981e7793018eb1f">MutexLock</a> lock(syncronization_mutex);</div>
+<div class="line"><span class="keywordtype">bool</span> MyFunctionThatRequiresSynchronization() {</div>
+<div class="line">  <a class="code" href="classfplutil_1_1_mutex_try_lock.html#a0626da3c8edf65d171b7dc03cafd07c2">MutexTryLock</a> lock;</div>
+<div class="line">  <span class="keywordflow">if</span> (!lock.Try(syncronization_mutex)) <span class="keywordflow">return</span> <span class="keyword">false</span>;</div>
 <div class="line">  <span class="comment">// ... logic ...</span></div>
+<div class="line">  <span class="keywordflow">return</span> <span class="keyword">true</span>;</div>
 <div class="line">}</div>
 </div><!-- fragment --> </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
-<a class="anchor" id="aa39da17ce55ad8f25981e7793018eb1f"></a>
+<a class="anchor" id="a0626da3c8edf65d171b7dc03cafd07c2"></a>
 <div class="memitem">
 <div class="memproto">
 <table class="mlabels">
@@ -224,10 +230,9 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">fplutil::MutexLock::MutexLock </td>
+          <td class="memname">fplutil::MutexTryLock::MutexTryLock </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="classfplutil_1_1_mutex.html">Mutex</a> &amp;&#160;</td>
-          <td class="paramname"><em>mutex</em></td><td>)</td>
+          <td class="paramname"></td><td>)</td>
           <td></td>
         </tr>
       </table>

@@ -12,6 +12,8 @@ var searchData=
   ['model',['model',['../classfplutil_1_1buildutil_1_1android_1_1_adb_device.html#af351dd7094b0ed56021a829f3a568845',1,'fplutil::buildutil::android::AdbDevice']]],
   ['mutex',['Mutex',['../classfplutil_1_1_mutex.html',1,'fplutil']]],
   ['mutex',['Mutex',['../classfplutil_1_1_mutex.html#afea0c5a6a12d9b6732348438508ea55a',1,'fplutil::Mutex::Mutex()'],['../classfplutil_1_1_mutex.html#a8eeec1398f217ee353a0a234c157459b',1,'fplutil::Mutex::Mutex(Mode mode)']]],
+  ['mutexlock',['MutexLock',['../classfplutil_1_1_mutex_lock.html#aa39da17ce55ad8f25981e7793018eb1f',1,'fplutil::MutexLock']]],
   ['mutexlock',['MutexLock',['../classfplutil_1_1_mutex_lock.html',1,'fplutil']]],
-  ['mutexlock',['MutexLock',['../classfplutil_1_1_mutex_lock.html#aa39da17ce55ad8f25981e7793018eb1f',1,'fplutil::MutexLock']]]
+  ['mutextrylock',['MutexTryLock',['../classfplutil_1_1_mutex_try_lock.html',1,'fplutil']]],
+  ['mutextrylock',['MutexTryLock',['../classfplutil_1_1_mutex_try_lock.html#a0626da3c8edf65d171b7dc03cafd07c2',1,'fplutil::MutexTryLock']]]
 ];
