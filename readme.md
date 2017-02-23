@@ -46,7 +46,7 @@ the version string but we would appreciate if you would leave it in.
   [Android]: http://www.android.com
   [Linux]: http://en.m.wikipedia.org/wiki/Linux
   [Python]: http://www.python.org
-  [fplutil Google Group]: http://groups.google.com/group/fplutil
+  [fplutil Google Group]: https://groups.google.com/forum/#!forum/fplutil
   [fplutil Issues Tracker]: http://github.com/google/fplutil/issues
   [stackoverflow.com]: http://stackoverflow.com/search?q=fplutil
   [landing page]: http://google.github.io/fplutil
