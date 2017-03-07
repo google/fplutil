@@ -84,7 +84,13 @@ function(set_common_build_variables)
   # If we clone from GitHub, the dependencies will be cloned (via submodules)
   # into a "dependencies" directory.
   get_filename_component(github_dir
-                         "${CMAKE_CURRENT_SOURCE_DIR}/dependencies" REALPATH)
+                         "${CMAKE_SOURCE_DIR}/dependencies" REALPATH)
+
+  # When we clone from GitHub, our fpl_root will be the `dependencies`
+  # directory, which is fine for all dependencies, but for the main project,
+  # we want to use CMAKE_SOURCE_DIR. So, we check for the main project before
+  # putting ourselves under `dependencies`.
+  get_filename_component(parent_dir "${CMAKE_SOURCE_DIR}/.." REALPATH)
 
   # Internally, there are a couple places where we might store our dependencies.
   # For convenience, we hard-code them here so that we don't have to type,
@@ -126,36 +132,50 @@ function(set_common_build_variables)
   endif()
 
   # fpl common module directory variables
-  set(dependencies_breadboard_dir "${fpl_root}/breadboard"
-      CACHE PATH "Directory containing the breadboard library.")
-  set(dependencies_module_library_dir
-      "${dependencies_breadboard_dir}/module_library" CACHE PATH
-      "Directory containing the breadboard module library.")
-  set(dependencies_corgi_dir "${fpl_root}/corgi" CACHE PATH
+  set_to_first_path_that_exists(dependencies_breadboard_dir
+      "${fpl_root}/breadboard;${parent_dir}/breadboard"
+      "Directory containing the breadboard library.")
+  set_to_first_path_that_exists(dependencies_corgi_dir
+      "${fpl_root}/corgi;${parent_dir}/corgi"
       "Directory containing the CORGI library.")
-  set(dependencies_corgi_component_library_dir
-      "${dependencies_corgi_dir}/component_library" CACHE PATH
-      "Directory containing the CORGI component library")
-  set(dependencies_flatbuffers_dir "${fpl_root}/flatbuffers"
-      CACHE PATH "Directory containing the Flatbuffers library.")
-  set(dependencies_flatbuffers_cmake_dir "${fpl_root}/flatbuffers/CMake"
-      CACHE PATH "Directory containing the Flatbuffers library cmake helpers.")
-  set(dependencies_flatui_dir "${fpl_root}/flatui"
-      CACHE PATH "Directory containing the FlatUI library.")
-  set(dependencies_fplbase_dir "${fpl_root}/fplbase"
-      CACHE PATH "Directory containing the FPLBase library.")
-  set(dependencies_fplutil_dir "${fpl_root}/fplutil"
-      CACHE PATH "Directory containing the fplutil library.")
-  set(dependencies_libfplutil_dir "${fpl_root}/fplutil/libfplutil"
-      CACHE PATH "Directory containing the libfplutil library.")
-  set(dependencies_mathfu_dir "${fpl_root}/mathfu"
-      CACHE PATH "Directory containing the MathFu library.")
-  set(dependencies_motive_dir "${fpl_root}/motive"
-      CACHE PATH "Directory containing the motive animation library.")
-  set(dependencies_pindrop_dir "${fpl_root}/pindrop" CACHE PATH
+  set_to_first_path_that_exists(dependencies_flatbuffers_dir
+      "${fpl_root}/flatbuffers;${parent_dir}/flatbuffers"
+       "Directory containing the Flatbuffers library.")
+  set_to_first_path_that_exists(dependencies_flatui_dir
+      "${fpl_root}/flatui;${parent_dir}/flatui"
+       "Directory containing the FlatUI library.")
+  set_to_first_path_that_exists(dependencies_fplbase_dir
+      "${fpl_root}/fplbase;${parent_dir}/fplbase"
+       "Directory containing the FPLBase library.")
+  set_to_first_path_that_exists(dependencies_fplutil_dir
+      "${fpl_root}/fplutil;${parent_dir}/fplutil"
+       "Directory containing the fplutil library.")
+  set_to_first_path_that_exists(dependencies_mathfu_dir
+      "${fpl_root}/mathfu;${parent_dir}/mathfu"
+       "Directory containing the MathFu library.")
+  set_to_first_path_that_exists(dependencies_motive_dir
+      "${fpl_root}/motive;${parent_dir}/motive"
+       "Directory containing the motive animation library.")
+  set_to_first_path_that_exists(dependencies_pindrop_dir
+      "${fpl_root}/pindrop;${parent_dir}/pindrop"
       "Directory containing the pindrop library.")
-  set(dependencies_scene_lab_dir "${fpl_root}/scene_lab"
-      CACHE PATH "Directory containing the Scene Lab library.")
+  set_to_first_path_that_exists(dependencies_scene_lab_dir
+      "${fpl_root}/scene_lab;${parent_dir}/scene_lab"
+       "Directory containing the Scene Lab library.")
+
+  # Directories relative to other directories.
+  set(dependencies_module_library_dir
+      "${dependencies_breadboard_dir}/module_library"
+      CACHE PATH "Directory containing the breadboard module library.")
+  set(dependencies_corgi_component_library_dir
+      "${dependencies_corgi_dir}/component_library"
+      CACHE PATH "Directory containing the CORGI component library")
+  set(dependencies_flatbuffers_cmake_dir
+      "${dependencies_flatbuffers_dir}/CMake"
+      CACHE PATH "Directory containing the Flatbuffers library cmake helpers.")
+  set(dependencies_libfplutil_dir
+      "${dependencies_fplutil_dir}/libfplutil"
+      CACHE PATH "Directory containing the libfplutil library.")
 
   # third party module directory variables
   set(dependencies_harfbuzz_distr_dir "${third_party_root}/harfbuzz"
@@ -349,4 +369,3 @@ function(restore_compiler_flags)
   set(CMAKE_C_FLAGS_DEBUG "${SAVED_CMAKE_C_FLAGS_DEBUG}" PARENT_SCOPE)
   set(CMAKE_C_FLAGS_RELEASE "${SAVED_CMAKE_C_FLAGS_RELEASE}" PARENT_SCOPE)
 endfunction()
-
