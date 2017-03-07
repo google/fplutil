@@ -67,7 +67,9 @@ FPLUTIL_PARENT_DIR:=$(call realpath-portable,$(call my-dir)/../..)
 # FPL_ROOT is the directory that holds all of the FPL projects.
 $(call fplutil_set_to_first_path_that_exists,FPL_ROOT,\
     $(DEPENDENCIES_ROOT) \
+    $(LOCAL_PATH)/dependencies \
     $(LOCAL_PATH)/../dependencies \
+    $(LOCAL_PATH)/../../dependencies \
     $(FPLUTIL_PARENT_DIR)/../libs \
     $(FPLUTIL_PARENT_DIR)/../third_party \
     $(FPLUTIL_PARENT_DIR))
@@ -76,7 +78,9 @@ $(call fplutil_set_to_first_path_that_exists,FPL_ROOT,\
 # upon which the FPL projects depend.
 $(call fplutil_set_to_first_path_that_exists,THIRD_PARTY_ROOT,\
     $(DEPENDENCIES_ROOT) \
+    $(LOCAL_PATH)/dependencies \
     $(LOCAL_PATH)/../dependencies \
+    $(LOCAL_PATH)/../../dependencies \
     $(FPLUTIL_PARENT_DIR)/../third_party \
     $(FPLUTIL_PARENT_DIR)/../../../external \
     $(FPL_ROOT))
@@ -85,7 +89,9 @@ $(call fplutil_set_to_first_path_that_exists,THIRD_PARTY_ROOT,\
 # upon which FPL projects depend.
 $(call fplutil_set_to_first_path_that_exists,PREBUILTS_ROOT,\
     $(DEPENDENCIES_ROOT) \
+    $(LOCAL_PATH)/dependencies \
     $(LOCAL_PATH)/../dependencies \
+    $(LOCAL_PATH)/../../dependencies \
     $(FPLUTIL_PARENT_DIR)/../../../prebuilts \
     $(FPL_ROOT))
 
