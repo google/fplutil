@@ -62,10 +62,19 @@ fplutil_all_files_relative_to_path_in_subdirectory = \
 FPL_CFLAGS := -DGUNIT_NO_GOOGLE3
 
 # Directory above the source directory.
-PARENT_DIR:=$(call realpath-portable,$(LOCAL_PATH)/..)
+LOCAL_REAL_DIR:=$(call realpath-portable,$(LOCAL_PATH))
 
 # Directory above the fplutil directory.
 FPLUTIL_PARENT_DIR:=$(call realpath-portable,$(call my-dir)/../..)
+
+# GitHub's `dependencies` directory.
+$(call fplutil_set_to_first_path_that_exists,GITHUB_DEPENDENCIES_DIR,\
+    $(LOCAL_REAL_DIR)/../dependencies \
+    $(LOCAL_REAL_DIR)/../../dependencies \
+    $(LOCAL_REAL_DIR)/../../../dependencies \
+    $(LOCAL_REAL_DIR)/../../../../dependencies \
+    $(LOCAL_REAL_DIR)/../../../../../dependencies \
+    $(LOCAL_REAL_DIR)/../../../../../../dependencies)
 
 # FPL_ROOT is the directory that holds all of the FPL projects.
 # When using --clone from GitHub, it will be the `dependencies` directory.
@@ -73,7 +82,7 @@ FPLUTIL_PARENT_DIR:=$(call realpath-portable,$(call my-dir)/../..)
 # FPL_ROOT, but all the other FPL projects will be under FPL_ROOT.
 $(call fplutil_set_to_first_path_that_exists,FPL_ROOT,\
     $(DEPENDENCIES_ROOT) \
-    $(LOCAL_PATH)/../dependencies \
+    $(GITHUB_DEPENDENCIES_DIR) \
     $(FPLUTIL_PARENT_DIR)/../libs \
     $(FPLUTIL_PARENT_DIR)/../third_party \
     $(FPLUTIL_PARENT_DIR))
@@ -82,7 +91,7 @@ $(call fplutil_set_to_first_path_that_exists,FPL_ROOT,\
 # upon which the FPL projects depend.
 $(call fplutil_set_to_first_path_that_exists,THIRD_PARTY_ROOT,\
     $(DEPENDENCIES_ROOT) \
-    $(LOCAL_PATH)/../dependencies \
+    $(GITHUB_DEPENDENCIES_DIR) \
     $(FPLUTIL_PARENT_DIR)/../third_party \
     $(FPLUTIL_PARENT_DIR)/../../../external \
     $(FPL_ROOT))
@@ -91,14 +100,14 @@ $(call fplutil_set_to_first_path_that_exists,THIRD_PARTY_ROOT,\
 # upon which FPL projects depend.
 $(call fplutil_set_to_first_path_that_exists,PREBUILTS_ROOT,\
     $(DEPENDENCIES_ROOT) \
-    $(LOCAL_PATH)/../dependencies \
+    $(GITHUB_DEPENDENCIES_DIR) \
     $(FPLUTIL_PARENT_DIR)/../../../prebuilts \
     $(FPL_ROOT))
 
 # Location of the Breadboard library.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_BREADBOARD_DIR,\
-    $(FPL_ROOT)/breadboard
-    $(PARENT_DIR)/breadboard)
+    $(FPL_ROOT)/breadboard \
+    $(GITHUB_DEPENDENCIES_DIR)/../../breadboard)
 
 # Location of the breadboard module library's module collection.
 $(call fplutil_set_to_first_path_that_exists,\
@@ -107,8 +116,8 @@ $(call fplutil_set_to_first_path_that_exists,\
 
 # Location of the CORGI library.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_CORGI_DIR,\
-    $(FPL_ROOT)/corgi
-    $(PARENT_DIR)/corgi)
+    $(FPL_ROOT)/corgi\
+    $(GITHUB_DEPENDENCIES_DIR)/../../corgi)
 
 # Location of the CORGI component library.
 $(call fplutil_set_to_first_path_that_exists,\
@@ -117,43 +126,43 @@ $(call fplutil_set_to_first_path_that_exists,\
 
 # Location of the Flatbuffers library.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_FLATBUFFERS_DIR,\
-    $(FPL_ROOT)/flatbuffers
-    $(PARENT_DIR)/flatbuffers)
+    $(FPL_ROOT)/flatbuffers \
+    $(GITHUB_DEPENDENCIES_DIR)/../../flatbuffers)
 
 # Location of the flatui library.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_FLATUI_DIR,\
-    $(FPL_ROOT)/flatui
-    $(PARENT_DIR)/flatui)
+    $(FPL_ROOT)/flatui \
+    $(GITHUB_DEPENDENCIES_DIR)/../../flatui)
 
 # Location of the fplbase library.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_FPLBASE_DIR,\
-    $(FPL_ROOT)/fplbase
-    $(PARENT_DIR)/fplbase)
+    $(FPL_ROOT)/fplbase \
+    $(GITHUB_DEPENDENCIES_DIR)/../../fplbase)
 
 # Location of the fplutil library.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_FPLUTIL_DIR,\
-    $(FPL_ROOT)/fplutil
-    $(PARENT_DIR)/fplutil)
+    $(FPL_ROOT)/fplutil \
+    $(GITHUB_DEPENDENCIES_DIR)/../../fplutil)
 
 # Location of the MathFu library.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_MATHFU_DIR,\
-    $(FPL_ROOT)/mathfu
-    $(PARENT_DIR)/mathfu)
+    $(FPL_ROOT)/mathfu \
+    $(GITHUB_DEPENDENCIES_DIR)/../../mathfu)
 
 # Location of the motive library.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_MOTIVE_DIR,\
-    $(FPL_ROOT)/motive
-    $(PARENT_DIR)/motive)
+    $(FPL_ROOT)/motive \
+    $(GITHUB_DEPENDENCIES_DIR)/../../motive)
 
 # Location of the Pindrop library.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_PINDROP_DIR,\
-    $(FPL_ROOT)/pindrop
-    $(PARENT_DIR)/pindrop)
+    $(FPL_ROOT)/pindrop \
+    $(GITHUB_DEPENDENCIES_DIR)/../../pindrop)
 
 # Location of the Scene Lab library.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_SCENE_LAB_DIR,\
-    $(FPL_ROOT)/scene_lab
-    $(PARENT_DIR)/scene_lab)
+    $(FPL_ROOT)/scene_lab \
+    $(GITHUB_DEPENDENCIES_DIR)/../../scene_lab)
 
 # Location of the SDL library.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_SDL_DIR,\
