@@ -270,7 +270,6 @@ $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_GTEST_JNI_DIR,\
 # googletest/googletest.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_GTEST_DIR,\
     ${THIRD_PARTY_ROOT}/googletest/googletest \
-
     ${THIRD_PARTY_ROOT}/gtest)
 
 # Location of the googlemock library.
