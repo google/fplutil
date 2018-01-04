@@ -23,6 +23,7 @@
 #pragma GCC diagnostic ignored "-Wpedantic"
 #pragma GCC diagnostic ignored "-Wunused-value"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#pragma GCC diagnostic ignored "-Wnull-dereference"
 #endif  // defined(__GNUC__)
 
 #if defined(__clang__)
@@ -32,6 +33,7 @@
 #pragma clang diagnostic ignored "-Wpedantic"
 #pragma clang diagnostic ignored "-Wunused-value"
 #pragma clang diagnostic ignored "-Wmissing-field-initializers"
+#pragma clang diagnostic ignored "-Wnull-dereference"
 #endif  // defined(__clang__)
 
 #include <fbxsdk.h>
