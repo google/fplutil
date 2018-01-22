@@ -202,7 +202,7 @@ function(set_common_build_variables)
       "Directory containing the Bullet Physics distribution.")
 
   set_to_first_path_that_exists(dependencies_freetype_distr_dir
-      "${third_party_root}/freetype2/freetype-2.6.1;${third_party_root}/freetype"
+      "${third_party_root}/freetype2/freetype-2.8.1;${third_party_root}/freetype"
       "Directory containing the freetype library.")
 
   set_to_first_path_that_exists(dependencies_gumbo_distr_dir
