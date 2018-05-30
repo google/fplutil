@@ -188,7 +188,7 @@ function(set_common_build_variables)
   # Depending on googletest version, the gtest directory may be nested under
   # googletest/googletest.
   set_to_first_path_that_exists(dependencies_gtest_dir
-      "${third_party_root}/googletest/googletest;${fpl_root}/googletest/googletest;${fpl_root}/googletest;${third_party_root}/gtest"
+      "${third_party_root}/googletest/googletest;${third_party_root}/gtest"
       "Directory containing the GoogleTest library.")
 
   set_to_first_path_that_exists(dependencies_gmock_dir
@@ -202,7 +202,7 @@ function(set_common_build_variables)
       "Directory containing the Bullet Physics distribution.")
 
   set_to_first_path_that_exists(dependencies_freetype_distr_dir
-      "${third_party_root}/freetype2/freetype-2.6.1;${third_party_root}/freetype"
+      "${third_party_root}/freetype2/freetype-2.8.1;${third_party_root}/freetype"
       "Directory containing the freetype library.")
 
   set_to_first_path_that_exists(dependencies_gumbo_distr_dir

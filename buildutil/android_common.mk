@@ -202,7 +202,7 @@ $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_BULLETPHYSICS_DIR,\
 
 # Location of the Freetype library.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_FREETYPE_DIR,\
-    $(THIRD_PARTY_ROOT)/freetype2/freetype-2.6.1 \
+    $(THIRD_PARTY_ROOT)/freetype2/freetype-2.8.1 \
     $(THIRD_PARTY_ROOT)/freetype)
 
 # Location of the Firebase C++ library.
@@ -270,8 +270,6 @@ $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_GTEST_JNI_DIR,\
 # googletest/googletest.
 $(call fplutil_set_to_first_path_that_exists,DEPENDENCIES_GTEST_DIR,\
     ${THIRD_PARTY_ROOT}/googletest/googletest \
-    ${FPL_ROOT}/googletest/googletest \
-    ${FPL_ROOT}/googletest \
     ${THIRD_PARTY_ROOT}/gtest)
 
 # Location of the googlemock library.

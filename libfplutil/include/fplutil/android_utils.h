@@ -31,7 +31,7 @@ namespace fplutil {
 class JniObject {
  public:
   JniObject() : global_ref_(false), obj_(nullptr) {}
-  ~JniObject() { CleanUp(); }
+  virtual ~JniObject() { CleanUp(); }
 
   /// @brief Copy constructors.
   JniObject(jobject obj) : global_ref_(false) { obj_ = obj; }
@@ -50,8 +50,8 @@ class JniObject {
   std::string CallStringMethod(const char* method, const char* signature, ...);
 
   /// @brief Set JNIEnv variable to the class. The function needs to be invoked
-  /// before using the class.
-  static void SetEnv(JNIEnv* env) { env_ = env; }
+  /// on each thread before using the class on that thread.
+  static void SetEnv(JNIEnv* env);
 
   /// @brief Static utility methods.
 
@@ -72,17 +72,17 @@ class JniObject {
   ///
   /// @param[in] string A string to convert.
   static jstring CreateString(std::string& str) {
-    return env_->NewStringUTF(str.c_str());
+    return GetEnv()->NewStringUTF(str.c_str());
   }
 
   /// @brief Getter of the jobject attached to the class.
   jobject get_object() { return static_cast<jobject>(obj_); }
 
  protected:
+  static JNIEnv* GetEnv();
   jmethodID GetMethodId(const char* method, const char* signature);
   void CleanUp();
   bool global_ref_;
-  static JNIEnv* env_;
   void* obj_;
 };
 
@@ -99,7 +99,7 @@ class JniClass : JniObject {
   /// @param[in] cls A class name to find.
   bool FindClass(const char* cls) {
     CleanUp();
-    obj_ = static_cast<void*>(env_->FindClass(cls));
+    obj_ = static_cast<void*>(GetEnv()->FindClass(cls));
     return obj_ != nullptr;
   }
 
