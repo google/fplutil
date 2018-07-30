@@ -367,21 +367,16 @@ class intrusive_list {
   }
 
   iterator erase(iterator pos) {
-    node_type* next = pos.node_->next_;
-    pos.node_->remove();
+    iterator next = iterator(pos.value_->next_, node_offset_);
+    pos.value_->remove();
     return next;
   }
 
   iterator erase(iterator first, iterator last) {
-    node_type* before_first = first.node_->previous_;
-    node_type* after_last = last.node_->next_;
-    after_last->previous_ = before_first;
-    before_first->next_ = after_last;
-
     iterator iter = first;
     while (iter != last) {
       iterator current = iter++;
-      current.node_->clear();
+      current.value_->remove();
     }
     return iter;
   }
