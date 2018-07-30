@@ -293,6 +293,32 @@ TEST_F(intrusive_list_test, crbegin_crend) {
   EXPECT_EQ(list_.crend(), iter);
 }
 
+TEST_F(intrusive_list_test, erase) {
+  EXPECT_TRUE(list_.empty());
+
+  list_.push_back(one_);
+  list_.push_back(two_);
+  EXPECT_EQ(1, list_.begin()->value());
+  list_.erase(list_.begin());
+  EXPECT_EQ(2, list_.begin()->value());
+  EXPECT_EQ(1, list_.size());
+
+  list_.push_back(one_);
+  list_.erase(list_.begin(), list_.end());
+  EXPECT_TRUE(list_.empty());
+  EXPECT_EQ(0, list_.size());
+
+  list_.push_back(one_);
+  list_.push_back(two_);
+  list_.push_back(three_);
+  auto begin = list_.begin();
+  auto end = --list_.end();
+  EXPECT_EQ(3, end->value());
+  list_.erase(begin, end);
+  EXPECT_EQ(3, list_.begin()->value());
+  EXPECT_EQ(1, list_.size());
+}
+
 TEST_F(intrusive_list_test, clear) {
   EXPECT_TRUE(list_.empty());
 
